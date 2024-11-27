@@ -16,6 +16,8 @@ async function main() {
     console.log(utxos);
     const balance = await api.getBalance();
     console.log(balance);
+    const collateral = await api.getCollateral();
+    console.log(collateral);
 }
 
 main();

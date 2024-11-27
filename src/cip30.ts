@@ -24,17 +24,19 @@ export class CIP30 {
         return await this.provider.getUtxos(this.wallet.getAddresses()[0].to_bech32());
     }
 
-    async getCollateral(threshold: number): Promise<UTxO[]> {
+    async getCollateral(threshold: number = 5000000n): Promise<UTxO[]> {
         const utxos = await this.getUtxos();
         const adaOnly = utxos.filter((u) => u.amount.every((a) => a.unit === 'lovelace'));
         var ans = [];
         var sum = 0;
-        var ix = 0;
-        while (sum < threshold) {
-            ans.push(adaOnly[ix]);
-            ix++;
-        }
-        return ans;
+        for (let i = 0; i < adaOnly.length; i++) {
+            ans.push(adaOnly[i]);
+            sum += adaOnly[i].amount.map((a) => a.quantity).reduce((a, b) => a + b, 0);
+            if (sum >= threshold) {
+                return ans;
+            };
+        };
+        return [];
     }
 
     async getBalance(): Promise<Asset[]> {
