@@ -1,6 +1,5 @@
 export * as cip30 from './src/cip30';
 import { CIP30 } from './src/cip30';
-import { BlockfrostProvider } from './src/Blockfrost' 
 import { LucidProvider } from './src/Lucid' 
 import { Wallet } from './src/Wallet'
 

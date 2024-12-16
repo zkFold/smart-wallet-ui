@@ -49,23 +49,24 @@ export class Wallet {
     }
 
     // Adapted from https://developers.cardano.org/docs/get-started/cardano-serialization-lib/generating-keys/
-    getAddresses(): Address[] {
+    getAddresses(walletScript?: string): Address[] {
+        const cred = typeof walletScript === 'undefined' ? CardanoWasm.Credential.from_keyhash(this.utxoPubKey.to_raw_key().hash()) : ScriptHash.from_hex(walletScript);
         const baseAddr = CardanoWasm.BaseAddress.new(
           CardanoWasm.NetworkInfo.mainnet().network_id(),
-          CardanoWasm.Credential.from_keyhash(this.utxoPubKey.to_raw_key().hash()),
+          cred,
           CardanoWasm.Credential.from_keyhash(this.stakeKey.to_raw_key().hash()),
         );
         
         // enterprise address without staking ability, for use by exchanges/etc
         const enterpriseAddr = CardanoWasm.EnterpriseAddress.new(
           CardanoWasm.NetworkInfo.mainnet().network_id(),
-          CardanoWasm.Credential.from_keyhash(this.utxoPubKey.to_raw_key().hash())
+          cred 
         );
         
         // pointer address - similar to Base address but can be shorter, see formal spec for explanation
         const ptrAddr = CardanoWasm.PointerAddress.new(
           CardanoWasm.NetworkInfo.mainnet().network_id(),
-          CardanoWasm.Credential.from_keyhash(this.utxoPubKey.to_raw_key().hash()),
+          cred, 
           CardanoWasm.Pointer.new(
             100, // slot
             2,   // tx index in slot
