@@ -1,0 +1,44 @@
+{
+  "name": "smart-contract-wallet-api",
+  "version": "1.0.0",
+  "description": "Smart wallet backend",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zkFold/smart-contract-wallet-api.git"
+  },
+  "keywords": [
+    "cardano",
+    "wallet"
+  ],
+  "author": "Vladimir Morozov",
+  "license": "BUSL-1.1",
+  "bugs": {
+    "url": "https://github.com/zkFold/smart-contract-wallet-api/issues"
+  },
+  "homepage": "https://github.com/zkFold/smart-contract-wallet-api#readme",
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "@blockfrost/blockfrost-js": "^5.7.0",
+    "@emurgo/cardano-serialization-lib-nodejs": "^13.2.0",
+    "@scure/bip39": "^1.5.0",
+    "@types/facebook-js-sdk": "^3.3.12",
+    "@types/node": "^22.9.3",
+    "crypto": "^1.0.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "express-session": "^1.18.1",
+    "facebook-nodejs-sdk": "^0.1.0",
+    "googleapis": "^144.0.0",
+    "lucid-cardano": "^0.10.10",
+    "passport": "^0.7.0",
+    "passport-facebook": "^3.0.0"
+  }
+}
