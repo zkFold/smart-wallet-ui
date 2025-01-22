@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <link rel = "stylesheet" type="text/css" href="css/pico.min.css">
+    <title>Smart wallet test</title>
+  </head>
+  <body>
+    <main class="container">
+      <h1>Perform a transaction</h1>
+      <label name="balance_label">
+          Wallet balance: { balance } Ada
+      </label>
+      <form action="http://localhost:8080/send" method="POST">
+        <fieldset>
+          <label>
+            Type of address 
+            <select name="recipient" aria-label="Select the type of address you want to send ADA to" required>
+              <option selected disabled value="">
+                Select the type of address
+              </option>
+              <option>Bech32</option>
+              <option>Gmail</option>
+            </select>
+          </label>
+          <label>
+            Recipient's address
+            <input
+              name="address"
+            />
+          </label>
+          <label>
+            Amount 
+            <input
+              name="amount"
+            />
+          </label>
+        </fieldset>
+        <input
+          type="submit"
+          value="Send"
+        />
+      </form>
+      </main>
+  </body>
+</html>

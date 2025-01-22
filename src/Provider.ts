@@ -4,8 +4,8 @@ export class Provider {
 
     async getUtxos(addr: string) : Promise<UTxO[]>;
 
-    getNetworkId(): number;
+    async submitTx(tx: string): Promise<string>;
 
-    backend();
+    getNetworkId(): number;
 
 }
