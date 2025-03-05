@@ -31,6 +31,7 @@
     "@scure/bip39": "^1.5.0",
     "@types/facebook-js-sdk": "^3.3.12",
     "@types/node": "^22.9.3",
+    "blakejs": "^1.2.1",
     "body-parser": "^1.20.3",
     "crypto": "^1.0.1",
     "dotenv": "^16.4.5",
