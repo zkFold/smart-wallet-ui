@@ -265,8 +265,14 @@ export class Wallet {
 
         txBuilder.add_output(output);
 
-        const ttl = getCardanoSlot() + 60 * 60; // 1 hr TODO maybe change this? 
-        txBuilder.set_ttl_bignum(CSL.BigNum.from_str(ttl.toString()));
+        const ttl = getCardanoSlot() + 5 * 60; // 1 hr TODO maybe change this? 
+        console.log(ttl);
+        //txBuilder.set_ttl_bignum(CSL.BigNum.from_str(ttl.toString()));
+
+//        txBuilder.calc_script_data_hash(
+//          CSL.TxBuilderConstants.plutus_vasil_cost_models()
+//        );
+
         
         txBuilder.add_change_if_needed(senderAddress);
         
@@ -310,7 +316,6 @@ export class Wallet {
                 transaction.sign_and_add_vkey_signature(this.accountKey.derive(0).derive(0).to_raw_key());
                 
                 const signedTxHex = Buffer.from(transaction.to_bytes()).toString('hex');
-                console.log(signedTxHex);
                 return await this.provider.submitTx(signedTxHex);
             };
 
@@ -331,6 +336,7 @@ export class Wallet {
                 };
 
                 const redeemerData = createRedeemer(proofData); 
+                console.log(redeemerData);
                 
                 const redeemer = CSL.Redeemer.new(
                     CSL.RedeemerTag.new_spend(), 
@@ -340,10 +346,6 @@ export class Wallet {
                 );
 
                 const txBuilder = this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, rec.recipientType == AddressType.Gmail, redeemer);
-
-                txBuilder.calc_script_data_hash(
-                  CSL.TxBuilderConstants.plutus_vasil_cost_models()
-                );
 
                 const txBody = txBuilder.build(); 
 
@@ -363,18 +365,17 @@ export class Wallet {
 
                 witnesses.set_plutus_scripts(scripts);
                 witnesses.set_redeemers(redeemers);
-                witnesses.set_plutus_data(plutus_data);
+//                witnesses.set_plutus_data(plutus_data);
 
-//                const transaction = CSL.FixedTransaction.new_from_body_bytes(txBody.to_bytes());
+                const transaction = CSL.FixedTransaction.new_from_body_bytes(txBody.to_bytes());
                 // create the finalized transaction with witnesses
-                const transaction = CSL.Transaction.new(
-                    txBody,
-                    witnesses,
-                    undefined, // transaction metadata
-                );
+//                const transaction = CSL.Transaction.new(
+//                    txBody,
+//                    witnesses,
+//                    undefined, // transaction metadata
+//                );
 
                 const txHex = Buffer.from(transaction.to_bytes()).toString('hex');
-                console.log(txHex);
                 return await this.provider.submitTx(txHex);
             };
         };
@@ -384,9 +385,11 @@ export class Wallet {
 
 // Taken from https://forum.cardano.org/t/building-transaction-using-cardano-serialization-lib/126082
 function getCardanoSlot() {
-    const nowUnixTimestamp = new Date().getTime();
+    const nowUnixTimestamp = Math.floor(new Date().getTime() / 1000); 
     const startShelleyUnixTimestamp = nowUnixTimestamp - 1596491091;
-    return startShelleyUnixTimestamp + 4924800;
+    console.log(nowUnixTimestamp);
+    console.log(startShelleyUnixTimestamp);
+    return startShelleyUnixTimestamp + 4492800;
 }
 
 
