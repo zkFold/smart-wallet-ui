@@ -266,7 +266,7 @@ export class Wallet {
         return this.getAddress();
     }
 
-    private buildTx(senderAddress: CSL.Address, recipientAddress: CSL.Address, amountToSend: CSL.BigNum, utxos, collateral=[], includeDatum: boolean=false, redeemer: CSL.Redeemer=null): CSL.TransactionBuilder {
+    private buildTx(senderAddress: CSL.Address, recipientAddress: CSL.Address, amountToSend: CSL.BigNum, utxos, collateral=[], redeemer: CSL.Redeemer=null): CSL.TransactionBuilder {
         const txBuilderCfg = 
             CSL.TransactionBuilderConfigBuilder.new()
             .fee_algo(
@@ -312,7 +312,7 @@ export class Wallet {
             if (this.method == Method.Mnemonic) {
                 txInputBuilder.add_regular_input(addr, input, value);
             } else {
-                const witness = CSL.PlutusWitness.new(this.walletScript, CSL.PlutusData.new_integer(CSL.BigInt.from_str("0")), redeemer);
+                const witness = CSL.PlutusWitness.new_without_datum(this.walletScript, redeemer);
                 txInputBuilder.add_plutus_script_input(witness, input, value);
             }
         });
@@ -344,10 +344,6 @@ export class Wallet {
                 CSL.Value.new(CSL.BigNum.from_str(amountToSend.toString())),
         );
 
-        if (includeDatum) {
-            output.set_plutus_data(CSL.PlutusData.new_integer(CSL.BigInt.from_str("0")));
-        }
-
         txBuilder.add_output(output);
 
         const ttl = getCardanoSlot() + 5 * 60; // 1 hr TODO maybe change this? 
@@ -356,12 +352,11 @@ export class Wallet {
         //txBuilder.set_ttl_bignum(CSL.BigNum.from_str(ttl.toString()));
 
         
-        txBuilder.add_change_if_needed(senderAddress);
-
         txBuilder.calc_script_data_hash(
           CSL.TxBuilderConstants.plutus_conway_cost_models()
         );
 
+        txBuilder.add_change_if_needed(senderAddress);
         
         return txBuilder;
     }
@@ -395,7 +390,7 @@ export class Wallet {
         switch (this.method) {
             case Method.Mnemonic: {
                 // A classical transaction from an address behind a private key to another address or a smart contract
-                const txBuilder = this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, [], rec.recipientType == AddressType.Gmail);
+                const txBuilder = this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, []);
 
                 const txBody = txBuilder.build(); 
 
@@ -438,9 +433,9 @@ export class Wallet {
                     CSL.ExUnits.new(CSL.BigNum.from_str("700000"), CSL.BigNum.from_str("300000000")) // TODO: Change these to appropriate values
                 );
 
-                const txBuilder = this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, collateral, rec.recipientType == AddressType.Gmail, redeemer);
+                const txBuilder = this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, collateral, redeemer);
 
-                const tx = txBuilder.build_tx_unsafe(); 
+                const tx = txBuilder.build_tx(); 
                 const fixedTx = CSL.FixedTransaction.new(tx.body().to_bytes(), tx.witness_set().to_bytes(), tx.is_valid());
                 fixedTx.sign_and_add_vkey_signature(this.collateral_pool.getSkey());
 
@@ -493,6 +488,7 @@ function createRedeemer(proofData) {
                console.log('exec error: ' + error);
           }
       });
-    const plutusData = fs.readFileSync('./proof.cbor', 'utf-8');
+    const plutusData = fs.readFileSync('./proof.cbor');
+    console.log(plutusData);
     return CSL.PlutusData.from_bytes(plutusData); 
 }
