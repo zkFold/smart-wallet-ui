@@ -8,4 +8,6 @@ export class Provider {
 
     getNetworkId(): number;
 
+    async getLatestParams();
+
 }

@@ -28,4 +28,8 @@ export class BlockFrostProvider extends Provider {
         return 0;
     }
 
+    async getLatestParams() {
+        return await this.API.epochsLatestParameters();
+    }
+
 }
