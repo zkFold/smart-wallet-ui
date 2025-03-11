@@ -44,6 +44,63 @@ export class SmartTxRecipient {
     }
 }
 
+class CollateralPool {
+    private rootKey: string;
+    private accountKey: string;
+    private utxoPubKey: string;
+    
+    constructor(mnemonic: string, network: string = 'mainnet') {
+        this.network = network;
+        const entropy = bip39.mnemonicToEntropy(mnemonic, wordlist);
+        this.rootKey = CSL.Bip32PrivateKey.from_bip39_entropy(
+              Buffer.from(entropy, 'hex'),
+              Buffer.from(''),
+            );
+        this.accountKey = this.rootKey
+          .derive(harden(1852)) // purpose
+          .derive(harden(1815)) // coin type
+          .derive(harden(0)); // account #0
+        
+        this.utxoPubKey = this.accountKey
+          .derive(0) // external
+          .derive(0)
+          .to_public();
+    }
+
+    // Adapted from https://developers.cardano.org/docs/get-started/cardano-serialization-lib/generating-keys/
+    getAddress(): CSL.Address {
+        const paymentCred = CSL.Credential.from_keyhash(this.utxoPubKey.to_raw_key().hash()); 
+        var netId;
+        switch (this.network) {
+            case "mainnet": {
+                netId = CSL.NetworkInfo.mainnet().network_id();
+                break;
+            };
+            case "preprod": {
+                netId = CSL.NetworkInfo.testnet_preprod().network_id();
+                break;
+            };
+            case "preview": {
+                netId = CSL.NetworkInfo.testnet_preview().network_id();
+                break;
+            };
+        };
+        // cardano-serialization-lib does not support base addresses without staking credentials.
+        // This is required when initialising the wallet with email
+        // I'll create an Enterprise address instead for now.
+        const baseAddr = CSL.EnterpriseAddress.new(
+          netId,
+          paymentCred,
+        );
+        
+        return baseAddr.to_address()
+    }
+
+    getSkey() {
+        return this.accountKey.derive(0).derive(0).to_raw_key();
+    }
+}
+
 export class Wallet {
     private rootKey: string;
     private accountKey: string;
@@ -69,10 +126,12 @@ export class Wallet {
             const contract = createWalletContract(userId);
 
             const plutusScriptBytes = Buffer.from(contract, 'hex'); 
-            const plutusScript = CSL.PlutusScript.from_bytes(plutusScriptBytes);
+            const plutusScript = CSL.PlutusScript.from_bytes_v3(plutusScriptBytes);
 
             this.walletScript = plutusScript;
             this.userId = userId;
+            
+            this.collateral_pool = new CollateralPool('faculty away cheap truck baby absorb guilt idle strategy merry toilet cotton arrow mix firm pact glimpse zoo celery marble parent library coffee hedgehog', this.network);
         }
     }
 
@@ -162,7 +221,12 @@ export class Wallet {
     }
 
     async getCollateral(threshold: number = 5000000n): Promise<UTxO[]> {
-        const utxos = await this.getUtxos();
+        var utxos;
+        if (this.method == Method.Mnemonic) {
+            utxos = await this.getUtxos();
+        } else {
+            utxos = await this.provider.getUtxos(this.collateral_pool.getAddress().to_bech32());
+        }
         const adaOnly = utxos.filter((u) => u.amount.every((a) => a.unit === 'lovelace'));
         var ans = [];
         var sum = 0;
@@ -202,7 +266,7 @@ export class Wallet {
         return this.getAddress();
     }
 
-    private buildTx(senderAddress: CSL.Address, recipientAddress: CSL.Address, amountToSend: CSL.BigNum, utxos, includeDatum: boolean=false, redeemer: CSL.Redeemer=null): CSL.TransactionBuilder {
+    private buildTx(senderAddress: CSL.Address, recipientAddress: CSL.Address, amountToSend: CSL.BigNum, utxos, collateral=[], includeDatum: boolean=false, redeemer: CSL.Redeemer=null): CSL.TransactionBuilder {
         const txBuilderCfg = 
             CSL.TransactionBuilderConfigBuilder.new()
             .fee_algo(
@@ -254,6 +318,27 @@ export class Wallet {
         });
         txBuilder.set_inputs(txInputBuilder);
 
+        if (collateral != []) {
+            const collateralBuilder = CSL.TxInputsBuilder.new();
+
+            collateral.forEach((utxo) => {
+                const hash = CSL.TransactionHash.from_bytes(Buffer.from(utxo.tx_hash, "hex"))
+                const input = CSL.TransactionInput.new(hash, utxo.tx_index);
+                var ada = 0;
+                for (let asset of utxo.amount) {
+                    if (asset.unit == 'lovelace') {
+                        var quantity: number = +asset.quantity;
+                        ada += quantity;
+                    }
+                }
+                const value = CSL.Value.new(CSL.BigNum.from_str(ada.toString()));
+                const addr = CSL.Address.from_bech32(utxo.address);
+                collateralBuilder.add_regular_input(addr, input, value);
+            });
+
+            txBuilder.set_collateral(collateralBuilder);
+        }
+
         const output = CSL.TransactionOutput.new(
                 recipientAddress,
                 CSL.Value.new(CSL.BigNum.from_str(amountToSend.toString())),
@@ -267,14 +352,16 @@ export class Wallet {
 
         const ttl = getCardanoSlot() + 5 * 60; // 1 hr TODO maybe change this? 
         console.log(ttl);
+        // TODO: what's the problem with TTL and script utxos?
         //txBuilder.set_ttl_bignum(CSL.BigNum.from_str(ttl.toString()));
-
-//        txBuilder.calc_script_data_hash(
-//          CSL.TxBuilderConstants.plutus_vasil_cost_models()
-//        );
 
         
         txBuilder.add_change_if_needed(senderAddress);
+
+        txBuilder.calc_script_data_hash(
+          CSL.TxBuilderConstants.plutus_conway_cost_models()
+        );
+
         
         return txBuilder;
     }
@@ -292,7 +379,7 @@ export class Wallet {
         if (rec.recipientType == AddressType.Gmail) {
             const contract = createWalletContract(rec.address); 
             const plutusScriptBytes = Buffer.from(contract, 'hex'); 
-            const plutusScript = CSL.PlutusScript.from_bytes(plutusScriptBytes);
+            const plutusScript = CSL.PlutusScript.from_bytes_v3(plutusScriptBytes);
 
             const paymentCred = CSL.Credential.from_scripthash(plutusScript.hash());
             recipientAddress = this.createAddress(paymentCred);
@@ -308,7 +395,7 @@ export class Wallet {
         switch (this.method) {
             case Method.Mnemonic: {
                 // A classical transaction from an address behind a private key to another address or a smart contract
-                const txBuilder = this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, rec.recipientType == AddressType.Gmail);
+                const txBuilder = this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, [], rec.recipientType == AddressType.Gmail);
 
                 const txBody = txBuilder.build(); 
 
@@ -322,6 +409,10 @@ export class Wallet {
             case Method.Google: {
                 // A transaction from a Web2-initialised wallet to any kind of address
                 
+                const collateral = await this.getCollateral();
+                console.log("COLLATERAL");
+                console.log(collateral);
+
                 // TODO: get this from Google properly
                 const proofData = { 
                     header: "header",
@@ -336,7 +427,9 @@ export class Wallet {
                 };
 
                 const redeemerData = createRedeemer(proofData); 
+                console.log("REDEEMER DATA START");
                 console.log(redeemerData);
+                console.log("REDEEMER DATA END");
                 
                 const redeemer = CSL.Redeemer.new(
                     CSL.RedeemerTag.new_spend(), 
@@ -345,37 +438,16 @@ export class Wallet {
                     CSL.ExUnits.new(CSL.BigNum.from_str("700000"), CSL.BigNum.from_str("300000000")) // TODO: Change these to appropriate values
                 );
 
-                const txBuilder = this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, rec.recipientType == AddressType.Gmail, redeemer);
+                const txBuilder = this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, collateral, rec.recipientType == AddressType.Gmail, redeemer);
 
-                const txBody = txBuilder.build(); 
+                const tx = txBuilder.build_tx_unsafe(); 
+                const fixedTx = CSL.FixedTransaction.new(tx.body().to_bytes(), tx.witness_set().to_bytes(), tx.is_valid());
+                fixedTx.sign_and_add_vkey_signature(this.collateral_pool.getSkey());
 
-
-                // TODO: we might not need these after all
-                //
-                const witnesses = CSL.TransactionWitnessSet.new();
-              
-                const scripts = CSL.PlutusScripts.new();
-                scripts.add(this.walletScript);
-
-                const redeemers = CSL.Redeemers.new();
-                redeemers.add(redeemer);
-                
-                const plutus_data = CSL.PlutusList.new();
-                plutus_data.add(CSL.PlutusData.new_integer(CSL.BigInt.from_str("0")));
-
-                witnesses.set_plutus_scripts(scripts);
-                witnesses.set_redeemers(redeemers);
-//                witnesses.set_plutus_data(plutus_data);
-
-                const transaction = CSL.FixedTransaction.new_from_body_bytes(txBody.to_bytes());
-                // create the finalized transaction with witnesses
-//                const transaction = CSL.Transaction.new(
-//                    txBody,
-//                    witnesses,
-//                    undefined, // transaction metadata
-//                );
-
-                const txHex = Buffer.from(transaction.to_bytes()).toString('hex');
+                const txHex = Buffer.from(fixedTx.to_bytes()).toString('hex');
+                console.log("TX HEX START")
+                console.log(txHex);
+                console.log("TX HEX END")
                 return await this.provider.submitTx(txHex);
             };
         };
