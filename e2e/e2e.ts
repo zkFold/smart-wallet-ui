@@ -27,8 +27,12 @@ async function mkTransaction(req, res) {
     const balance = await wallet.getBalance();
     console.log(balance);
     console.log(balance.lovelace);
+    var ada = 0;
+    if (Object.keys(balance).length > 0) {
+        ada = Number(balance.lovelace);
+    }
     const template = fs.readFileSync('./transaction.html', 'utf-8');
-    res.send(template.replace('{ balance }', Number(balance.lovelace) / 1000000));
+    res.send(template.replace('{ balance }', ada / 1000000));
 }
 
 app.get('/', (req, res) => {

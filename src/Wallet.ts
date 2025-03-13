@@ -7,7 +7,6 @@ import * as fs from 'fs';
 import fs from 'fs-extra';
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
-const blake2b = require('blakejs');
 var exec = require('child_process').execSync;
 
 dotenv.config()
@@ -217,7 +216,13 @@ export class Wallet {
     }
 
     async getUtxos(): Promise<UTxO[]> {
-        return await this.provider.getUtxos(this.getAddress().to_bech32());
+        var utxos;
+        try {
+            utxos = await this.provider.getUtxos(this.getAddress().to_bech32()); 
+        } catch (err) {
+            utxos = [];
+        }
+        return utxos;
     }
 
     async getCollateral(threshold: number = 5000000n): Promise<UTxO[]> {
