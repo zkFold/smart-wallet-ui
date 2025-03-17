@@ -5,6 +5,7 @@ import { BlockFrostProvider } from '../src/Blockfrost';
 import * as fs from 'fs';
 import unzip from 'unzip-stream';
 import fs from 'fs-extra';
+import { sendMessage } from '../src/GMail'
 
 const app = express();
 
@@ -35,7 +36,7 @@ async function mkTransaction(req, res) {
     res.send(template.replace('{ balance }', ada / 1000000));
 }
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
     res.sendFile('index.html', { root: '.' });
 })
 
@@ -51,6 +52,9 @@ app.post('/send', async (req, res) => {
         };
         case "Gmail": {
             recipient = new SmartTxRecipient(AddressType.Gmail, req.body.address, req.body.amount);
+            const template = fs.readFileSync('./email.html', 'utf-8');
+            const htmlText = template.replace('{{ recipient }}', req.body.address);
+            await sendMessage(req.body.address, "You've received funds", htmlText);
             break;
         };
     }

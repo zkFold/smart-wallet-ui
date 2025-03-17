@@ -2,12 +2,10 @@ import { createRequire } from "module";
 const require = createRequire(import.meta.url);
 
 const http = require('http');
-const https = require('https');
 const url = require('url');
+const open = require('open');
+const destroyer = require('server-destroy');
 const { google } = require('googleapis');
-const crypto = require('crypto');
-const express = require('express');
-const session = require('express-session');
 import * as dotenv from 'dotenv'
 dotenv.config()
 
@@ -29,25 +27,7 @@ const scopes = [
   'openid',
 ];
 
-let userCredential = null;
-
-async function main() {
-  const app = express();
-
-  app.use(session({
-    secret: 'your_secure_secret_key', // Replace with a strong secret
-    resave: false,
-    saveUninitialized: false,
-  }));
-
-  // Example on redirecting user to Google's OAuth 2.0 server.
-  app.get('/auth', async (req, res) => {
-    // Generate a secure random state value.
-    const state = crypto.randomBytes(32).toString('hex');
-    // Store state in the session
-    req.session.state = state;
-
-    // Generate a url that asks permissions for the Drive activity and Google Calendar scope
+export async function getJWT() {
     const authorizationUrl = oauth2Client.generateAuthUrl({
       // 'online' (default) or 'offline' (gets refresh_token)
       access_type: 'offline',
@@ -56,36 +36,36 @@ async function main() {
       scope: scopes,
       // Enable incremental authorization. Recommended as a best practice.
       include_granted_scopes: true,
-      // Include the state parameter to reduce the risk of CSRF attacks.
-      state: state
     });
 
-    res.redirect(authorizationUrl);
+  return new Promise((resolve, reject) => {
+    // Open an http server to accept the oauth callback. In this simple example, the
+    // only request to our webserver is to /oauth2callback?code=<code>
+    const server = http
+      .createServer(async (req, res) => {
+        try {
+          if (req.url.indexOf('/oauth2callback') > -1) {
+            // acquire the code from the querystring, and close the web server.
+            const qs = new url.URL(req.url, 'http://localhost:3000')
+              .searchParams;
+            const code = qs.get('code');
+            console.log(`Code is ${code}`);
+            res.end('Authentication successful! Please return to the console.');
+            server.destroy();
+
+            // Now that we have the code, use that to acquire tokens.
+            const { tokens } = await oauth2Client.getToken(code);
+            console.info('Tokens acquired.');
+            resolve(tokens);
+          }
+        } catch (e) {
+          reject(e);
+        }
+      })
+      .listen(3000, () => {
+        // open the browser to the authorize url to start the workflow
+        open(authorizationUrl, {wait: false}).then(cp => cp.unref());
+      });
+    destroyer(server);
   });
-
-  // Receive the callback from Google's OAuth 2.0 server.
-  app.get('/oauth2callback', async (req, res) => {
-    // Handle the OAuth 2.0 server response
-    let q = url.parse(req.url, true).query;
-
-    if (q.error) { // An error response e.g. error=access_denied
-      console.log('Error:' + q.error);
-    } else if (q.state !== req.session.state) { //check state value
-      console.log('State mismatch. Possible CSRF attack');
-      res.end('State mismatch. Possible CSRF attack');
-    } else { // Get access and refresh tokens (if access_type is offline)
-      let { tokens } = await oauth2Client.getToken(q.code);
-      oauth2Client.setCredentials(tokens);
-
-      /** Save credential to the global variable in case access token was refreshed.
-        * ACTION ITEM: In a production app, you likely want to save the refresh token
-        *              in a secure persistent database instead. */
-      userCredential = tokens;
-      console.log(userCredential);
-    }
-  });
-
-  const server = http.createServer(app);
-  server.listen(8080);
 }
-main().catch(console.error);
