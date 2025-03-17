@@ -18,7 +18,7 @@ export async function sendMessage(recipient: string, subject: string, html: stri
       }
     });
     const info = await transporter.sendMail({
-        from: '"ZkFold Smart Wallet" <vmorozov@zkfold.io>', // sender address //TODO: update
+        from: `"ZkFold Smart Wallet" <${process.env.EMAIL_USER}>`, // sender address //TODO: update
         to: recipient, // list of receivers
         subject: subject, // Subject
         html: html 

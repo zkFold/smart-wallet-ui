@@ -433,7 +433,6 @@ export class Wallet {
                     "n": matchingKey.n
                 }
 
-                // TODO: get this from Google properly
                 const proofData = { 
                     header: parts[0],
                     payload: parts[1], 
