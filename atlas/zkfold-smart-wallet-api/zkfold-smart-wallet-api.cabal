@@ -1,5 +1,5 @@
 cabal-version: 3.4
-name: zkfold-smart-contract-wallet-server
+name: zkfold-smart-wallet-api
 version: 0.1.0.0
 -- synopsis:
 -- description:
@@ -70,7 +70,7 @@ executable zkfold-smart-contract-wallet-server
   -- other-extensions:
   build-depends:
     base ^>=4.18.2.1,
-    zkfold-smart-contract-wallet-server,
+    zkfold-smart-wallet-api,
 
   hs-source-dirs: app
 
@@ -83,4 +83,4 @@ test-suite zkfold-smart-contract-wallet-server-test
   main-is: Main.hs
   build-depends:
     base ^>=4.18.2.1,
-    zkfold-smart-contract-wallet-server,
+    zkfold-smart-wallet-api,
