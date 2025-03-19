@@ -6,6 +6,7 @@ import * as dotenv from 'dotenv'
 import * as fs from 'fs';
 import fs from 'fs-extra';
 import { createRequire } from "module";
+import { getJWT } from './GoogleToken'
 const require = createRequire(import.meta.url);
 var exec = require('child_process').execSync;
 
@@ -418,12 +419,32 @@ export class Wallet {
                 console.log("COLLATERAL");
                 console.log(collateral);
 
-                // TODO: get this from Google properly
+                const token = await getJWT();
+                const jwt = token.id_token;
+                const parts = jwt.split(".");
+                console.log(parts);
+
+                const header = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')));
+                const keyId = header.kid;
+                const matchingKey = await getMatchingKey(keyId);
+                const certificate = {
+                    "kid": matchingKey.kid,
+                    "e": matchingKey.e,
+                    "n": matchingKey.n
+                }
+
+                const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+                const email = payload.email;
+
+                if (email != this.userId) {
+                    throw new Error("Account does not matches the one used to initialise the wallet.");
+                }
+
                 const proofData = { 
-                    header: "header",
-                    payload: "payload", 
-                    signature: "signature",
-                    certificate: "certificate",
+                    header: parts[0],
+                    payload: parts[1], 
+                    signature: parts[2],
+                    certificate: JSON.stringify(certificate),
                     amount: amountToSend,
                     recipient: recipientAddress.to_bech32(),
                     input: "pi",
@@ -468,18 +489,25 @@ function getCardanoSlot() {
 
 
 function createWalletContract(userId: string) {
-    const createContractExe = process.env.CREATE_CONTRACT_EXE;
-    const cmd = `${createContractExe}/smart-wallet-creator --create --id ${userId} --pubkey dummy --output ${process.cwd()}`;
-    console.log(cmd);
-    exec(cmd,
-      function (error, stdout, stderr) {
-          console.log('stdout: ' + stdout);
-          console.log('stderr: ' + stderr);
-          if (error !== null) {
-               console.log('exec error: ' + error);
-          }
-      });
-    const contract = JSON.parse(fs.readFileSync('./smartWallet.plutus', 'utf-8'));
+    const utf8Arr = new TextEncoder().encode(userId);
+    const encoded = btoa(utf8Arr).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const scriptName = `${encoded}.plutus`;
+
+    if (!fs.existsSync(scriptName)) {
+        const createContractExe = process.env.CREATE_CONTRACT_EXE;
+        const cmd = `${createContractExe}/smart-wallet-creator --create --id ${userId} --pubkey dummy --output ${process.cwd()}`;
+        console.log(cmd);
+        exec(cmd,
+          function (error, stdout, stderr) {
+              console.log('stdout: ' + stdout);
+              console.log('stderr: ' + stderr);
+              if (error !== null) {
+                   console.log('exec error: ' + error);
+              }
+          });
+          fs.renameSync('./smartWallet.plutus', `./${scriptName}`);
+    }
+    const contract = JSON.parse(fs.readFileSync(`./${scriptName}`, 'utf-8'));
     return contract.cborHex;
 }
 
@@ -496,6 +524,15 @@ function createRedeemer(proofData) {
           }
       });
     const plutusData = fs.readFileSync('./proof.cbor');
-    console.log(plutusData);
     return CSL.PlutusData.from_bytes(plutusData); 
+}
+
+async function getMatchingKey(keyId: string) {
+    const { keys } = await fetch('https://www.googleapis.com/oauth2/v3/certs').then((res) => res.json());
+    for (let k of keys) {
+        if (k.kid == keyId) {
+                return k;
+        }
+    }
+    return null;
 }
