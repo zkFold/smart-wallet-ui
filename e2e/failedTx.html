@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light dark">
+    <link rel = "stylesheet" type="text/css" href="css/pico.min.css">
+    <title>Smart wallet test</title>
+  </head>
+  <body>
+    <main class="container">
+      <h1>Transaction failed.</h1>
+      <label name="balance_label">
+          Reason: { reason }
+      </label>
+      <button onclick="location.href='http://localhost:8080/wallet';">Make another transaction</button>
+      <button onclick="location.href='http://localhost:8080/';">Initialise a new wallet</button>
+      </main>
+  </body>
+</html>

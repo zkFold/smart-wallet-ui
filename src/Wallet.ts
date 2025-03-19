@@ -433,6 +433,13 @@ export class Wallet {
                     "n": matchingKey.n
                 }
 
+                const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+                const email = payload.email;
+
+                if (email != this.userId) {
+                    throw new Error("Account does not matches the one used to initialise the wallet.");
+                }
+
                 const proofData = { 
                     header: parts[0],
                     payload: parts[1], 

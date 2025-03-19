@@ -43,25 +43,33 @@ app.get('/', async (req, res) => {
 app.get('/wallet', loggedIn, mkTransaction); 
 
 app.post('/send', async (req, res) => {
-    console.log(`Sending ${req.body.amount} ADA to ${req.body.address} using ${req.body.recipient}`);
-    var recipient;
-    switch (req.body.recipient) {
-        case "Bech32": {
-            recipient = new SmartTxRecipient(AddressType.Bech32, req.body.address, req.body.amount);
-            break;
-        };
-        case "Gmail": {
-            recipient = new SmartTxRecipient(AddressType.Gmail, req.body.address, req.body.amount);
-            const template = fs.readFileSync('./email.html', 'utf-8');
-            const htmlText = template.replace('{{ recipient }}', req.body.address);
-            await sendMessage(req.body.address, "You've received funds", htmlText);
-            break;
-        };
-    }
-    const txId = await wallet.sendTo(recipient);
+    try {
+        console.log(`Sending ${req.body.amount} ADA to ${req.body.address} using ${req.body.recipient}`);
+        var recipient;
+        switch (req.body.recipient) {
+            case "Bech32": {
+                recipient = new SmartTxRecipient(AddressType.Bech32, req.body.address, req.body.amount);
+                break;
+            };
+            case "Gmail": {
+                recipient = new SmartTxRecipient(AddressType.Gmail, req.body.address, req.body.amount);
+                break;
+            };
+        }
+        const txId = await wallet.sendTo(recipient);
 
-    const template = fs.readFileSync('./success.html', 'utf-8');
-    res.send(template.replace('{ txId }', txId));
+        if (req.body.recipient == "Gmail") {
+                const template = fs.readFileSync('./email.html', 'utf-8');
+                const htmlText = template.replace('{{ recipient }}', req.body.address);
+                await sendMessage(req.body.address, "You've received funds", htmlText);
+        }
+
+        const template = fs.readFileSync('./success.html', 'utf-8');
+        res.send(template.replace('{ txId }', txId));
+    } catch (error) {
+        const template = fs.readFileSync('./failedTx.html', 'utf-8');
+        res.send(template.replace('{ reason }', `${error}`));
+    }
 });
 
 app.post('/init', async (req, res) => {
