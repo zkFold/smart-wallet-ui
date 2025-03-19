@@ -1,0 +1,78 @@
+cabal-version: 3.4
+name: zkfold-smart-wallet-server-lib
+version: 0.1.0.0
+-- synopsis:
+-- description:
+license: MIT
+license-file: LICENSE
+author: Sourabh Aggarwal
+maintainer: info@zkfold.io
+-- copyright:
+build-type: Simple
+extra-doc-files: CHANGELOG.md
+
+common common
+  default-language: GHC2021
+  default-extensions:
+    DataKinds
+    DeriveAnyClass
+    DerivingStrategies
+    DerivingVia
+    GADTs
+    LambdaCase
+    MultiWayIf
+    OverloadedStrings
+    RecordWildCards
+    RoleAnnotations
+    TemplateHaskell
+    TypeFamilies
+    TypeFamilyDependencies
+    UndecidableInstances
+    UnicodeSyntax
+    ViewPatterns
+
+  ghc-options:
+    -Wall
+    -Wincomplete-uni-patterns
+    -Wunused-packages
+
+library
+  import: common
+  exposed-modules:
+    ZkFold.Cardano.SmartWallet.Server.Config
+    ZkFold.Cardano.SmartWallet.Server.Options
+    ZkFold.Cardano.SmartWallet.Server.Run
+
+  -- other-modules:
+  -- other-extensions:
+  build-depends:
+    -- TODO: Possible to get rid of `plutus-ledger-api` by defining higher types?
+    aeson,
+    atlas-cardano,
+    base ^>=4.18.2.1,
+    deriving-aeson,
+    envy,
+    file-embed,
+    filepath,
+    http-types,
+    mtl,
+    optparse-applicative,
+    plutus-ledger-api,
+    plutus-tx,
+    text,
+    warp,
+    yaml,
+
+  hs-source-dirs: src
+
+executable zkfold-smart-wallet-server
+  import: common
+  main-is: Main.hs
+  -- other-modules:
+  -- other-extensions:
+  build-depends:
+    base ^>=4.18.2.1,
+    optparse-applicative,
+    zkfold-smart-wallet-server-lib,
+
+  hs-source-dirs: app

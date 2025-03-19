@@ -1,4 +1,4 @@
-# Revision history for zkfold-smart-wallet-api
+# Revision history for zkfold-smart-wallet-server-lib
 
 ## 0.1.0.0 -- YYYY-mm-dd
 
