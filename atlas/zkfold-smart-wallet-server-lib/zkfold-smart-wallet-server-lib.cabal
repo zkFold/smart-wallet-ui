@@ -44,6 +44,7 @@ library
     ZkFold.Cardano.SmartWallet.Server.Ctx
     ZkFold.Cardano.SmartWallet.Server.ErrorMiddleware
     ZkFold.Cardano.SmartWallet.Server.Options
+    ZkFold.Cardano.SmartWallet.Server.Orphans
     ZkFold.Cardano.SmartWallet.Server.Run
 
   -- other-modules:
@@ -60,12 +61,17 @@ library
     filepath,
     fmt,
     http-types,
+    insert-ordered-containers,
     lens,
     mtl,
+    openapi3,
     optparse-applicative,
     plutus-ledger-api,
     plutus-tx,
+    servant-foreign,
+    servant-openapi3,
     servant-server,
+    swagger2,
     text,
     time-manager,
     wai,
