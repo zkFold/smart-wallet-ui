@@ -40,6 +40,7 @@ library
   import: common
   exposed-modules:
     ZkFold.Cardano.SmartWallet.Server.Api
+    ZkFold.Cardano.SmartWallet.Server.Api.Settings
     ZkFold.Cardano.SmartWallet.Server.Auth
     ZkFold.Cardano.SmartWallet.Server.Config
     ZkFold.Cardano.SmartWallet.Server.Ctx
