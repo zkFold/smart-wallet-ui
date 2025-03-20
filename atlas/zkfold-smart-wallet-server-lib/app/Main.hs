@@ -1,8 +1,7 @@
 import Options.Applicative
+import ZkFold.Cardano.SmartWallet.Server.Options
 
--- import ZkFold.Cardano.SmartWallet.Server.Options
-
-main ∷ IO ()
+main :: IO ()
 main = runCommand =<< execParser opts
  where
   opts =
@@ -12,5 +11,3 @@ main = runCommand =<< execParser opts
           <> progDesc "zkFold smart wallet helpful operations"
           <> header "zkFold smart wallet"
       )
-  runCommand = undefined
-  parseCommand = undefined

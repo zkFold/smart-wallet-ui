@@ -22,4 +22,4 @@ smartWalletValidator =
 
 -- FIXME:
 mockSmartWalletStakeValidator :: GYScript 'PlutusV3
-mockSmartWalletStakeValidator = undefined
+mockSmartWalletStakeValidator = smartWalletValidator undefined undefined

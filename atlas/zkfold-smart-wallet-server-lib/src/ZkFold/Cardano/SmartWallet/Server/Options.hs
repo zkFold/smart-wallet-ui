@@ -9,6 +9,7 @@ module ZkFold.Cardano.SmartWallet.Server.Options (
 
 -- import GeniusYield.Server.Run (runServer)
 import Options.Applicative
+import ZkFold.Cardano.SmartWallet.Server.Run (runServer)
 
 newtype Command = Serve ServeCommand
 
@@ -42,5 +43,3 @@ runCommand (Serve serveCommand) = runServeCommand serveCommand
 
 runServeCommand :: ServeCommand -> IO ()
 runServeCommand (ServeCommand mcfp) = runServer mcfp
-
-runServer = undefined
