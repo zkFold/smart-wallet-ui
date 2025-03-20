@@ -13,6 +13,7 @@ import Data.Text (Text)
 import Data.Text qualified as T
 import Data.Text.Encoding (encodeUtf8)
 import GHC.TypeLits (Symbol, symbolVal)
+import GeniusYield.Imports ((&))
 import Network.Wai (Request (requestHeaders))
 import Servant
 import Servant.Server.Experimental.Auth (AuthHandler, AuthServerData, mkAuthHandler)

@@ -39,7 +39,9 @@ common common
 library
   import: common
   exposed-modules:
+    ZkFold.Cardano.SmartWallet.Server.Auth
     ZkFold.Cardano.SmartWallet.Server.Config
+    ZkFold.Cardano.SmartWallet.Server.Ctx
     ZkFold.Cardano.SmartWallet.Server.Options
     ZkFold.Cardano.SmartWallet.Server.Run
 
@@ -50,18 +52,24 @@ library
     aeson,
     atlas-cardano,
     base ^>=4.18.2.1,
+    bytestring,
     deriving-aeson,
     envy,
     file-embed,
     filepath,
+    fmt,
     http-types,
     mtl,
     optparse-applicative,
     plutus-ledger-api,
     plutus-tx,
+    servant-server,
     text,
+    time-manager,
+    wai,
     warp,
     yaml,
+    zkfold-smart-wallet-api,
 
   hs-source-dirs: src
 
