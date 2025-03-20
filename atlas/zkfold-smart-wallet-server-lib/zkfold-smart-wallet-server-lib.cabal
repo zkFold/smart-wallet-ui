@@ -1,4 +1,4 @@
-cabal-version: 3.4
+cabal-version: 3.12
 name: zkfold-smart-wallet-server-lib
 version: 0.1.0.0
 -- synopsis:
@@ -39,6 +39,7 @@ common common
 library
   import: common
   exposed-modules:
+    ZkFold.Cardano.SmartWallet.Server.Api
     ZkFold.Cardano.SmartWallet.Server.Auth
     ZkFold.Cardano.SmartWallet.Server.Config
     ZkFold.Cardano.SmartWallet.Server.Ctx
@@ -49,6 +50,12 @@ library
     ZkFold.Cardano.SmartWallet.Server.Run
     ZkFold.Cardano.SmartWallet.Server.Utils
 
+  other-modules:
+    PackageInfo_zkfold_smart_wallet_server_lib
+
+  autogen-modules:
+    PackageInfo_zkfold_smart_wallet_server_lib
+
   -- other-modules:
   -- other-extensions:
   build-depends:
@@ -58,6 +65,7 @@ library
     base ^>=4.18.2.1,
     binary,
     bytestring,
+    containers,
     deriving-aeson,
     envy,
     fast-logger,
