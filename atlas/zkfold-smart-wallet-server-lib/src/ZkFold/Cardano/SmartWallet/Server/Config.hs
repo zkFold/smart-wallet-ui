@@ -9,12 +9,15 @@ import Data.Aeson (
   eitherDecodeFileStrict,
   eitherDecodeStrict,
  )
+import Data.Bifunctor (Bifunctor (..))
+import Data.List.NonEmpty (NonEmpty (..))
+import Data.Maybe (fromMaybe)
+import Data.String (IsString (..))
 import Data.Word (Word32)
 import Data.Yaml qualified as Yaml
 import Deriving.Aeson
-import GHC.IO.Exception (userError)
 import GeniusYield.GYConfig (Confidential, GYCoreConfig (..), GYCoreProviderInfo)
-import GeniusYield.Imports (Text)
+import GeniusYield.Imports (Text, throwIO, (&))
 import GeniusYield.Types hiding (Port)
 import Network.Wai.Handler.Warp (Port)
 import System.Envy
@@ -108,7 +111,7 @@ optionalSigningKeyFromServerConfig ServerConfig{..} = do
       let wk' = walletKeysFromMnemonicIndexed mnemonic (fromMaybe 0 accIx) (fromMaybe 0 addrIx)
        in pure $ case wk' of
             Left _ -> Nothing
-            Right wk -> Just (AGYExtendedPaymentSigningKey (walletKeysToExtendedPaymentSigningKey wk) :!: walletKeysToAddress wk scNetworkId)
+            Right wk -> Just (AGYExtendedPaymentSigningKey (walletKeysToExtendedPaymentSigningKey wk), walletKeysToAddress wk scNetworkId)
     Just (KeyPathWallet fp) -> do
       skey <- readSomePaymentSigningKey fp
       pure $ Just (skey, addressFromSomePaymentSigningKey scNetworkId skey)
@@ -118,5 +121,5 @@ optionalSigningKeyFromServerConfig ServerConfig{..} = do
     let pkh =
           case skey of
             AGYPaymentSigningKey skey' -> paymentKeyHash . paymentVerificationKey $ skey'
-            AGYExtendedPaymentSigningKey skey' -> extendedVerificationKeyHash skey'
+            AGYExtendedPaymentSigningKey skey' -> getExtendedVerificationKey skey' & extendedVerificationKeyHash
      in addressFromPaymentKeyHash nid pkh

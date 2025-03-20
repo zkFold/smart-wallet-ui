@@ -42,6 +42,7 @@ library
     ZkFold.Cardano.SmartWallet.Server.Auth
     ZkFold.Cardano.SmartWallet.Server.Config
     ZkFold.Cardano.SmartWallet.Server.Ctx
+    ZkFold.Cardano.SmartWallet.Server.ErrorMiddleware
     ZkFold.Cardano.SmartWallet.Server.Options
     ZkFold.Cardano.SmartWallet.Server.Run
 
@@ -59,6 +60,7 @@ library
     filepath,
     fmt,
     http-types,
+    lens,
     mtl,
     optparse-applicative,
     plutus-ledger-api,
