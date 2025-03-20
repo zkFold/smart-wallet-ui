@@ -3,10 +3,13 @@ module ZkFold.Cardano.SmartWallet.Types (
   ZKWalletException (..),
   ZKWalletQueryMonad,
   module ZkFold.Cardano.SmartWallet.Types.Validator,
+  Email,
+  ValidatorSetup,
 ) where
 
 import Control.Exception (Exception)
 import Control.Monad.Reader (MonadReader)
+import Data.Text (Text)
 import Data.Text qualified as Text
 import GeniusYield.HTTP.Errors (GYApiError (..), IsGYApiError (..))
 import GeniusYield.TxBuilder (GYTxQueryMonad)
@@ -37,3 +40,11 @@ instance IsGYApiError ZKWalletException where
       , gaeHttpStatus = status500
       , gaeMsg = Text.pack $ "Could not find stake address information for the given stake address: " <> show sa
       }
+
+-- TODO: To make a newtype and validate for emails? Or specifically gmails?
+
+-- | Email address.
+type Email = Text
+
+-- | Parameters required by validator.
+type ValidatorSetup = (SetupBytes, WalletSetup)

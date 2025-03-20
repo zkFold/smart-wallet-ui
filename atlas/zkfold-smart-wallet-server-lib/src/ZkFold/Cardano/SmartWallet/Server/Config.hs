@@ -2,7 +2,7 @@ module ZkFold.Cardano.SmartWallet.Server.Config (
   ServerConfig (..),
   serverConfigOptionalFPIO,
   coreConfigFromServerConfig,
-  optionalSigningKeyFromServerConfig,
+  signingKeyFromUserWallet,
 ) where
 
 import Data.Aeson (
@@ -56,10 +56,10 @@ data ServerConfig = ServerConfig
   , scLogging :: ![GYLogScribeConfig]
   , scMaestroToken :: !(Confidential Text)
   , scPort :: !Port
-  , scWallet :: !(Maybe UserWallet)
   , scServerApiKey :: !(Confidential Text)
-  , scCollateral :: !(Maybe GYTxOutRef)
   , scStakeAddress :: !(Maybe GYStakeAddressBech32)
+  , scCollateral :: !GYTxOutRef
+  , scCollateralWallet :: !UserWallet
   }
   deriving stock (Generic)
   deriving
@@ -103,21 +103,18 @@ coreConfigFromServerConfig ServerConfig{..} =
     , cfgLogTiming = Nothing
     }
 
-optionalSigningKeyFromServerConfig :: ServerConfig -> IO (Maybe (GYSomePaymentSigningKey, GYAddress))
-optionalSigningKeyFromServerConfig ServerConfig{..} = do
-  case scWallet of
-    Nothing -> pure Nothing
-    Just (MnemonicWallet MnemonicWalletDetails{..}) ->
-      let wk' = walletKeysFromMnemonicIndexed mnemonic (fromMaybe 0 accIx) (fromMaybe 0 addrIx)
-       in pure $ case wk' of
-            Left _ -> Nothing
-            Right wk -> Just (AGYExtendedPaymentSigningKey (walletKeysToExtendedPaymentSigningKey wk), walletKeysToAddress wk scNetworkId)
-    Just (KeyPathWallet fp) -> do
-      skey <- readSomePaymentSigningKey fp
-      pure $ Just (skey, addressFromSomePaymentSigningKey scNetworkId skey)
+signingKeyFromUserWallet :: GYNetworkId -> UserWallet -> IO (Maybe (GYSomePaymentSigningKey, GYAddress))
+signingKeyFromUserWallet nid (MnemonicWallet MnemonicWalletDetails{..}) = do
+  let wk' = walletKeysFromMnemonicIndexed mnemonic (fromMaybe 0 accIx) (fromMaybe 0 addrIx)
+   in pure $ case wk' of
+        Left _ -> Nothing
+        Right wk -> Just (AGYExtendedPaymentSigningKey (walletKeysToExtendedPaymentSigningKey wk), walletKeysToAddress wk nid)
+signingKeyFromUserWallet nid (KeyPathWallet fp) = do
+  skey <- readSomePaymentSigningKey fp
+  pure $ Just (skey, addressFromSomePaymentSigningKey skey)
  where
-  addressFromSomePaymentSigningKey :: GYNetworkId -> GYSomePaymentSigningKey -> GYAddress
-  addressFromSomePaymentSigningKey nid skey =
+  addressFromSomePaymentSigningKey :: GYSomePaymentSigningKey -> GYAddress
+  addressFromSomePaymentSigningKey skey =
     let pkh =
           case skey of
             AGYPaymentSigningKey skey' -> paymentKeyHash . paymentVerificationKey $ skey'

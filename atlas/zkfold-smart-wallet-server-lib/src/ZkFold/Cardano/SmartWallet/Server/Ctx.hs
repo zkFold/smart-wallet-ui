@@ -20,9 +20,8 @@ data Ctx = Ctx
   { ctxNetworkId :: !GYNetworkId
   , ctxProviders :: !GYProviders
   , ctxSmartWalletBuildInfo :: !ZKWalletBuildInfo
-  , ctxSigningKey :: !(Maybe (GYSomePaymentSigningKey, GYAddress))
-  , ctxCollateral :: !(Maybe GYTxOutRef)
-  , ctxStakeAddress :: !(Maybe GYStakeAddressBech32)
+  , ctxCollateral :: !GYTxOutRef
+  , ctxCollateralKey :: !(GYSomePaymentSigningKey, GYAddress)
   }
 
 -- | Create 'TxBody' from a 'GYTxSkeleton'.

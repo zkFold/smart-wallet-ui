@@ -17,9 +17,11 @@ import GeniusYield.Types.OpenApi ()
 import Servant
 import Servant.OpenApi
 import ZkFold.Cardano.SmartWallet.Server.Api.Settings
+import ZkFold.Cardano.SmartWallet.Server.Api.Wallet (WalletAPI, handleWalletApi)
 import ZkFold.Cardano.SmartWallet.Server.Auth (APIKeyAuthProtect, V0)
 import ZkFold.Cardano.SmartWallet.Server.Ctx
 import ZkFold.Cardano.SmartWallet.Server.Orphans ()
+import ZkFold.Cardano.SmartWallet.Server.Tx (TxAPI, handleTxApi)
 
 -------------------------------------------------------------------------------
 -- Server's API.
@@ -27,6 +29,8 @@ import ZkFold.Cardano.SmartWallet.Server.Orphans ()
 
 type V0API =
   "settings" :> SettingsAPI
+    :<|> "wallet" :> WalletAPI
+    :<|> "tx" :> TxAPI
 
 type ZkFoldSmartWalletAPI = APIKeyAuthProtect :> V0 :> V0API
 
@@ -64,11 +68,15 @@ zkFoldSmartWalletAPIOpenApi =
       . OpenApi.description
     ?~ "API to interact with zkFold Smart Wallet."
       & applyTagsFor (subOperations (Proxy :: Proxy ("settings" +> SettingsAPI)) (Proxy :: Proxy ZkFoldSmartWalletAPI)) ["Settings" & OpenApi.description ?~ "Endpoint to get server settings such as network and version"]
+      & applyTagsFor (subOperations (Proxy :: Proxy ("wallet" +> WalletAPI)) (Proxy :: Proxy ZkFoldSmartWalletAPI)) ["Wallet" & OpenApi.description ?~ "Endpoint to interact with zk-wallet"]
+      & applyTagsFor (subOperations (Proxy :: Proxy ("tx" +> TxAPI)) (Proxy :: Proxy ZkFoldSmartWalletAPI)) ["Tx" & OpenApi.description ?~ "Endpoint to interact with built transactions"]
 
 zkFoldSmartWalletServer :: Ctx -> ServerT ZkFoldSmartWalletAPI IO
 zkFoldSmartWalletServer ctx =
   ignoredAuthResult $
     handleSettings ctx
+      :<|> handleWalletApi ctx
+      :<|> handleTxApi ctx
  where
   ignoredAuthResult f _authResult = f
 

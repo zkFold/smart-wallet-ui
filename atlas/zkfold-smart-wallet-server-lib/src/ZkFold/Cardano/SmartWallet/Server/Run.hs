@@ -23,7 +23,7 @@ import System.TimeManager (TimeoutThread (..))
 import ZkFold.Cardano.SmartWallet.Constants
 import ZkFold.Cardano.SmartWallet.Server.Api
 import ZkFold.Cardano.SmartWallet.Server.Auth
-import ZkFold.Cardano.SmartWallet.Server.Config (ServerConfig (..), coreConfigFromServerConfig, optionalSigningKeyFromServerConfig, serverConfigOptionalFPIO)
+import ZkFold.Cardano.SmartWallet.Server.Config (ServerConfig (..), coreConfigFromServerConfig, serverConfigOptionalFPIO, signingKeyFromUserWallet)
 import ZkFold.Cardano.SmartWallet.Server.Ctx
 import ZkFold.Cardano.SmartWallet.Server.ErrorMiddleware
 import ZkFold.Cardano.SmartWallet.Server.RequestLoggerMiddleware (gcpReqLogger)
@@ -33,14 +33,18 @@ import ZkFold.Cardano.SmartWallet.Types (ZKWalletBuildInfo (..))
 runServer :: Maybe FilePath -> IO ()
 runServer mfp = do
   serverConfig <- serverConfigOptionalFPIO mfp
-  optionalSigningKey <- optionalSigningKeyFromServerConfig serverConfig
+  collateralKey <-
+    signingKeyFromUserWallet (scNetworkId serverConfig) (scCollateralWallet serverConfig)
+      >>= \case
+        Nothing -> throwIO $ userError "Collateral signing key not found."
+        Just k -> pure k
   let nid = scNetworkId serverConfig
       coreCfg = coreConfigFromServerConfig serverConfig
   -- writePythonForAPI (Proxy @MainAPI) requests "web/swagger/api.py"
   withCfgProviders coreCfg "server" $ \providers -> do
     let logInfoS = gyLogInfo providers mempty
         logErrorS = gyLogError providers mempty
-    logInfoS $ "GeniusYield server version: " +| showVersion PackageInfo.version |+ "\nOptional collateral configuration: " +|| scCollateral serverConfig ||+ "\nAddress of optional wallet: " +|| fmap snd optionalSigningKey ||+ "\nOptional stake address: " +|| scStakeAddress serverConfig ||+ ""
+    logInfoS $ "zkFold smart wallet server version: " +| showVersion PackageInfo.version |+ "\ncollateral configuration: " +|| scCollateral serverConfig ||+ "\nAddress of collateral wallet: " +|| snd collateralKey ||+ ""
     B.writeFile "web/openapi/api.yaml" (Yaml.encodePretty Yaml.defConfig zkFoldSmartWalletAPI)
     reqLoggerMiddleware <- gcpReqLogger
     let
@@ -70,9 +74,8 @@ runServer mfp = do
           { ctxProviders = providers
           , ctxNetworkId = nid
           , ctxSmartWalletBuildInfo = ZKWalletBuildInfo smartWalletValidator mockSmartWalletStakeValidator
-          , ctxSigningKey = optionalSigningKey
           , ctxCollateral = scCollateral serverConfig
-          , ctxStakeAddress = scStakeAddress serverConfig
+          , ctxCollateralKey = collateralKey
           }
 
     logInfoS $

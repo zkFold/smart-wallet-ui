@@ -24,9 +24,8 @@ type SettingsPrefix = "settings"
 data Settings = Settings
   { settingsNetwork :: !String
   , settingsVersion :: !String
-  , settingsAddress :: !(Maybe GYAddressBech32)
-  , settingsStakeAddress :: !(Maybe GYStakeAddressBech32)
-  , settingsCollateral :: !(Maybe GYTxOutRef)
+  , settingsCollateral :: !GYTxOutRef
+  , settingsCollateralAddress :: !GYAddressBech32
   }
   deriving stock (Show, Eq, Generic)
   deriving
@@ -47,9 +46,8 @@ handleSettings ctx@Ctx{..} = do
     Settings
       { settingsNetwork = ctxNetworkId & customShowNetworkId
       , settingsVersion = showVersion PackageInfo.version
-      , settingsAddress = fmap (addressToBech32 . snd) ctxSigningKey
-      , settingsStakeAddress = ctxStakeAddress
       , settingsCollateral = ctxCollateral
+      , settingsCollateralAddress = addressToBech32 . snd $ ctxCollateralKey
       }
 
 -- >>> customShowNetworkId GYMainnet

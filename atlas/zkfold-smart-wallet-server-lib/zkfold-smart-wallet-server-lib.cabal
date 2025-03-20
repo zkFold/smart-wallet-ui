@@ -41,6 +41,7 @@ library
   exposed-modules:
     ZkFold.Cardano.SmartWallet.Server.Api
     ZkFold.Cardano.SmartWallet.Server.Api.Settings
+    ZkFold.Cardano.SmartWallet.Server.Api.Wallet
     ZkFold.Cardano.SmartWallet.Server.Auth
     ZkFold.Cardano.SmartWallet.Server.Config
     ZkFold.Cardano.SmartWallet.Server.Ctx
@@ -49,6 +50,7 @@ library
     ZkFold.Cardano.SmartWallet.Server.Orphans
     ZkFold.Cardano.SmartWallet.Server.RequestLoggerMiddleware
     ZkFold.Cardano.SmartWallet.Server.Run
+    ZkFold.Cardano.SmartWallet.Server.Tx
     ZkFold.Cardano.SmartWallet.Server.Utils
 
   other-modules:
