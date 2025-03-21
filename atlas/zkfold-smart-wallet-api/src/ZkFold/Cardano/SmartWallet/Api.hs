@@ -45,4 +45,10 @@ sendFunds' (sb, ws) sendAddr sendVal = do
   pure $
     mustHaveOutput (mkGYTxOutNoDatum sendAddr sendVal)
       -- TODO: To make use of reference scripts?
-      <> mustHaveWithdrawal (GYTxWdrl{gyTxWdrlStakeAddress = mockStakeAddr, gyTxWdrlAmount = gyStakeAddressInfoAvailableRewards si, gyTxWdrlWitness = GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined (zkwbiMockStakeValidator zkwbi)) dummyRedeemer})
+      <> mustHaveWithdrawal
+        ( GYTxWdrl
+            { gyTxWdrlStakeAddress = mockStakeAddr
+            , gyTxWdrlAmount = gyStakeAddressInfoAvailableRewards si
+            , gyTxWdrlWitness = GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined (zkwbiMockStakeValidator zkwbi)) dummyRedeemer
+            }
+        )

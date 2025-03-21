@@ -68,6 +68,8 @@ library
     base ^>=4.18.2.1,
     binary,
     bytestring,
+    cardano-api,
+    cardano-api:internal,
     containers,
     data-default,
     deriving-aeson,

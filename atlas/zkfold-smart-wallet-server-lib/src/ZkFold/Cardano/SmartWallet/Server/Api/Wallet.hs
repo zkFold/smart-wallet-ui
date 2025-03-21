@@ -3,6 +3,7 @@ module ZkFold.Cardano.SmartWallet.Server.Api.Wallet (
   handleWalletApi,
 ) where
 
+import Cardano.Api qualified as Api
 import Data.Swagger qualified as Swagger
 import Data.Text (Text)
 import Deriving.Aeson
@@ -76,14 +77,33 @@ handleSendFunds ctx@Ctx{..} sfp@SendFundsParameters{..} = do
           { gytxecUtxoInputMapper = \GYUTxO{..} ->
               GYTxInDetailed
                 { gyTxInDet = GYTxIn utxoRef undefined -- FIXME: Give script witness.
-                , gyTxInDetAddress = undefined -- FIXME: Change address to fake script that allows forge proofs.
+                , gyTxInDetAddress = undefined -- FIXME: Change address to fake script that allows forged proofs.
                 , gyTxInDetValue = utxoValue
                 , gyTxInDetDatum = utxoOutDatum
                 , gyTxInDetScriptRef = utxoRefScript
                 }
           , -- FIXME: Provide pre & post content mappers.
-            gytxecPreBodyContentMapper = undefined
-          , gytxecPostBodyContentMapper = undefined
+            gytxecPreBodyContentMapper = \body ->
+              -- When balancing, @makeTransactionBodyAutoBalance@ function of @cardano-api@ that is used internally inside Atlas, adds following output before computing execution units, thus we need to do same here to make sure that script execution doesn't fail.
+              let bodyWithExtraOut =
+                    body
+                      { Api.txOuts = Api.txOuts body <> [txOutToApi (GYTxOut senderWalletAddress (valueFromLovelace $ 2 ^ (64 :: Integer) - 1) Nothing Nothing)]
+                      }
+               in bodyWithExtraOut
+                    { Api.txWithdrawals =
+                        Api.TxWithdrawals Api.ShelleyBasedEraConway $
+                          [ txWdrlToApi $
+                              GYTxWdrl
+                                { gyTxWdrlStakeAddress = undefined
+                                , gyTxWdrlAmount = undefined
+                                , gyTxWdrlWitness = GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined @'PlutusV3 @'PlutusV3 undefined) undefined
+                                }
+                          ]
+                    }
+          , gytxecPostBodyContentMapper = \body ->
+              -- Correct address of inputs.
+              -- Correct withdrawal address.
+              undefined
           }
   txBody <- runSkeletonWithExtraConfigurationI ec ctx [senderWalletAddress] senderWalletAddress (Just ctxCollateral) $ do
     sendFunds' validatorSetup (addressFromBech32 sfpSendAddress) sfpValue
