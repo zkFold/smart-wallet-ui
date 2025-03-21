@@ -89,7 +89,7 @@ handleSendFunds ctx@Ctx{..} sfp@SendFundsParameters{..} = do
                     body
                       { Api.txOuts = Api.txOuts body <> [txOutToApi (GYTxOut senderWalletAddress (valueFromLovelace $ 2 ^ (64 :: Integer) - 1) Nothing Nothing)]
                       }
-               in bodyWithExtraOut
+               in body
                     { Api.txWithdrawals =
                         Api.TxWithdrawals Api.ShelleyBasedEraConway $
                           [ txWdrlToApi $
@@ -97,6 +97,7 @@ handleSendFunds ctx@Ctx{..} sfp@SendFundsParameters{..} = do
                                 { gyTxWdrlStakeAddress = undefined
                                 , gyTxWdrlAmount = undefined
                                 , gyTxWdrlWitness = GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined @'PlutusV3 @'PlutusV3 undefined) undefined
+                                -- compute proof using inputs & outputs of @bodyWithExtraOut@.
                                 }
                           ]
                     }
