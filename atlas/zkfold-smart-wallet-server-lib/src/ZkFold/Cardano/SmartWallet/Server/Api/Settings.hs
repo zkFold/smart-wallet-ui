@@ -37,7 +37,7 @@ instance Swagger.ToSchema Settings where
     Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @SettingsPrefix}
       & addSwaggerDescription "zkFold Smart Wallet Server settings."
 
-type SettingsAPI = Summary "Server settings" :> Description "Get server settings such as network and version. Optionally if a collateral UTxO reference and signing key are individually configured in the server (provided server is spun up locally), then it's details are also returned." :> Get '[JSON] Settings
+type SettingsAPI = Summary "Server settings" :> Description "Get server settings such as network and version." :> Get '[JSON] Settings
 
 handleSettings :: Ctx -> IO Settings
 handleSettings ctx@Ctx{..} = do

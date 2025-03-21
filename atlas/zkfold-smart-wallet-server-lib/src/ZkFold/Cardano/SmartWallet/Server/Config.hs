@@ -54,10 +54,8 @@ data ServerConfig = ServerConfig
   { scCoreProvider :: !GYCoreProviderInfo
   , scNetworkId :: !GYNetworkId
   , scLogging :: ![GYLogScribeConfig]
-  , scMaestroToken :: !(Confidential Text)
   , scPort :: !Port
   , scServerApiKey :: !(Confidential Text)
-  , scStakeAddress :: !(Maybe GYStakeAddressBech32)
   , scCollateral :: !GYTxOutRef
   , scCollateralWallet :: !UserWallet
   }

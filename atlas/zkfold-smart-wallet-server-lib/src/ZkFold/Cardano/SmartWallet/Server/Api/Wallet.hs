@@ -9,6 +9,7 @@ import Deriving.Aeson
 import Fmt
 import GHC.TypeLits (Symbol)
 import GeniusYield.Imports ((&))
+import GeniusYield.Transaction.Common (GYTxExtraConfiguration (..), GYTxInDetailed (..))
 import GeniusYield.Types
 import GeniusYield.Types.OpenApi ()
 import Servant
@@ -70,7 +71,21 @@ handleSendFunds ctx@Ctx{..} sfp@SendFundsParameters{..} = do
   validatorSetup <- runQuery ctx $ validatorSetupFromEmail sfpEmail
   senderWalletAddress <- runQuery ctx $ addressFromValidatorSetup validatorSetup
   logInfo ctx $ "Sender wallet address: " +|| senderWalletAddress ||+ ""
-  txBody <- runSkeletonI ctx [senderWalletAddress] senderWalletAddress (Just ctxCollateral) $ do
+  let ec =
+        GYTxExtraConfiguration
+          { gytxecUtxoInputMapper = \GYUTxO{..} ->
+              GYTxInDetailed
+                { gyTxInDet = GYTxIn utxoRef undefined -- FIXME: Give script witness.
+                , gyTxInDetAddress = undefined -- FIXME: Change address to fake script that allows forge proofs.
+                , gyTxInDetValue = utxoValue
+                , gyTxInDetDatum = utxoOutDatum
+                , gyTxInDetScriptRef = utxoRefScript
+                }
+          , -- FIXME: Provide pre & post content mappers.
+            gytxecPreBodyContentMapper = undefined
+          , gytxecPostBodyContentMapper = undefined
+          }
+  txBody <- runSkeletonWithExtraConfigurationI ec ctx [senderWalletAddress] senderWalletAddress (Just ctxCollateral) $ do
     sendFunds' validatorSetup (addressFromBech32 sfpSendAddress) sfpValue
   signedTx <- handleTxSignCollateral ctx $ unsignedTx txBody
   tid <- handleTxSubmit ctx signedTx

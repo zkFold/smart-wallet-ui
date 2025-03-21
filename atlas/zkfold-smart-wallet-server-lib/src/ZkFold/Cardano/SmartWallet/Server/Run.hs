@@ -45,7 +45,7 @@ runServer mfp = do
     let logInfoS = gyLogInfo providers mempty
         logErrorS = gyLogError providers mempty
     logInfoS $ "zkFold smart wallet server version: " +| showVersion PackageInfo.version |+ "\ncollateral configuration: " +|| scCollateral serverConfig ||+ "\nAddress of collateral wallet: " +|| snd collateralKey ||+ ""
-    B.writeFile "web/openapi/api.yaml" (Yaml.encodePretty Yaml.defConfig zkFoldSmartWalletAPI)
+    B.writeFile "web/openapi/api.yaml" (Yaml.encodePretty Yaml.defConfig zkFoldSmartWalletAPIOpenApi)
     reqLoggerMiddleware <- gcpReqLogger
     let
       -- These are only meant to catch fatal exceptions, application thrown exceptions should be caught beforehand.
