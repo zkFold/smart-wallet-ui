@@ -69,6 +69,7 @@ library
     binary,
     bytestring,
     containers,
+    data-default,
     deriving-aeson,
     envy,
     fast-logger,
