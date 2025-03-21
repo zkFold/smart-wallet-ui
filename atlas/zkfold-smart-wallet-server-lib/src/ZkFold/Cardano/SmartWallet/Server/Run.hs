@@ -40,7 +40,6 @@ runServer mfp = do
         Just k -> pure k
   let nid = scNetworkId serverConfig
       coreCfg = coreConfigFromServerConfig serverConfig
-  -- writePythonForAPI (Proxy @MainAPI) requests "web/swagger/api.py"
   withCfgProviders coreCfg "server" $ \providers -> do
     let logInfoS = gyLogInfo providers mempty
         logErrorS = gyLogError providers mempty

@@ -7,7 +7,6 @@ module ZkFold.Cardano.SmartWallet.Server.Options (
   runServeCommand,
 ) where
 
--- import GeniusYield.Server.Run (runServer)
 import Options.Applicative
 import ZkFold.Cardano.SmartWallet.Server.Run (runServer)
 
