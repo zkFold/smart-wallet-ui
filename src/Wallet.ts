@@ -444,7 +444,7 @@ export class Wallet {
                     header: parts[0],
                     payload: parts[1], 
                     signature: parts[2],
-                    certificate: JSON.stringify(certificate),
+                    certificate: toB64(JSON.stringify(certificate)),
                     amount: amountToSend,
                     recipient: recipientAddress.to_bech32(),
                     input: "pi",
@@ -487,10 +487,14 @@ function getCardanoSlot() {
     return startShelleyUnixTimestamp + 4492800;
 }
 
+function toB64(data: string) {
+    const utf8Arr = new TextEncoder().encode(data);
+    const encoded = btoa(utf8Arr).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return encoded
+}
 
 function createWalletContract(userId: string) {
-    const utf8Arr = new TextEncoder().encode(userId);
-    const encoded = btoa(utf8Arr).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    const encoded = toB64(userId);
     const scriptName = `${encoded}.plutus`;
 
     if (!fs.existsSync(scriptName)) {
