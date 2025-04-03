@@ -18,13 +18,6 @@ var wallet = null;
 
 fs.createReadStream('./public/css.zip').pipe(unzip.Extract({ path: './public/' }));
 
-var key  = fs.readFileSync('./cert/selfsigned.key');
-var cert = fs.readFileSync('./cert/selfsigned.crt');
-var options = {
-  key: key,
-  cert: cert
-};
-
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -108,15 +101,28 @@ app.post('/init', async (req, res) => {
     res.redirect('/wallet');
 });
 
-var httpsServer = https.createServer(options, app);
-var httpServer  = http.createServer(app);
 
-const httpPort  = 8080;
-const httpsPort = 8443;
+if (process.env.PROTOCOL == "https") {
 
-httpServer.listen(httpPort, () => {
-  console.log("HTTP server starting on port : " + httpPort)
-});
-httpsServer.listen(httpsPort, () => {
-  console.log("HTTPS server starting on port : " + httpsPort)
-});
+    var key  = fs.readFileSync('./cert/selfsigned.key');
+    var cert = fs.readFileSync('./cert/selfsigned.crt');
+    var options = {
+      key: key,
+      cert: cert
+    };
+
+    var httpsServer = https.createServer(options, app);
+    const port  = process.env.PORT;
+    httpsServer.listen(port, () => {
+      console.log("HTTPS server starting on port : " + port)
+    });
+};
+
+if (process.env.PROTOCOL == "http") {
+    var httpServer  = http.createServer(app);
+    const port  = process.env.PORT;
+    httpServer.listen(port, () => {
+      console.log("HTTP server starting on port : " + port)
+    });
+}
+
