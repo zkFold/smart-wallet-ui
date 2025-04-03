@@ -64,7 +64,9 @@ export async function getJWT() {
       })
       .listen(3000, () => {
         // open the browser to the authorize url to start the workflow
-        open(authorizationUrl, {wait: false}).then(cp => cp.unref());
+        open(authorizationUrl, {wait: false})
+        .then(cp => cp.unref())
+        .catch(err => console.error('Failed to open URL:', err));
       });
     destroyer(server);
   });
