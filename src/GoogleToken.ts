@@ -68,9 +68,10 @@ export async function getJWT() {
       .listen(3000, () => {
         console.log('Server listening on port 3000');
         // open the browser to the authorize url to start the workflow
-        open(authorizationUrl, {wait: false})
-        .then(cp => cp.unref())
-        .catch(err => console.error('Failed to open URL:', err));
+        const ctx = open(authorizationUrl, {wait: false})
+          .then(cp => cp.unref())
+          .catch(err => console.error('Failed to open URL:', err));
+        console.log(`ctx is ${ctx}`);
       });
     destroyer(server);
   });
