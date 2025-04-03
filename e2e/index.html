@@ -10,7 +10,7 @@
   <body>
     <main class="container">
       <h1>zkFold Smart Wallet Test</h1>
-      <form action="http://localhost:8080/init" method="POST">
+      <form action="/init" method="POST">
         <fieldset>
           <label>
             Network type
@@ -34,12 +34,6 @@
             </select>
             <input
               name="method_data" placeholder="Mnemonic or gmail address"
-            />
-          </label>
-          <label>
-            Wallet name 
-            <input
-              name="wallet_name"
             />
           </label>
         </fieldset>

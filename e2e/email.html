@@ -2,11 +2,10 @@ Hello,
 <br>
 You've received funds via ZkFold Smart Wallet. 
 <br>
-<form action="http://localhost:8080/init" method="POST">
+<form action="{{ protocol }}://{{ host }}:{{ port }}/init" method="POST">
   <input type="hidden" name="network" value="Preprod">
   <input type="hidden" name="method" value="Google Oauth">
   <input type="hidden" name="method_data" value="{{ recipient }}">
-  <input type="hidden" name="wallet_name" value="{{ recipient }}'s smart wallet">
   <button type="submit" name="submit_param" value="submit_value">
     Click here to access your funds 
   </button>
