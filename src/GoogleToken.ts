@@ -38,7 +38,9 @@ export async function getJWT() {
       include_granted_scopes: true,
     });
 
+  console.log(`We are in getJWT`);
   return new Promise((resolve, reject) => {
+    console.log(`Authorization URL: ${authorizationUrl}`);
     // Open an http server to accept the oauth callback. In this simple example, the
     // only request to our webserver is to /oauth2callback?code=<code>
     const server = http
@@ -59,10 +61,12 @@ export async function getJWT() {
             resolve(tokens);
           }
         } catch (e) {
+          console.log('Error in getJWT', e);
           reject(e);
         }
       })
       .listen(3000, () => {
+        console.log('Server listening on port 3000');
         // open the browser to the authorize url to start the workflow
         open(authorizationUrl, {wait: false})
         .then(cp => cp.unref())
