@@ -1,4 +1,6 @@
 import express from 'express';
+import * as https from 'https';
+import * as http from 'http';
 import bodyParser from 'body-parser';
 import { Wallet, Initialiser, Method, SmartTxRecipient, AddressType } from '../src/Wallet';
 import { BlockFrostProvider } from '../src/Blockfrost';
@@ -6,12 +8,22 @@ import * as fs from 'fs';
 import unzip from 'unzip-stream';
 import fs from 'fs-extra';
 import { sendMessage } from '../src/GMail'
+import * as dotenv from 'dotenv'
+
+dotenv.config()
 
 const app = express();
 
 var wallet = null;
 
 fs.createReadStream('./public/css.zip').pipe(unzip.Extract({ path: './public/' }));
+
+var key  = fs.readFileSync('./cert/selfsigned.key');
+var cert = fs.readFileSync('./cert/selfsigned.crt');
+var options = {
+  key: key,
+  cert: cert
+};
 
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -60,7 +72,11 @@ app.post('/send', async (req, res) => {
 
         if (req.body.recipient == "Gmail") {
                 const template = fs.readFileSync('./email.html', 'utf-8');
-                const htmlText = template.replace('{{ recipient }}', req.body.address);
+                const htmlText = template
+                                .replace('{{ recipient }}', req.body.address)
+                                .replace('{{ protocol }}', process.env.PROTOCOL)
+                                .replace('{{ host }}', process.env.HOST)
+                                .replace('{{ port }}', process.env.PORT);
                 await sendMessage(req.body.address, "You've received funds", htmlText);
         }
 
@@ -85,13 +101,22 @@ app.post('/init', async (req, res) => {
         };
     }
     const provider = new BlockFrostProvider(req.body.network.toLowerCase())
-    wallet = new Wallet(provider, req.body.wallet_name, initialiser, '', req.body.network.toLowerCase());
+    wallet = new Wallet(provider, initialiser, '', req.body.network.toLowerCase());
     const balance = await wallet.getBalance();
     console.log(balance);
-    console.log(`Initialised a ${req.body.network} wallet ${req.body.wallet_name} with address ${wallet.getAddress().to_bech32()}`);
+    console.log(`Initialised a ${req.body.network} wallet with address ${wallet.getAddress().to_bech32()}`);
     res.redirect('/wallet');
 });
 
-app.listen(8080, () => {
-    console.log('The application is listening on port 8080!');
-})
+var httpsServer = https.createServer(options, app);
+var httpServer  = http.createServer(app);
+
+const httpPort  = 8080;
+const httpsPort = 8443;
+
+httpServer.listen(httpPort, () => {
+  console.log("HTTP server starting on port : " + httpPort)
+});
+httpsServer.listen(httpsPort, () => {
+  console.log("HTTPS server starting on port : " + httpsPort)
+});

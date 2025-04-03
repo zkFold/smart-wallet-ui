@@ -107,12 +107,11 @@ export class Wallet {
     private utxoPubKey: string;
     private stakeKey: string;
 
-    constructor(provider: Provider, name: string, initialiser: Initialiser, password: string = '', network: string = 'mainnet') {
+    constructor(provider: Provider, initialiser: Initialiser, password: string = '', network: string = 'mainnet') {
         this.provider = provider;
-        this.name = name;
         this.network = network;
         this.method = initialiser.method;
-
+        
         if (this.method == Method.Mnemonic) {
             const entropy = bip39.mnemonicToEntropy(initialiser.data, wordlist);
             this.rootKey = CSL.Bip32PrivateKey.from_bip39_entropy(
@@ -273,19 +272,21 @@ export class Wallet {
     }
 
     private async buildTx(senderAddress: CSL.Address, recipientAddress: CSL.Address, amountToSend: CSL.BigNum, utxos, collateral=[], redeemer: CSL.Redeemer=null): CSL.TransactionBuilder {
+        const epochParameters = await this.provider.getLatestParams();
+
         const txBuilderCfg = 
             CSL.TransactionBuilderConfigBuilder.new()
             .fee_algo(
                 CSL.LinearFee.new(
-                CSL.BigNum.from_str("44"),
-                CSL.BigNum.from_str("155381")
+                CSL.BigNum.from_str(epochParameters.min_fee_a.toString()),
+                CSL.BigNum.from_str(epochParameters.min_fee_b.toString())
             )
             )
-            .coins_per_utxo_byte(CSL.BigNum.from_str("4310"))
-            .pool_deposit(CSL.BigNum.from_str("500000000"))
-            .key_deposit(CSL.BigNum.from_str("2000000"))
+            .coins_per_utxo_byte(CSL.BigNum.from_str(epochParameters.min_utxo))
+            .pool_deposit(CSL.BigNum.from_str(epochParameters.pool_deposit))
+            .key_deposit(CSL.BigNum.from_str(epochParameters.key_deposit))
             .max_value_size(5000)
-            .max_tx_size(16384)
+            .max_tx_size(epochParameters.max_tx_size)
             .prefer_pure_change(true)
             .ex_unit_prices(CSL.ExUnitPrices.new(
                CSL.UnitInterval.new(
@@ -357,7 +358,6 @@ export class Wallet {
         // TODO: what's the problem with TTL and script utxos?
         //txBuilder.set_ttl_bignum(CSL.BigNum.from_str(ttl.toString()));
 
-        const epochParameters = await this.provider.getLatestParams();
         const costModels = epochParameters["cost_models_raw"];
         for (var key in costModels) {
             costModels[key] = costModels[key].map((x) => x.toString());
@@ -461,7 +461,7 @@ export class Wallet {
                     CSL.RedeemerTag.new_spend(), 
                     CSL.BigNum.from_str("0"),
                     redeemerData,
-                    CSL.ExUnits.new(CSL.BigNum.from_str("700000"), CSL.BigNum.from_str("300000000")) // TODO: Change these to appropriate values
+                    CSL.ExUnits.new(CSL.BigNum.from_str("1000000"), CSL.BigNum.from_str("1000000000")) // TODO: Change these to appropriate values
                 );
 
                 const txBuilder = await this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, collateral, redeemer);
