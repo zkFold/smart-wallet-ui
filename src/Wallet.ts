@@ -6,7 +6,6 @@ import * as dotenv from 'dotenv'
 import * as fs from 'fs';
 import fs from 'fs-extra';
 import { createRequire } from "module";
-import { getJWT } from './GoogleToken'
 const require = createRequire(import.meta.url);
 var exec = require('child_process').execSync;
 
@@ -121,14 +120,18 @@ export class Wallet {
             this.deriveKeys();
         } else {
             // At this point, we assume that userId is a valid email accessible by the user (i.e. the user was able to complete Google authentication).
-            const userId = initialiser.data;
-            const contract = createWalletContract(userId);
+            this.jwt = initialiser.data; 
+
+            const parts = this.jwt.split(".");
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+            this.userId = payload.email;
+
+            const contract = createWalletContract(this.userId);
 
             const plutusScriptBytes = Buffer.from(contract, 'hex'); 
             const plutusScript = CSL.PlutusScript.from_bytes_v3(plutusScriptBytes);
 
             this.walletScript = plutusScript;
-            this.userId = userId;
             
             this.collateral_pool = new CollateralPool('faculty away cheap truck baby absorb guilt idle strategy merry toilet cotton arrow mix firm pact glimpse zoo celery marble parent library coffee hedgehog', this.network);
         }
@@ -419,10 +422,7 @@ export class Wallet {
                 console.log("COLLATERAL");
                 console.log(collateral);
 
-                const token = await getJWT();
-                const jwt = token.id_token;
-                const parts = jwt.split(".");
-                console.log(parts);
+                const parts = this.jwt.split(".");
 
                 const header = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')));
                 const keyId = header.kid;
@@ -431,13 +431,6 @@ export class Wallet {
                     "kid": matchingKey.kid,
                     "e": matchingKey.e,
                     "n": matchingKey.n
-                }
-
-                const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-                const email = payload.email;
-
-                if (email != this.userId) {
-                    throw new Error("Account does not matches the one used to initialise the wallet.");
                 }
 
                 const proofData = { 
@@ -461,7 +454,7 @@ export class Wallet {
                     CSL.RedeemerTag.new_spend(), 
                     CSL.BigNum.from_str("0"),
                     redeemerData,
-                    CSL.ExUnits.new(CSL.BigNum.from_str("1000000"), CSL.BigNum.from_str("1000000000")) // TODO: Change these to appropriate values
+                    CSL.ExUnits.new(CSL.BigNum.from_str("2000000"), CSL.BigNum.from_str("2000000000")) // TODO: Change these to appropriate values
                 );
 
                 const txBuilder = await this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, collateral, redeemer);
@@ -495,28 +488,24 @@ function toB64(data: string) {
 
 function createWalletContract(userId: string) {
     const encoded = toB64(userId);
-    const scriptName = `${encoded}.plutus`;
 
-    if (!fs.existsSync(scriptName)) {
-        const createContractExe = process.env.CREATE_CONTRACT_EXE;
-        const cmd = `${createContractExe}/smart-wallet-creator --create --id ${userId} --pubkey dummy --output ${process.cwd()}`;
-        console.log(cmd);
-        exec(cmd,
-          function (error, stdout, stderr) {
-              console.log('stdout: ' + stdout);
-              console.log('stderr: ' + stderr);
-              if (error !== null) {
-                   console.log('exec error: ' + error);
-              }
-          });
-          fs.renameSync('./smartWallet.plutus', `./${scriptName}`);
-    }
-    const contract = JSON.parse(fs.readFileSync(`./${scriptName}`, 'utf-8'));
+    const createContractExe = '.';
+    const cmd = `${createContractExe}/smart-wallet-creator --create --id ${userId} --pubkey dummy --output ${process.cwd()}`;
+    console.log(cmd);
+    exec(cmd,
+      function (error, stdout, stderr) {
+          console.log('stdout: ' + stdout);
+          console.log('stderr: ' + stderr);
+          if (error !== null) {
+               console.log('exec error: ' + error);
+          }
+      });
+    const contract = JSON.parse(fs.readFileSync(`./smartWallet.plutus`, 'utf-8'));
     return contract.cborHex;
 }
 
 function createRedeemer(proofData) {
-    const createContractExe = process.env.CREATE_CONTRACT_EXE;
+    const createContractExe = '.'; 
     const cmd = `${createContractExe}/smart-wallet-creator --validate --header ${proofData.header} --payload ${proofData.payload} --signature ${proofData.signature} --certificate ${proofData.certificate} --amount ${proofData.amount} --recipient ${proofData.recipient} --input ${proofData.input} --id ${proofData.userId} --pubkey dummy --output ${process.cwd()}`;
     console.log(cmd);
     exec(cmd,

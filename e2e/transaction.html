@@ -15,14 +15,11 @@
       </label>
       <form action="/send" method="POST">
         <fieldset>
-          <label>
+          <label id="address_type" hidden>
             Type of address 
             <select name="recipient" aria-label="Select the type of address you want to send ADA to" required>
-              <option selected disabled value="">
-                Select the type of address
-              </option>
               <option>Bech32</option>
-              <option>Gmail</option>
+              <option selected="selected">Gmail</option>
             </select>
           </label>
           <label>
@@ -43,6 +40,35 @@
           value="Send"
         />
       </form>
-      </main>
+      <label id="faucet_label" hidden>
+        Use this address to receive funds from the <a href='https://docs.cardano.org/cardano-testnets/tools/faucet'>Faucet</a>: {{ address }} 
+      </label>
+      <button class="outline secondary" id="show_address" onclick="manageAddress()">Show address</button>
+      <button class="outline secondary" id="show_selector" onclick="manageSelector()">Show all controls</button>
+    </main>
   </body>
+<script>
+function manageAddress() {
+    const label = document.getElementById("faucet_label");
+    const button = document.getElementById("show_address");
+    if (label.hidden) {
+        label.hidden = false;
+        button.innerHTML = "Hide address";
+    } else {
+        label.hidden = true;
+        button.innerHTML = "Show address";
+    }
+}
+function manageSelector() {
+    const label = document.getElementById("address_type");
+    const button = document.getElementById("show_selector");
+    if (label.hidden) {
+        label.hidden = false;
+        button.innerHTML = "Hide address selector";
+    } else {
+        label.hidden = true;
+        button.innerHTML = "Show all controls";
+    }
+}
+</script>
 </html>

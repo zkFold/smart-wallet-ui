@@ -2,13 +2,15 @@ import express from 'express';
 import * as https from 'https';
 import * as http from 'http';
 import bodyParser from 'body-parser';
-import { Wallet, Initialiser, Method, SmartTxRecipient, AddressType } from '../src/Wallet';
-import { BlockFrostProvider } from '../src/Blockfrost';
 import * as fs from 'fs';
 import unzip from 'unzip-stream';
 import fs from 'fs-extra';
-import { sendMessage } from '../src/GMail'
 import * as dotenv from 'dotenv'
+
+import { Wallet, Initialiser, Method, SmartTxRecipient, AddressType } from '../src/Wallet';
+import { BlockFrostProvider } from '../src/Blockfrost';
+import { sendMessage } from '../src/GMail'
+import { getJWT } from '../src/GoogleToken'
 
 dotenv.config()
 
@@ -31,6 +33,7 @@ function loggedIn(req, res, next) {
 
 async function mkTransaction(req, res) {
     const balance = await wallet.getBalance();
+    const address = wallet.getAddress().to_bech32();
     console.log(balance);
     console.log(balance.lovelace);
     var ada = 0;
@@ -38,7 +41,7 @@ async function mkTransaction(req, res) {
         ada = Number(balance.lovelace);
     }
     const template = fs.readFileSync('./transaction.html', 'utf-8');
-    res.send(template.replace('{ balance }', ada / 1000000));
+    res.send(template.replace('{ balance }', ada / 1000000).replace('{{ address }}', address));
 }
 
 app.get('/', async (req, res) => {
@@ -89,7 +92,9 @@ app.post('/init', async (req, res) => {
             break;
         };
         case "Google Oauth": {
-            initialiser = { method: Method.Google, data: req.body.method_data };
+            const token = await getJWT();
+            const jwt = token.id_token;
+            initialiser = { method: Method.Google, data: jwt };
             break;
         };
     }
@@ -103,7 +108,7 @@ app.post('/init', async (req, res) => {
 
 
 if (process.env.PROTOCOL == "https") {
-
+    // We need to create these files in order to run a https server
     var key  = fs.readFileSync('./cert/selfsigned.key');
     var cert = fs.readFileSync('./cert/selfsigned.crt');
     var options = {

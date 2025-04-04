@@ -17,7 +17,7 @@ dotenv.config()
 const oauth2Client = new google.auth.OAuth2(
   process.env.CLIENT_ID,
   process.env.CLIENT_SECRET,
-  process.env.REDIRECT_URL
+  `${process.env.PROTOCOL}://${process.env.HOST}:3000/oauth2callback/`
 );
 
 // Example access scopes for zkLogin: user email and public profile info are used.
@@ -46,7 +46,7 @@ export async function getJWT() {
         try {
           if (req.url.indexOf('/oauth2callback') > -1) {
             // acquire the code from the querystring, and close the web server.
-            const qs = new url.URL(req.url, 'http://localhost:3000')
+            const qs = new url.URL(req.url, `${process.env.PROTOCOL}://${process.env.HOST}:3000`)
               .searchParams;
             const code = qs.get('code');
             console.log(`Code is ${code}`);
