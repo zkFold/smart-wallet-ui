@@ -1,27 +1,37 @@
 import express from 'express';
+import session from 'express-session';
+import * as crypto from 'crypto';
 import * as https from 'https';
 import * as http from 'http';
 import bodyParser from 'body-parser';
 import * as fs from 'fs';
 import unzip from 'unzip-stream';
 import fs from 'fs-extra';
-import * as dotenv from 'dotenv'
+import * as dotenv from 'dotenv';
+import * as url from 'url';
 
 import { Wallet, Initialiser, Method, SmartTxRecipient, AddressType } from '../src/Wallet';
 import { BlockFrostProvider } from '../src/Blockfrost';
 import { sendMessage } from '../src/GMail'
-import { getJWT } from '../src/GoogleToken'
+import { getJWT, getAuthUrl } from '../src/GoogleToken'
 
 dotenv.config()
 
 const app = express();
 
 var wallet = null;
+var network = null;
+var mnemonic = null;
 
 fs.createReadStream('./public/css.zip').pipe(unzip.Extract({ path: './public/' }));
 
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(session({
+  secret: 'your_secure_secret_key', // Replace with a strong secret
+  resave: false,
+  saveUninitialized: false,
+}));
 
 function loggedIn(req, res, next) {
   if(wallet == null) {
@@ -85,25 +95,52 @@ app.post('/send', async (req, res) => {
 });
 
 app.post('/init', async (req, res) => {
-    var initialiser;
+    const state = crypto.randomBytes(32).toString('hex');
+    // Store state in the session
+    req.session.state = state;
+
+    network = req.body.network;
     switch (req.body.method) {
         case "Mnemonic": {
-            initialiser = { method: Method.Mnemonic, data: req.body.method_data };
+            mnemonic = req.body.method_data;
+            res.redirect('/oauth2callback');
             break;
         };
         case "Google Oauth": {
-            const token = await getJWT();
-            const jwt = token.id_token;
-            initialiser = { method: Method.Google, data: jwt };
+            const authUrl = getAuthUrl(state); 
+            res.redirect(authUrl);
             break;
         };
     }
-    const provider = new BlockFrostProvider(req.body.network.toLowerCase())
-    wallet = new Wallet(provider, initialiser, '', req.body.network.toLowerCase());
-    const balance = await wallet.getBalance();
-    console.log(balance);
-    console.log(`Initialised a ${req.body.network} wallet with address ${wallet.getAddress().to_bech32()}`);
-    res.redirect('/wallet');
+});
+
+app.get('/oauth2callback', async (req, res) => {
+    try {
+        var initialiser;
+        let q = url.parse(req.url, true).query;
+        const provider = new BlockFrostProvider(network.toLowerCase());
+
+        if (mnemonic) {
+            initialiser = { method: Method.Mnemonic, data: mnemonic };
+            mnemonic = null;
+        } else if (q.error) { // An error response e.g. error=access_denied
+          console.log('Error:' + q.error);
+        } else if (q.state !== req.session.state) { //check state value
+          console.log('State mismatch. Possible CSRF attack');
+        } else { 
+          const jwt = await getJWT(q.code);
+          initialiser = { method: Method.Google, data: jwt };
+        }
+
+        wallet = new Wallet(provider, initialiser, '', network.toLowerCase());
+        const balance = await wallet.getBalance();
+        console.log(balance);
+        console.log(`Initialised a ${network} wallet with address ${wallet.getAddress().to_bech32()}`);
+        res.redirect('/wallet');
+    } catch (e) {
+        console.log(e);
+        res.redirect('/')
+    }
 });
 
 
