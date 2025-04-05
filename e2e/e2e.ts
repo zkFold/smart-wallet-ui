@@ -19,10 +19,6 @@ dotenv.config()
 
 const app = express();
 
-var wallet = null;
-var network = null;
-var mnemonic = null;
-
 fs.createReadStream('./public/css.zip').pipe(unzip.Extract({ path: './public/' }));
 
 app.use(express.static('public'));
@@ -31,17 +27,26 @@ app.use(session({
   secret: 'your_secure_secret_key', // Replace with a strong secret
   resave: false,
   saveUninitialized: false,
+  cookie: { secure: process.env.PROTOCOL == "https" } // Set to true for HTTPS
 }));
 
 function loggedIn(req, res, next) {
-  if(wallet == null) {
+  if(!req.session.initialiser) {
     res.redirect('/');
   } else {
     next();
   }
 }
 
+function restoreWallet(req) {
+    const provider = new BlockFrostProvider(req.session.network.toLowerCase());
+    const initialiser = req.session.initialiser;
+    const wallet = new Wallet(provider, initialiser, '', req.session.network.toLowerCase());
+    return wallet;
+}
+
 async function mkTransaction(req, res) {
+    const wallet = restoreWallet(req);
     const balance = await wallet.getBalance();
     const address = wallet.getAddress().to_bech32();
     console.log(balance);
@@ -74,6 +79,7 @@ app.post('/send', async (req, res) => {
                 break;
             };
         }
+        const wallet = restoreWallet(req);
         const txId = await wallet.sendTo(recipient);
 
         if (req.body.recipient == "Gmail") {
@@ -99,10 +105,10 @@ app.post('/init', async (req, res) => {
     // Store state in the session
     req.session.state = state;
 
-    network = req.body.network;
+    req.session.network = req.body.network;
     switch (req.body.method) {
         case "Mnemonic": {
-            mnemonic = req.body.method_data;
+            req.session.mnemonic = req.body.method_data;
             res.redirect('/oauth2callback');
             break;
         };
@@ -118,24 +124,25 @@ app.get('/oauth2callback', async (req, res) => {
     try {
         var initialiser;
         let q = url.parse(req.url, true).query;
-        const provider = new BlockFrostProvider(network.toLowerCase());
+        const provider = new BlockFrostProvider(req.session.network.toLowerCase());
 
-        if (mnemonic) {
-            initialiser = { method: Method.Mnemonic, data: mnemonic };
-            mnemonic = null;
+        if (req.session.mnemonic) {
+            initialiser = { method: Method.Mnemonic, data: req.session.mnemonic };
+            req.session.mnemonic = null;
         } else if (q.error) { // An error response e.g. error=access_denied
-          console.log('Error:' + q.error);
+            console.log('Error:' + q.error);
         } else if (q.state !== req.session.state) { //check state value
-          console.log('State mismatch. Possible CSRF attack');
+            console.log('State mismatch. Possible CSRF attack');
         } else { 
-          const jwt = await getJWT(q.code);
-          initialiser = { method: Method.Google, data: jwt };
+            const jwt = await getJWT(q.code);
+            initialiser = { method: Method.Google, data: jwt };
         }
 
-        wallet = new Wallet(provider, initialiser, '', network.toLowerCase());
+        req.session.initialiser = initialiser;
+        const wallet = new Wallet(provider, initialiser, '', req.session.network.toLowerCase());
         const balance = await wallet.getBalance();
         console.log(balance);
-        console.log(`Initialised a ${network} wallet with address ${wallet.getAddress().to_bech32()}`);
+        console.log(`Initialised a ${req.session.network} wallet with address ${wallet.getAddress().to_bech32()}`);
         res.redirect('/wallet');
     } catch (e) {
         console.log(e);
@@ -149,14 +156,14 @@ if (process.env.PROTOCOL == "https") {
     var key  = fs.readFileSync('./cert/selfsigned.key');
     var cert = fs.readFileSync('./cert/selfsigned.crt');
     var options = {
-      key: key,
-      cert: cert
+        key: key,
+        cert: cert
     };
 
     var httpsServer = https.createServer(options, app);
     const port  = process.env.PORT;
     httpsServer.listen(port, () => {
-      console.log("HTTPS server starting on port : " + port)
+        console.log("HTTPS server starting on port : " + port)
     });
 };
 
@@ -164,7 +171,7 @@ if (process.env.PROTOCOL == "http") {
     var httpServer  = http.createServer(app);
     const port  = process.env.PORT;
     httpServer.listen(port, () => {
-      console.log("HTTP server starting on port : " + port)
+        console.log("HTTP server starting on port : " + port)
     });
 }
 

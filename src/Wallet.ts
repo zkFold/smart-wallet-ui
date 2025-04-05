@@ -105,6 +105,8 @@ export class Wallet {
     private accountKey: string;
     private utxoPubKey: string;
     private stakeKey: string;
+    private jwt: string;
+    private userId: string;
 
     constructor(provider: Provider, initialiser: Initialiser, password: string = '', network: string = 'mainnet') {
         this.provider = provider;
@@ -135,10 +137,6 @@ export class Wallet {
             
             this.collateral_pool = new CollateralPool('faculty away cheap truck baby absorb guilt idle strategy merry toilet cotton arrow mix firm pact glimpse zoo celery marble parent library coffee hedgehog', this.network);
         }
-    }
-
-    getName(): string {
-        return this.name;
     }
 
     // Adapted from https://developers.cardano.org/docs/get-started/cardano-serialization-lib/generating-keys/
