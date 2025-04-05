@@ -28,7 +28,7 @@
             </select>
           </label>
           <input
-            name="method_data" id="address_input" placeholder="Mnemonic" hidden=true
+            name="method_data" id="address_input" placeholder="Mnemonic" hidden=true autocomplete="off"
           />
         </fieldset>
         <input
@@ -56,6 +56,9 @@ function manageControls() {
         networkSel.hidden = true;
         methodSel.hidden = true;
         button.innerHTML = "Show advanced controls";
+        const methodOpts   = document.getElementById("method_options");
+        methodOpts.value = "Google Oauth";
+        manageMethod();
     }
 }
 function manageMethod() {

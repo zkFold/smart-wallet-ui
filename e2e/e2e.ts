@@ -1,5 +1,6 @@
 import express from 'express';
 import session from 'express-session';
+import axios from 'axios';
 import * as crypto from 'crypto';
 import * as https from 'https';
 import * as http from 'http';
@@ -61,9 +62,31 @@ async function mkTransaction(req, res) {
 
 app.get('/', async (req, res) => {
     res.sendFile('index.html', { root: '.' });
-})
+});
 
 app.get('/wallet', loggedIn, mkTransaction); 
+
+app.get('/tx_status', async (req, res) => {
+    let q = url.parse(req.url, true).query;
+    if (!req.session.network) {
+        res.send({ outcome: "failure", reason: 'Wallet not initialised' });
+        return;
+    }
+    if (q.txId) {
+        const txId = q.txId;
+        const provider = new BlockFrostProvider(req.session.network.toLowerCase());
+        try {
+            const status = await provider.txStatus(txId);    
+            res.send({ outcome: "success", "data": status });
+            return;
+        } catch (e) {
+            res.send({ outcome: "failure", reason: e });
+            return;
+        }
+
+    }
+    res.send({ outcome: "failure", reason: "no txId" });
+});
 
 app.post('/send', async (req, res) => {
     try {

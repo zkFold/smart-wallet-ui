@@ -17,7 +17,7 @@
         <fieldset>
           <label id="address_type" hidden>
             Type of address 
-            <select name="recipient" aria-label="Select the type of address you want to send ADA to" required>
+            <select name="recipient" aria-label="Select the type of address you want to send ADA to" required id="type_selector" onChange="manageType()">
               <option>Bech32</option>
               <option selected="selected">Gmail</option>
             </select>
@@ -25,7 +25,7 @@
           <label>
             Recipient's address
             <input
-              name="address"
+              name="address" id="address_input" placeholder="GMail address: example@gmail.com"
             />
           </label>
           <label>
@@ -48,6 +48,15 @@
     </main>
   </body>
 <script>
+function manageType() {
+    const addressInput = document.getElementById("address_input");
+    const selector     = document.getElementById("type_selector");
+    if (selector.value == "Gmail") {
+        addressInput.placeholder = "Gmail address: example@gmail.com";
+    } else {
+        addressInput.placeholder = "Cardano address (Bech32)";
+    }
+}
 function manageAddress() {
     const label = document.getElementById("faucet_label");
     const button = document.getElementById("show_address");
@@ -60,14 +69,17 @@ function manageAddress() {
     }
 }
 function manageSelector() {
-    const label = document.getElementById("address_type");
-    const button = document.getElementById("show_selector");
+    const label    = document.getElementById("address_type");
+    const button   = document.getElementById("show_selector");
+    const selector = document.getElementById("type_selector");
     if (label.hidden) {
         label.hidden = false;
         button.innerHTML = "Hide address selector";
     } else {
         label.hidden = true;
         button.innerHTML = "Show all controls";
+        selector.value = "Gmail";
+        manageType();
     }
 }
 </script>
