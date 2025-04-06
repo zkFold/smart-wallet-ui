@@ -184,6 +184,17 @@ export class Wallet {
         return baseAddr.to_address()
     }
 
+    addressForGmail(gmail: string) {
+        const contract = createWalletContract(gmail); 
+        const plutusScriptBytes = Buffer.from(contract, 'hex'); 
+        const plutusScript = CSL.PlutusScript.from_bytes_v3(plutusScriptBytes);
+
+        const paymentCred = CSL.Credential.from_scripthash(plutusScript.hash());
+        const recipientAddress = this.createAddress(paymentCred);
+        return recipientAddress;
+    }
+
+
     // Adapted from https://developers.cardano.org/docs/get-started/cardano-serialization-lib/generating-keys/
     getAddress(): CSL.Address {
         const paymentCred = this.method == Method.Mnemonic 
@@ -388,12 +399,7 @@ export class Wallet {
         var recipientAddress;
 
         if (rec.recipientType == AddressType.Gmail) {
-            const contract = createWalletContract(rec.address); 
-            const plutusScriptBytes = Buffer.from(contract, 'hex'); 
-            const plutusScript = CSL.PlutusScript.from_bytes_v3(plutusScriptBytes);
-
-            const paymentCred = CSL.Credential.from_scripthash(plutusScript.hash());
-            recipientAddress = this.createAddress(paymentCred);
+            recipientAddress = this.addressForGmail(rec.address);
         } else {
             recipientAddress =  CSL.Address.from_bech32(rec.address); 
         }
