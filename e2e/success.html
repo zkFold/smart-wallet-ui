@@ -7,12 +7,34 @@
     <link rel = "stylesheet" type="text/css" href="css/pico.min.css">
     <title>Smart Wallet Demo</title>
   </head>
-  <body>
+  <script>
+  async function checkStatus() {
+      const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
+      const txId = "{ txId }";
+      const recipient = "{ recipient }";
+      const url = `/tx_status?txId=${txId}&recipient=${recipient}`;
+      console.log(url);
+
+      var response = await fetch(url).then((resp) => resp.json());
+      while (response.outcome != "success") {
+          console.log(response);
+          await sleep(10000);
+          response = await fetch(url).then((resp) => resp.json());
+      }
+      const txStatus = document.getElementById("tx_status");
+      txStatus.innerHTML = "Transaction successful!";
+  }
+  </script>
+  <body onload="checkStatus()">
     <main class="container">
-      <h1>Transaction successful!</h1>
-      <label name="balance_label">
+      <a href="https://zkfold.io"><img src="logo-200x73.png" style="width:250px;height:100px;"></a>
+      <br>
+      <br>
+      <h1 id="tx_status">Transaction pending. This page will refresh automatically when transaction succeeds.</h1>
+      <label name="txid_label">
           Transaction id: { txId }
       </label>
+      <br>
       <button onclick="location.href='/wallet';">Make another transaction</button>
       <button onclick="location.href='/';">Initialise a new wallet</button>
       </main>

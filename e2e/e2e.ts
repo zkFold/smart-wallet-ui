@@ -1,5 +1,6 @@
 import express from 'express';
 import session from 'express-session';
+import favicon from 'serve-favicon';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import * as https from 'https';
@@ -24,6 +25,7 @@ fs.createReadStream('./public/css.zip').pipe(unzip.Extract({ path: './public/' }
 
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(favicon('./public/favicon.ico'));
 app.use(session({
   secret: 'your_secure_secret_key', // Replace with a strong secret
   resave: false,
@@ -57,7 +59,7 @@ async function mkTransaction(req, res) {
         ada = Number(balance.lovelace);
     }
     const template = fs.readFileSync('./transaction.html', 'utf-8');
-    res.send(template.replace('{ balance }', ada / 1000000).replace('{{ address }}', address));
+    res.send(template.replaceAll('{ balance }', ada / 1000000).replaceAll('{{ address }}', address));
 }
 
 app.get('/', async (req, res) => {
@@ -72,12 +74,20 @@ app.get('/tx_status', async (req, res) => {
         res.send({ outcome: "failure", reason: 'Wallet not initialised' });
         return;
     }
-    if (q.txId) {
+    if (q.txId && q.recipient) {
         const txId = q.txId;
+        const recipient = q.recipient;
         const provider = new BlockFrostProvider(req.session.network.toLowerCase());
         try {
-            const status = await provider.txStatus(txId);    
-            res.send({ outcome: "success", "data": status });
+            const utxos = await provider.getUtxos(recipient);
+            for (var i = 0; i < utxos.length; i++) {
+                const utxo = utxos[i];
+                if (utxo.tx_hash == txId) {
+                    res.send({ outcome: "success", "data": utxo });
+                    return;
+                }
+            }
+            res.send({ outcome: "pending" });
             return;
         } catch (e) {
             res.send({ outcome: "failure", reason: e });
@@ -108,18 +118,18 @@ app.post('/send', async (req, res) => {
         if (req.body.recipient == "Gmail") {
                 const template = fs.readFileSync('./email.html', 'utf-8');
                 const htmlText = template
-                                .replace('{{ recipient }}', req.body.address)
-                                .replace('{{ protocol }}', process.env.PROTOCOL)
-                                .replace('{{ host }}', process.env.HOST)
-                                .replace('{{ port }}', process.env.PORT);
+                                .replaceAll('{{ recipient }}', req.body.address)
+                                .replaceAll('{{ protocol }}', process.env.PROTOCOL)
+                                .replaceAll('{{ host }}', process.env.HOST)
+                                .replaceAll('{{ port }}', process.env.PORT);
                 await sendMessage(req.body.address, "You've received funds", htmlText);
         }
 
         const template = fs.readFileSync('./success.html', 'utf-8');
-        res.send(template.replace('{ txId }', txId));
+        res.send(template.replaceAll('{ txId }', txId).replaceAll("{ recipient }", wallet.addressForGmail(req.body.address).to_bech32()));
     } catch (error) {
         const template = fs.readFileSync('./failedTx.html', 'utf-8');
-        res.send(template.replace('{ reason }', `${error}`));
+        res.send(template.replaceAll('{ reason }', `${error}`));
     }
 });
 

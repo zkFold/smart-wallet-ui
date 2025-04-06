@@ -184,6 +184,17 @@ export class Wallet {
         return baseAddr.to_address()
     }
 
+    addressForGmail(gmail: string) {
+        const contract = createWalletContract(gmail); 
+        const plutusScriptBytes = Buffer.from(contract, 'hex'); 
+        const plutusScript = CSL.PlutusScript.from_bytes_v3(plutusScriptBytes);
+
+        const paymentCred = CSL.Credential.from_scripthash(plutusScript.hash());
+        const recipientAddress = this.createAddress(paymentCred);
+        return recipientAddress;
+    }
+
+
     // Adapted from https://developers.cardano.org/docs/get-started/cardano-serialization-lib/generating-keys/
     getAddress(): CSL.Address {
         const paymentCred = this.method == Method.Mnemonic 
@@ -305,6 +316,8 @@ export class Wallet {
 
         const txInputBuilder = CSL.TxInputsBuilder.new();
 
+        var witness = null; 
+
         utxos.forEach((utxo) => {
             const hash = CSL.TransactionHash.from_bytes(Buffer.from(utxo.tx_hash, "hex"))
             const input = CSL.TransactionInput.new(hash, utxo.tx_index);
@@ -320,7 +333,9 @@ export class Wallet {
             if (this.method == Method.Mnemonic) {
                 txInputBuilder.add_regular_input(addr, input, value);
             } else {
-                const witness = CSL.PlutusWitness.new_without_datum(this.walletScript, redeemer);
+                if (!witness) {
+                    witness = CSL.PlutusWitness.new_without_datum(this.walletScript, redeemer);
+                }
                 txInputBuilder.add_plutus_script_input(witness, input, value);
             }
         });
@@ -384,12 +399,7 @@ export class Wallet {
         var recipientAddress;
 
         if (rec.recipientType == AddressType.Gmail) {
-            const contract = createWalletContract(rec.address); 
-            const plutusScriptBytes = Buffer.from(contract, 'hex'); 
-            const plutusScript = CSL.PlutusScript.from_bytes_v3(plutusScriptBytes);
-
-            const paymentCred = CSL.Credential.from_scripthash(plutusScript.hash());
-            recipientAddress = this.createAddress(paymentCred);
+            recipientAddress = this.addressForGmail(rec.address);
         } else {
             recipientAddress =  CSL.Address.from_bech32(rec.address); 
         }
@@ -444,9 +454,6 @@ export class Wallet {
                 };
 
                 const redeemerData = createRedeemer(proofData); 
-                console.log("REDEEMER DATA START");
-                console.log(redeemerData);
-                console.log("REDEEMER DATA END");
                 
                 const redeemer = CSL.Redeemer.new(
                     CSL.RedeemerTag.new_spend(), 
