@@ -1,5 +1,6 @@
 import express from 'express';
 import session from 'express-session';
+import favicon from 'serve-favicon';
 import axios from 'axios';
 import * as crypto from 'crypto';
 import * as https from 'https';
@@ -24,6 +25,7 @@ fs.createReadStream('./public/css.zip').pipe(unzip.Extract({ path: './public/' }
 
 app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(favicon('./public/favicon.ico'));
 app.use(session({
   secret: 'your_secure_secret_key', // Replace with a strong secret
   resave: false,
@@ -72,11 +74,12 @@ app.get('/tx_status', async (req, res) => {
         res.send({ outcome: "failure", reason: 'Wallet not initialised' });
         return;
     }
-    if (q.txId) {
+    if (q.txId && q.recipient) {
         const txId = q.txId;
+        const recipient = q.recipient;
         const provider = new BlockFrostProvider(req.session.network.toLowerCase());
         try {
-            const status = await provider.txStatus(txId);    
+            const status = await provider.txStatus(txId);
             res.send({ outcome: "success", "data": status });
             return;
         } catch (e) {

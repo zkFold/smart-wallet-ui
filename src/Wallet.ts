@@ -305,6 +305,8 @@ export class Wallet {
 
         const txInputBuilder = CSL.TxInputsBuilder.new();
 
+        var witness = null; 
+
         utxos.forEach((utxo) => {
             const hash = CSL.TransactionHash.from_bytes(Buffer.from(utxo.tx_hash, "hex"))
             const input = CSL.TransactionInput.new(hash, utxo.tx_index);
@@ -320,7 +322,9 @@ export class Wallet {
             if (this.method == Method.Mnemonic) {
                 txInputBuilder.add_regular_input(addr, input, value);
             } else {
-                const witness = CSL.PlutusWitness.new_without_datum(this.walletScript, redeemer);
+                if (!witness) {
+                    witness = CSL.PlutusWitness.new_without_datum(this.walletScript, redeemer);
+                }
                 txInputBuilder.add_plutus_script_input(witness, input, value);
             }
         });
@@ -444,9 +448,6 @@ export class Wallet {
                 };
 
                 const redeemerData = createRedeemer(proofData); 
-                console.log("REDEEMER DATA START");
-                console.log(redeemerData);
-                console.log("REDEEMER DATA END");
                 
                 const redeemer = CSL.Redeemer.new(
                     CSL.RedeemerTag.new_spend(), 
