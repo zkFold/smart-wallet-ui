@@ -23,6 +23,10 @@
       }
       const txStatus = document.getElementById("tx_status");
       txStatus.innerHTML = "Transaction successful!";
+      const newTx = document.getElementById("new_tx");
+      const newWallet = document.getElementById("new_wallet");
+      newTx.disabled = false;
+      newWallet.disabled = false;
   }
   </script>
   <body onload="checkStatus()">
@@ -35,8 +39,8 @@
           Transaction id: { txId }
       </label>
       <br>
-      <button onclick="location.href='/wallet';">Make another transaction</button>
-      <button onclick="location.href='/';">Initialise a new wallet</button>
+      <button id="new_tx"     onclick="location.href='/wallet';" disabled=true>Make another transaction</button>
+      <button id="new_wallet" onclick="location.href='/';"       disabled=true>Initialise a new wallet</button>
       </main>
   </body>
 </html>

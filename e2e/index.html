@@ -17,7 +17,7 @@
         <fieldset>
           <label id="network_selector" hidden=true>
             Network type
-            <select name="network" aria-label="Select network" required>
+            <select name="network" id="network_option" aria-label="Select network" required>
               <!-- <option>Mainnet</option> -->
               <option>Preview</option>
               <option selected="selected">Preprod</option>
@@ -31,7 +31,7 @@
             </select>
           </label>
           <input
-            name="method_data" id="address_input" placeholder="Mnemonic" hidden=true autocomplete="off"
+            name="zkfold_method_data" id="address_input" placeholder="Mnemonic" hidden=true autocomplete="off"
           />
         </fieldset>
         <input
@@ -47,6 +47,7 @@
 function manageControls() {
     const header       = document.getElementById("header");
     const networkSel   = document.getElementById("network_selector");
+    const networkOpt   = document.getElementById("network_option");
     const methodSel    = document.getElementById("method_selector");
     const button       = document.getElementById("show_controls");
     if (networkSel.hidden) {
@@ -57,6 +58,7 @@ function manageControls() {
     } else {
         header.innerHTML = "Smart Wallet (Preprod)";
         networkSel.hidden = true;
+        networkOpt.value = "Preprod";
         methodSel.hidden = true;
         button.innerHTML = "Show advanced controls";
     }

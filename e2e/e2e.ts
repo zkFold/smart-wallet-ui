@@ -100,15 +100,15 @@ app.get('/tx_status', async (req, res) => {
 
 app.post('/send', async (req, res) => {
     try {
-        console.log(`Sending ${req.body.amount} ADA to ${req.body.address} using ${req.body.recipient}`);
+        console.log(`Sending ${req.body.zkfold_amount} ADA to ${req.body.zkfold_address} using ${req.body.recipient}`);
         var recipient;
         switch (req.body.recipient) {
             case "Bech32": {
-                recipient = new SmartTxRecipient(AddressType.Bech32, req.body.address, req.body.amount);
+                recipient = new SmartTxRecipient(AddressType.Bech32, req.body.zkfold_address, req.body.zkfold_amount);
                 break;
             };
             case "Gmail": {
-                recipient = new SmartTxRecipient(AddressType.Gmail, req.body.address, req.body.amount);
+                recipient = new SmartTxRecipient(AddressType.Gmail, req.body.zkfold_address, req.body.zkfold_amount);
                 break;
             };
         }
@@ -118,15 +118,15 @@ app.post('/send', async (req, res) => {
         if (req.body.recipient == "Gmail") {
                 const template = fs.readFileSync('./email.html', 'utf-8');
                 const htmlText = template
-                                .replaceAll('{{ recipient }}', req.body.address)
+                                .replaceAll('{{ recipient }}', req.body.zkfold_address)
                                 .replaceAll('{{ protocol }}', process.env.PROTOCOL)
                                 .replaceAll('{{ host }}', process.env.HOST)
                                 .replaceAll('{{ port }}', process.env.PORT);
-                await sendMessage(req.body.address, "You've received funds", htmlText);
+                await sendMessage(req.body.zkfold_address, "You've received funds", htmlText);
         }
 
         const template = fs.readFileSync('./success.html', 'utf-8');
-        res.send(template.replaceAll('{ txId }', txId).replaceAll("{ recipient }", wallet.addressForGmail(req.body.address).to_bech32()));
+        res.send(template.replaceAll('{ txId }', txId).replaceAll("{ recipient }", wallet.addressForGmail(req.body.zkfold_address).to_bech32()));
     } catch (error) {
         const template = fs.readFileSync('./failedTx.html', 'utf-8');
         res.send(template.replaceAll('{ reason }', `${error}`));
@@ -141,7 +141,7 @@ app.post('/init', async (req, res) => {
     req.session.network = req.body.network;
     switch (req.body.method) {
         case "Mnemonic": {
-            req.session.mnemonic = req.body.method_data;
+            req.session.mnemonic = req.body.zkfold_method_data;
             res.redirect('/oauth2callback');
             break;
         };

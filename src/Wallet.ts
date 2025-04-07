@@ -317,10 +317,10 @@ export class Wallet {
         const txInputBuilder = CSL.TxInputsBuilder.new();
 
         var witness = null; 
+        var total = 0;
+        const hardcodedMaxFee = 2000000;
 
         utxos.forEach((utxo) => {
-            const hash = CSL.TransactionHash.from_bytes(Buffer.from(utxo.tx_hash, "hex"))
-            const input = CSL.TransactionInput.new(hash, utxo.tx_index);
             var ada = 0;
             for (let asset of utxo.amount) {
                 if (asset.unit == 'lovelace') {
@@ -328,15 +328,20 @@ export class Wallet {
                     ada += quantity;
                 }
             }
-            const value = CSL.Value.new(CSL.BigNum.from_str(ada.toString()));
-            const addr = CSL.Address.from_bech32(utxo.address);
-            if (this.method == Method.Mnemonic) {
-                txInputBuilder.add_regular_input(addr, input, value);
-            } else {
-                if (!witness) {
-                    witness = CSL.PlutusWitness.new_without_datum(this.walletScript, redeemer);
+            if (total < amountToSend + hardcodedMaxFee) {
+                total += ada;
+                const hash = CSL.TransactionHash.from_bytes(Buffer.from(utxo.tx_hash, "hex"))
+                const input = CSL.TransactionInput.new(hash, utxo.tx_index);
+                const value = CSL.Value.new(CSL.BigNum.from_str(ada.toString()));
+                const addr = CSL.Address.from_bech32(utxo.address);
+                if (this.method == Method.Mnemonic) {
+                    txInputBuilder.add_regular_input(addr, input, value);
+                } else {
+                    if (!witness) {
+                        witness = CSL.PlutusWitness.new_without_datum(this.walletScript, redeemer);
+                    }
+                    txInputBuilder.add_plutus_script_input(witness, input, value);
                 }
-                txInputBuilder.add_plutus_script_input(witness, input, value);
             }
         });
         txBuilder.set_inputs(txInputBuilder);
@@ -460,7 +465,7 @@ export class Wallet {
                     CSL.BigNum.from_str("0"),
                     redeemerData,
                     // TODO: The actual values for a script with zkp should be 1000000 mem and 5000000000 steps
-                    CSL.ExUnits.new(CSL.BigNum.from_str("10000"), CSL.BigNum.from_str("50000000")) 
+                    CSL.ExUnits.new(CSL.BigNum.from_str("1000000"), CSL.BigNum.from_str("1000000000")) 
                 );
 
                 const txBuilder = await this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, collateral, redeemer);
@@ -493,8 +498,7 @@ function toB64(data: string) {
 }
 
 function createWalletContract(userId: string) {
-    const encoded = toB64(userId);
-
+    const uid = userId.split('@')[0]
     const createContractExe = '.';
     const cmd = `${createContractExe}/smart-wallet-creator --create --id ${userId} --pubkey dummy --output ${process.cwd()}`;
     console.log(cmd);
@@ -506,7 +510,7 @@ function createWalletContract(userId: string) {
                console.log('exec error: ' + error);
           }
       });
-    const contract = JSON.parse(fs.readFileSync(`./smartWallet.plutus`, 'utf-8'));
+    const contract = JSON.parse(fs.readFileSync(`./smartWallet${uid}.plutus`, 'utf-8'));
     return contract.cborHex;
 }
 
@@ -522,7 +526,8 @@ function createRedeemer(proofData) {
                console.log('exec error: ' + error);
           }
       });
-    const plutusData = fs.readFileSync('./proof.cbor');
+    const uid = proofData.userId.split('@')[0]
+    const plutusData = fs.readFileSync(`./proof${uid}.cbor`);
     return CSL.PlutusData.from_bytes(plutusData); 
 }
 
