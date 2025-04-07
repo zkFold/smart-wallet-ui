@@ -459,7 +459,8 @@ export class Wallet {
                     CSL.RedeemerTag.new_spend(), 
                     CSL.BigNum.from_str("0"),
                     redeemerData,
-                    CSL.ExUnits.new(CSL.BigNum.from_str("1000000"), CSL.BigNum.from_str("5000000000")) // TODO: Change these to appropriate values
+                    // TODO: The actual values for a script with zkp should be 1000000 mem and 5000000000 steps
+                    CSL.ExUnits.new(CSL.BigNum.from_str("10000"), CSL.BigNum.from_str("50000000")) 
                 );
 
                 const txBuilder = await this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, collateral, redeemer);
