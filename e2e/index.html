@@ -5,49 +5,78 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     <link rel = "stylesheet" type="text/css" href="css/pico.min.css">
-    <title>Smart wallet test</title>
+    <title>Smart Wallet Demo</title>
   </head>
   <body>
     <main class="container">
-      <h1>zkFold Smart Wallet Test</h1>
-      <form action="http://localhost:8080/init" method="POST">
+      <a href="https://zkfold.io"><img src="logo-200x73.png" style="width:250px;height:100px;"></a>
+      <br>
+      <br>
+      <h1 id="header">Smart Wallet (Preprod)</h1>
+      <form action="/init" method="POST">
         <fieldset>
-          <label>
+          <label id="network_selector" hidden=true>
             Network type
-            <select name="network" aria-label="Select network" required>
-              <option selected disabled value="">
-                Select network
-              </option>
-              <option>Mainnet</option>
+            <select name="network" id="network_option" aria-label="Select network" required>
+              <!-- <option>Mainnet</option> -->
               <option>Preview</option>
-              <option>Preprod</option>
+              <option selected="selected">Preprod</option>
             </select>
           </label>
-          <label>
+          <label id="method_selector" hidden=true>
             Method 
-            <select name="method" aria-label="Select creation method" required>
-              <option selected disabled value="">
-                Select method
-              </option>
+            <select name="method" aria-label="Select creation method" id="method_options" required onChange="manageMethod()">
               <option>Mnemonic</option>
-              <option>Google Oauth</option>
+              <option selected="selected">Google Oauth</option>
             </select>
-            <input
-              name="method_data" placeholder="Mnemonic or gmail address"
-            />
           </label>
-          <label>
-            Wallet name 
-            <input
-              name="wallet_name"
-            />
-          </label>
+          <input
+            name="zkfold_method_data" id="address_input" placeholder="Mnemonic" hidden=true autocomplete="off"
+          />
         </fieldset>
         <input
+          id="submit"
           type="submit"
-          value="Initialise wallet"
+          value="Initialise wallet with Gmail"
         />
       </form>
+      <button class="outline secondary" id="show_controls" onclick="manageControls()">Show advanced controls</button>
       </main>
   </body>
+<script>
+function manageControls() {
+    const header       = document.getElementById("header");
+    const networkSel   = document.getElementById("network_selector");
+    const networkOpt   = document.getElementById("network_option");
+    const methodSel    = document.getElementById("method_selector");
+    const button       = document.getElementById("show_controls");
+    if (networkSel.hidden) {
+        header.innerHTML = "Smart Wallet";
+        networkSel.hidden = false;
+        methodSel.hidden = false;
+        button.innerHTML = "Hide advanced controls";
+    } else {
+        header.innerHTML = "Smart Wallet (Preprod)";
+        networkSel.hidden = true;
+        networkOpt.value = "Preprod";
+        methodSel.hidden = true;
+        button.innerHTML = "Show advanced controls";
+    }
+    const methodOpts   = document.getElementById("method_options");
+    methodOpts.value = "Google Oauth";
+    manageMethod();
+}
+function manageMethod() {
+    const methodOpts   = document.getElementById("method_options");
+    const addressInput = document.getElementById("address_input");
+    const submit       = document.getElementById("submit");
+    if (methodOpts.value == "Google Oauth") {
+        addressInput.hidden = true;
+        submit.value = "Initialise wallet with Gmail";
+    } else {
+        addressInput.hidden = false;
+        submit.value = "Initialise wallet with seedphrase";
+    }
+}
+</script>
 </html>

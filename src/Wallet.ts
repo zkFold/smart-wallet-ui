@@ -6,7 +6,6 @@ import * as dotenv from 'dotenv'
 import * as fs from 'fs';
 import fs from 'fs-extra';
 import { createRequire } from "module";
-import { getJWT } from './GoogleToken'
 const require = createRequire(import.meta.url);
 var exec = require('child_process').execSync;
 
@@ -106,13 +105,14 @@ export class Wallet {
     private accountKey: string;
     private utxoPubKey: string;
     private stakeKey: string;
+    private jwt: string;
+    private userId: string;
 
-    constructor(provider: Provider, name: string, initialiser: Initialiser, password: string = '', network: string = 'mainnet') {
+    constructor(provider: Provider, initialiser: Initialiser, password: string = '', network: string = 'mainnet') {
         this.provider = provider;
-        this.name = name;
         this.network = network;
         this.method = initialiser.method;
-
+        
         if (this.method == Method.Mnemonic) {
             const entropy = bip39.mnemonicToEntropy(initialiser.data, wordlist);
             this.rootKey = CSL.Bip32PrivateKey.from_bip39_entropy(
@@ -122,21 +122,21 @@ export class Wallet {
             this.deriveKeys();
         } else {
             // At this point, we assume that userId is a valid email accessible by the user (i.e. the user was able to complete Google authentication).
-            const userId = initialiser.data;
-            const contract = createWalletContract(userId);
+            this.jwt = initialiser.data; 
+
+            const parts = this.jwt.split(".");
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+            this.userId = payload.email;
+
+            const contract = createWalletContract(this.userId);
 
             const plutusScriptBytes = Buffer.from(contract, 'hex'); 
             const plutusScript = CSL.PlutusScript.from_bytes_v3(plutusScriptBytes);
 
             this.walletScript = plutusScript;
-            this.userId = userId;
             
             this.collateral_pool = new CollateralPool('faculty away cheap truck baby absorb guilt idle strategy merry toilet cotton arrow mix firm pact glimpse zoo celery marble parent library coffee hedgehog', this.network);
         }
-    }
-
-    getName(): string {
-        return this.name;
     }
 
     // Adapted from https://developers.cardano.org/docs/get-started/cardano-serialization-lib/generating-keys/
@@ -183,6 +183,17 @@ export class Wallet {
         
         return baseAddr.to_address()
     }
+
+    addressForGmail(gmail: string) {
+        const contract = createWalletContract(gmail); 
+        const plutusScriptBytes = Buffer.from(contract, 'hex'); 
+        const plutusScript = CSL.PlutusScript.from_bytes_v3(plutusScriptBytes);
+
+        const paymentCred = CSL.Credential.from_scripthash(plutusScript.hash());
+        const recipientAddress = this.createAddress(paymentCred);
+        return recipientAddress;
+    }
+
 
     // Adapted from https://developers.cardano.org/docs/get-started/cardano-serialization-lib/generating-keys/
     getAddress(): CSL.Address {
@@ -273,19 +284,21 @@ export class Wallet {
     }
 
     private async buildTx(senderAddress: CSL.Address, recipientAddress: CSL.Address, amountToSend: CSL.BigNum, utxos, collateral=[], redeemer: CSL.Redeemer=null): CSL.TransactionBuilder {
+        const epochParameters = await this.provider.getLatestParams();
+
         const txBuilderCfg = 
             CSL.TransactionBuilderConfigBuilder.new()
             .fee_algo(
                 CSL.LinearFee.new(
-                CSL.BigNum.from_str("44"),
-                CSL.BigNum.from_str("155381")
+                CSL.BigNum.from_str(epochParameters.min_fee_a.toString()),
+                CSL.BigNum.from_str(epochParameters.min_fee_b.toString())
             )
             )
-            .coins_per_utxo_byte(CSL.BigNum.from_str("4310"))
-            .pool_deposit(CSL.BigNum.from_str("500000000"))
-            .key_deposit(CSL.BigNum.from_str("2000000"))
+            .coins_per_utxo_byte(CSL.BigNum.from_str(epochParameters.min_utxo))
+            .pool_deposit(CSL.BigNum.from_str(epochParameters.pool_deposit))
+            .key_deposit(CSL.BigNum.from_str(epochParameters.key_deposit))
             .max_value_size(5000)
-            .max_tx_size(16384)
+            .max_tx_size(epochParameters.max_tx_size)
             .prefer_pure_change(true)
             .ex_unit_prices(CSL.ExUnitPrices.new(
                CSL.UnitInterval.new(
@@ -303,9 +316,11 @@ export class Wallet {
 
         const txInputBuilder = CSL.TxInputsBuilder.new();
 
+        var witness = null; 
+        var total = 0;
+        const hardcodedMaxFee = 2000000;
+
         utxos.forEach((utxo) => {
-            const hash = CSL.TransactionHash.from_bytes(Buffer.from(utxo.tx_hash, "hex"))
-            const input = CSL.TransactionInput.new(hash, utxo.tx_index);
             var ada = 0;
             for (let asset of utxo.amount) {
                 if (asset.unit == 'lovelace') {
@@ -313,13 +328,20 @@ export class Wallet {
                     ada += quantity;
                 }
             }
-            const value = CSL.Value.new(CSL.BigNum.from_str(ada.toString()));
-            const addr = CSL.Address.from_bech32(utxo.address);
-            if (this.method == Method.Mnemonic) {
-                txInputBuilder.add_regular_input(addr, input, value);
-            } else {
-                const witness = CSL.PlutusWitness.new_without_datum(this.walletScript, redeemer);
-                txInputBuilder.add_plutus_script_input(witness, input, value);
+            if (total < amountToSend + hardcodedMaxFee) {
+                total += ada;
+                const hash = CSL.TransactionHash.from_bytes(Buffer.from(utxo.tx_hash, "hex"))
+                const input = CSL.TransactionInput.new(hash, utxo.tx_index);
+                const value = CSL.Value.new(CSL.BigNum.from_str(ada.toString()));
+                const addr = CSL.Address.from_bech32(utxo.address);
+                if (this.method == Method.Mnemonic) {
+                    txInputBuilder.add_regular_input(addr, input, value);
+                } else {
+                    if (!witness) {
+                        witness = CSL.PlutusWitness.new_without_datum(this.walletScript, redeemer);
+                    }
+                    txInputBuilder.add_plutus_script_input(witness, input, value);
+                }
             }
         });
         txBuilder.set_inputs(txInputBuilder);
@@ -357,7 +379,6 @@ export class Wallet {
         // TODO: what's the problem with TTL and script utxos?
         //txBuilder.set_ttl_bignum(CSL.BigNum.from_str(ttl.toString()));
 
-        const epochParameters = await this.provider.getLatestParams();
         const costModels = epochParameters["cost_models_raw"];
         for (var key in costModels) {
             costModels[key] = costModels[key].map((x) => x.toString());
@@ -383,12 +404,7 @@ export class Wallet {
         var recipientAddress;
 
         if (rec.recipientType == AddressType.Gmail) {
-            const contract = createWalletContract(rec.address); 
-            const plutusScriptBytes = Buffer.from(contract, 'hex'); 
-            const plutusScript = CSL.PlutusScript.from_bytes_v3(plutusScriptBytes);
-
-            const paymentCred = CSL.Credential.from_scripthash(plutusScript.hash());
-            recipientAddress = this.createAddress(paymentCred);
+            recipientAddress = this.addressForGmail(rec.address);
         } else {
             recipientAddress =  CSL.Address.from_bech32(rec.address); 
         }
@@ -419,10 +435,7 @@ export class Wallet {
                 console.log("COLLATERAL");
                 console.log(collateral);
 
-                const token = await getJWT();
-                const jwt = token.id_token;
-                const parts = jwt.split(".");
-                console.log(parts);
+                const parts = this.jwt.split(".");
 
                 const header = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')));
                 const keyId = header.kid;
@@ -433,18 +446,11 @@ export class Wallet {
                     "n": matchingKey.n
                 }
 
-                const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
-                const email = payload.email;
-
-                if (email != this.userId) {
-                    throw new Error("Account does not matches the one used to initialise the wallet.");
-                }
-
                 const proofData = { 
                     header: parts[0],
                     payload: parts[1], 
                     signature: parts[2],
-                    certificate: JSON.stringify(certificate),
+                    certificate: toB64(JSON.stringify(certificate)),
                     amount: amountToSend,
                     recipient: recipientAddress.to_bech32(),
                     input: "pi",
@@ -453,15 +459,13 @@ export class Wallet {
                 };
 
                 const redeemerData = createRedeemer(proofData); 
-                console.log("REDEEMER DATA START");
-                console.log(redeemerData);
-                console.log("REDEEMER DATA END");
                 
                 const redeemer = CSL.Redeemer.new(
                     CSL.RedeemerTag.new_spend(), 
                     CSL.BigNum.from_str("0"),
                     redeemerData,
-                    CSL.ExUnits.new(CSL.BigNum.from_str("700000"), CSL.BigNum.from_str("300000000")) // TODO: Change these to appropriate values
+                    // TODO: The actual values for a script with zkp should be 1000000 mem and 5000000000 steps
+                    CSL.ExUnits.new(CSL.BigNum.from_str("1000000"), CSL.BigNum.from_str("1000000000")) 
                 );
 
                 const txBuilder = await this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, collateral, redeemer);
@@ -487,32 +491,31 @@ function getCardanoSlot() {
     return startShelleyUnixTimestamp + 4492800;
 }
 
+function toB64(data: string) {
+    const utf8Arr = new TextEncoder().encode(data);
+    const encoded = btoa(utf8Arr).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return encoded
+}
 
 function createWalletContract(userId: string) {
-    const utf8Arr = new TextEncoder().encode(userId);
-    const encoded = btoa(utf8Arr).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    const scriptName = `${encoded}.plutus`;
-
-    if (!fs.existsSync(scriptName)) {
-        const createContractExe = process.env.CREATE_CONTRACT_EXE;
-        const cmd = `${createContractExe}/smart-wallet-creator --create --id ${userId} --pubkey dummy --output ${process.cwd()}`;
-        console.log(cmd);
-        exec(cmd,
-          function (error, stdout, stderr) {
-              console.log('stdout: ' + stdout);
-              console.log('stderr: ' + stderr);
-              if (error !== null) {
-                   console.log('exec error: ' + error);
-              }
-          });
-          fs.renameSync('./smartWallet.plutus', `./${scriptName}`);
-    }
-    const contract = JSON.parse(fs.readFileSync(`./${scriptName}`, 'utf-8'));
+    const uid = userId.split('@')[0]
+    const createContractExe = '.';
+    const cmd = `${createContractExe}/smart-wallet-creator --create --id ${userId} --pubkey dummy --output ${process.cwd()}`;
+    console.log(cmd);
+    exec(cmd,
+      function (error, stdout, stderr) {
+          console.log('stdout: ' + stdout);
+          console.log('stderr: ' + stderr);
+          if (error !== null) {
+               console.log('exec error: ' + error);
+          }
+      });
+    const contract = JSON.parse(fs.readFileSync(`./smartWallet${uid}.plutus`, 'utf-8'));
     return contract.cborHex;
 }
 
 function createRedeemer(proofData) {
-    const createContractExe = process.env.CREATE_CONTRACT_EXE;
+    const createContractExe = '.'; 
     const cmd = `${createContractExe}/smart-wallet-creator --validate --header ${proofData.header} --payload ${proofData.payload} --signature ${proofData.signature} --certificate ${proofData.certificate} --amount ${proofData.amount} --recipient ${proofData.recipient} --input ${proofData.input} --id ${proofData.userId} --pubkey dummy --output ${process.cwd()}`;
     console.log(cmd);
     exec(cmd,
@@ -523,7 +526,8 @@ function createRedeemer(proofData) {
                console.log('exec error: ' + error);
           }
       });
-    const plutusData = fs.readFileSync('./proof.cbor');
+    const uid = proofData.userId.split('@')[0]
+    const plutusData = fs.readFileSync(`./proof${uid}.cbor`);
     return CSL.PlutusData.from_bytes(plutusData); 
 }
 

@@ -5,16 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light dark">
     <link rel = "stylesheet" type="text/css" href="css/pico.min.css">
-    <title>Smart wallet test</title>
+    <title>Smart Wallet Demo</title>
   </head>
-  <body>
+  <script>
+  async function checkStatus() {
+      const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
+      const txId = "{ txId }";
+      const recipient = "{ recipient }";
+      const url = `/tx_status?txId=${txId}&recipient=${recipient}`;
+      console.log(url);
+
+      var response = await fetch(url).then((resp) => resp.json());
+      while (response.outcome != "success") {
+          console.log(response);
+          await sleep(10000);
+          response = await fetch(url).then((resp) => resp.json());
+      }
+      const txStatus = document.getElementById("tx_status");
+      txStatus.innerHTML = "Transaction successful!";
+      const newTx = document.getElementById("new_tx");
+      const newWallet = document.getElementById("new_wallet");
+      newTx.disabled = false;
+      newWallet.disabled = false;
+  }
+  </script>
+  <body onload="checkStatus()">
     <main class="container">
-      <h1>Transaction successful!</h1>
-      <label name="balance_label">
+      <a href="https://zkfold.io"><img src="logo-200x73.png" style="width:250px;height:100px;"></a>
+      <br>
+      <br>
+      <h1 id="tx_status">Transaction pending. This page will refresh automatically when transaction succeeds.</h1>
+      <label name="txid_label">
           Transaction id: { txId }
       </label>
-      <button onclick="location.href='http://localhost:8080/wallet';">Make another transaction</button>
-      <button onclick="location.href='http://localhost:8080/';">Initialise a new wallet</button>
+      <br>
+      <button id="new_tx"     onclick="location.href='/wallet';" disabled=true>Make another transaction</button>
+      <button id="new_wallet" onclick="location.href='/';"       disabled=true>Initialise a new wallet</button>
       </main>
   </body>
 </html>

@@ -18,7 +18,7 @@ export class BlockFrostProvider extends Provider {
     }
 
     async submitTx(tx: string): Promise<string> {
-        return await this.API.txSubmit(tx)
+        return await this.API.txSubmit(tx);
     }
 
     getNetworkId(): number {
@@ -30,6 +30,10 @@ export class BlockFrostProvider extends Provider {
 
     async getLatestParams() {
         return await this.API.epochsLatestParameters();
+    }
+
+    async txStatus(txId: string) {
+        return await this.API.txs(txId);
     }
 
 }

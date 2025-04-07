@@ -10,4 +10,6 @@ export class Provider {
 
     async getLatestParams();
 
+    async txStatus(txId: string);
+
 }
