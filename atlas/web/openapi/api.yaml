@@ -1,9 +1,86 @@
 components:
   schemas:
+    BuildOut:
+      description: Output to be created. Note that our balancer may add additional
+        lovelace to satisfy minimum lovelace requirement for this output.
+      properties:
+        address:
+          $ref: '#/components/schemas/GYAddress'
+        datum:
+          items:
+          - $ref: '#/components/schemas/GYDatum'
+          - type: boolean
+          maxItems: 2
+          minItems: 2
+          type: array
+        value:
+          $ref: '#/components/schemas/GYValue'
+      required:
+      - address
+      - value
+      type: object
+    ByteStringFromHex:
+      description: Bytes encoded in hex.
+      format: hex
+      type: string
+    CreateWalletParameters:
+      description: Initialize zk smart wallet. If "fund_address" is not provided,
+        we use address of the wallet (which is to be initialized here). If "collateral"
+        is not provided, we use suitable collateral from "fund_address".
+      properties:
+        collateral:
+          $ref: '#/components/schemas/GYTxOutRef'
+        email:
+          $ref: '#/components/schemas/Email'
+        fund_address:
+          $ref: '#/components/schemas/GYAddressBech32'
+        jwt:
+          $ref: '#/components/schemas/JWT'
+        payment_key_hash:
+          $ref: '#/components/schemas/GYKeyHash'
+        proof_bytes:
+          $ref: '#/components/schemas/ZKProofBytes'
+      required:
+      - email
+      - jwt
+      - payment_key_hash
+      - proof_bytes
+      type: object
+    CreateWalletResponse:
+      description: Transaction which would initialize user's wallet.
+      properties:
+        address:
+          $ref: '#/components/schemas/GYAddressBech32'
+        transaction:
+          $ref: '#/components/schemas/GYTx'
+      required:
+      - address
+      - transaction
+      type: object
+    Email:
+      description: User's email address.
+      example: zkfold@gmail.com
+      type: string
+    GYAddress:
+      description: An address, serialised as CBOR.
+      example: 00e1cbb80db89e292269aeb93ec15eb963dda5176b66949fe1c2a6a38d1b930e9f7add78a174a21000e989ff551366dcd127028cb2aa39f616
+      format: cbor hex
+      maxLength: 114
+      minLength: 114
+      type: string
     GYAddressBech32:
       description: An address, serialised as Bech32.
       example: addr_test1qrsuhwqdhz0zjgnf46unas27h93amfghddnff8lpc2n28rgmjv8f77ka0zshfgssqr5cnl64zdnde5f8q2xt923e7ctqu49mg5
       format: bech32
+      type: string
+    GYDatum:
+      description: JSON representation of datum
+    GYKeyHash:
+      description: The hash of a key with role as GYKeyRolePayment
+      example: e1cbb80db89e292269aeb93ec15eb963dda5176b66949fe1c2a6a38d
+      format: hex
+      maxLength: 56
+      minLength: 56
       type: string
     GYNatural:
       description: A natural number which is a non-negative integer. Minimum value
@@ -32,19 +109,43 @@ components:
         ff80aaaf03a273b8f5c558168dc0e2377eea810badbae6eceefc14ef.474f4c44: 101
         lovelace: 22
       type: object
+    JWT:
+      description: JSON web token
+      type: string
+    ObtainAddressParameters:
+      description: Obtain user's wallet address.
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+      required:
+      - email
+      type: object
+    ObtainAddressResponse:
+      description: User's address.
+      properties:
+        address:
+          $ref: '#/components/schemas/GYAddressBech32'
+      required:
+      - address
+      type: object
     SendFundsParameters:
       description: Send funds parameters.
       properties:
         email:
-          type: string
-        send_address:
-          $ref: '#/components/schemas/GYAddressBech32'
+          $ref: '#/components/schemas/Email'
+        outs:
+          items:
+            $ref: '#/components/schemas/BuildOut'
+          type: array
+        payment_key_hash:
+          $ref: '#/components/schemas/GYKeyHash'
         value:
           $ref: '#/components/schemas/GYValue'
       required:
       - value
       - email
-      - send_address
+      - payment_key_hash
+      - outs
       type: object
     SendFundsResponse:
       description: Send funds response.
@@ -76,6 +177,92 @@ components:
       - version
       - collateral
       - collateral_address
+      type: object
+    ZKF:
+      description: Field element.
+      type: integer
+    ZKProofBytes:
+      description: Proof bytes where bytes are represented in hexadecimal encoding.
+      properties:
+        a_xi_int:
+          type: integer
+        b_xi_int:
+          type: integer
+        c_xi_int:
+          type: integer
+        cmA_bytes:
+          $ref: '#/components/schemas/ByteStringFromHex'
+        cmB_bytes:
+          $ref: '#/components/schemas/ByteStringFromHex'
+        cmC_bytes:
+          $ref: '#/components/schemas/ByteStringFromHex'
+        cmF_bytes:
+          $ref: '#/components/schemas/ByteStringFromHex'
+        cmH1_bytes:
+          $ref: '#/components/schemas/ByteStringFromHex'
+        cmH2_bytes:
+          $ref: '#/components/schemas/ByteStringFromHex'
+        cmQhigh_bytes:
+          $ref: '#/components/schemas/ByteStringFromHex'
+        cmQlow_bytes:
+          $ref: '#/components/schemas/ByteStringFromHex'
+        cmQmid_bytes:
+          $ref: '#/components/schemas/ByteStringFromHex'
+        cmZ1_bytes:
+          $ref: '#/components/schemas/ByteStringFromHex'
+        cmZ2_bytes:
+          $ref: '#/components/schemas/ByteStringFromHex'
+        f_xi_int:
+          type: integer
+        h1_xi'_int:
+          type: integer
+        h2_xi_int:
+          type: integer
+        l1_xi:
+          $ref: '#/components/schemas/ZKF'
+        proof1_bytes:
+          $ref: '#/components/schemas/ByteStringFromHex'
+        proof2_bytes:
+          $ref: '#/components/schemas/ByteStringFromHex'
+        s1_xi_int:
+          type: integer
+        s2_xi_int:
+          type: integer
+        t_xi'_int:
+          type: integer
+        t_xi_int:
+          type: integer
+        z1_xi'_int:
+          type: integer
+        z2_xi'_int:
+          type: integer
+      required:
+      - cmA_bytes
+      - cmB_bytes
+      - cmC_bytes
+      - cmF_bytes
+      - cmH1_bytes
+      - cmH2_bytes
+      - cmZ1_bytes
+      - cmZ2_bytes
+      - cmQlow_bytes
+      - cmQmid_bytes
+      - cmQhigh_bytes
+      - proof1_bytes
+      - proof2_bytes
+      - a_xi_int
+      - b_xi_int
+      - c_xi_int
+      - s1_xi_int
+      - s2_xi_int
+      - f_xi_int
+      - t_xi_int
+      - t_xi'_int
+      - z1_xi'_int
+      - z2_xi'_int
+      - h1_xi'_int
+      - h2_xi_int
+      - l1_xi
       type: object
   securitySchemes:
     api-key:
@@ -207,6 +394,64 @@ paths:
       summary: Submit a transaction
       tags:
       - Tx
+  /v0/wallet/address:
+    post:
+      description: Obtain address of the wallet initialized with the given mail.
+      requestBody:
+        content:
+          application/json;charset=utf-8:
+            schema:
+              $ref: '#/components/schemas/ObtainAddressParameters'
+      responses:
+        '200':
+          content:
+            application/json;charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/ObtainAddressResponse'
+          description: ''
+        '400':
+          description: Invalid `body`
+        '401':
+          description: Unauthorized access - API key missing
+        '403':
+          description: Forbidden - The API key does not have permission to perform
+            the request
+        '500':
+          description: Internal server error
+      security:
+      - api-key: []
+      summary: Obtain address.
+      tags:
+      - Wallet
+  /v0/wallet/create:
+    post:
+      description: Create zk smart wallet.
+      requestBody:
+        content:
+          application/json;charset=utf-8:
+            schema:
+              $ref: '#/components/schemas/CreateWalletParameters'
+      responses:
+        '200':
+          content:
+            application/json;charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/CreateWalletResponse'
+          description: ''
+        '400':
+          description: Invalid `body`
+        '401':
+          description: Unauthorized access - API key missing
+        '403':
+          description: Forbidden - The API key does not have permission to perform
+            the request
+        '500':
+          description: Internal server error
+      security:
+      - api-key: []
+      summary: Create wallet.
+      tags:
+      - Wallet
   /v0/wallet/send-funds:
     post:
       description: Send funds from a zk based wallet to a given address.
