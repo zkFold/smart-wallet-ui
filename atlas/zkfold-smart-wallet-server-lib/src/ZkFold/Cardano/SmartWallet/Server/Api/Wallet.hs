@@ -3,24 +3,18 @@ module ZkFold.Cardano.SmartWallet.Server.Api.Wallet (
   handleWalletApi,
 ) where
 
-import Cardano.Api qualified as Api
-import Control.Applicative ((<|>))
 import Data.Maybe (fromMaybe)
 import Data.Swagger qualified as Swagger
-import Data.Text (Text)
 import Deriving.Aeson
 import Fmt
 import GHC.TypeLits (Symbol)
 import GeniusYield.Imports ((&))
-import GeniusYield.Transaction.Common (GYTxExtraConfiguration (..), GYTxInDetailed (..))
 import GeniusYield.Types
 import GeniusYield.Types.OpenApi ()
 import Servant
-import ZkFold.Cardano.OnChain.Plonkup.Data (ProofBytes)
 import ZkFold.Cardano.SmartWallet.Api
 import ZkFold.Cardano.SmartWallet.Server.Ctx
 import ZkFold.Cardano.SmartWallet.Server.Orphans ()
-import ZkFold.Cardano.SmartWallet.Server.Tx (handleTxSignCollateral, handleTxSubmit)
 import ZkFold.Cardano.SmartWallet.Server.Utils
 import ZkFold.Cardano.SmartWallet.Types
 
@@ -63,7 +57,7 @@ data CreateWalletParameters = CreateWalletParameters
   { cwpEmail :: !Email
   , cwpJWT :: !JWT
   , cwpPaymentKeyHash :: !GYPaymentKeyHash
-  , cwpProofBytes :: !ProofBytes
+  , cwpProofBytes :: !ZKProofBytes
   , cwpFundAddress :: !(Maybe GYAddressBech32)
   , cwpCollateral :: !(Maybe GYTxOutRef)
   }

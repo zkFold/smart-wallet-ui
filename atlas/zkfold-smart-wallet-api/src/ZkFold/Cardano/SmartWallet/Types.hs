@@ -12,21 +12,27 @@ module ZkFold.Cardano.SmartWallet.Types (
   Email,
   emailFromText,
   emailToText,
+  ByteStringFromHex (..),
   ZKF (..),
   ZKProofBytes (..),
-  zkProofToPlutus,
+  proofToPlutus,
 ) where
 
 import Control.Exception (Exception)
+import Control.Lens ((?~))
 import Control.Monad.Reader (MonadReader)
 import Data.Aeson (withText)
+import Data.Aeson qualified as Aeson
+import Data.ByteString (ByteString)
 import Data.ByteString.Base16 qualified as BS16
 import Data.Swagger qualified as Swagger
+import Data.Swagger.Internal.Schema qualified as Swagger
 import Data.Text (Text)
 import Data.Text qualified as Text
+import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import GHC.Generics (Generic)
 import GeniusYield.HTTP.Errors (GYApiError (..), IsGYApiError (..))
-import GeniusYield.Imports (FromJSON (..), ToJSON, coerce, encodeUtf8, (&), (<&>))
+import GeniusYield.Imports (FromJSON (..), ToJSON (..), coerce, (&), (<&>))
 import GeniusYield.Swagger.Utils
 import GeniusYield.TxBuilder (GYTxQueryMonad)
 import GeniusYield.Types (GYMintingPolicyId, GYPaymentKeyHash, GYPubKeyHash, GYScript, GYScriptHash, GYStakeAddress, PlutusVersion (..))
@@ -160,21 +166,52 @@ instance Swagger.ToSchema ZKF where
     Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions
       & addSwaggerDescription "Field element."
 
+-- | 'ByteString' whose on wire representation is given in hexadecimal encoding.
+newtype ByteStringFromHex = ByteStringFromHex ByteString
+  deriving stock (Generic)
+  deriving newtype (Eq, Ord)
+
+byteStringFromHexToHex :: ByteStringFromHex -> Text
+byteStringFromHexToHex = decodeUtf8 . BS16.encode . coerce
+
+instance Show ByteStringFromHex where
+  showsPrec d bs =
+    showParen (d > 10) $
+      showString "ByteStringFromHex "
+        . showsPrec 11 (byteStringFromHexToHex bs)
+
+instance FromJSON ByteStringFromHex where
+  parseJSON = withText "ByteStringFromHex" $ \t ->
+    either (fail . show) (pure . ByteStringFromHex) $ BS16.decode (encodeUtf8 t)
+
+instance ToJSON ByteStringFromHex where
+  toJSON = Aeson.String . byteStringFromHexToHex
+
+instance Swagger.ToSchema ByteStringFromHex where
+  declareNamedSchema _ =
+    pure $
+      Swagger.named "ByteStringFromHex" $
+        mempty & Swagger.type_
+          ?~ Swagger.SwaggerString & Swagger.format
+          ?~ "hex"
+            & Swagger.description
+          ?~ "Bytes encoded in hex."
+
 -- | ZK proof bytes, assuming hex encoding for relevant bytes.
 data ZKProofBytes = ZKProofBytes
-  { cmA_bytes_hex :: !Text
-  , cmB_bytes_hex :: !Text
-  , cmC_bytes_hex :: !Text
-  , cmF_bytes_hex :: !Text
-  , cmH1_bytes_hex :: !Text
-  , cmH2_bytes_hex :: !Text
-  , cmZ1_bytes_hex :: !Text
-  , cmZ2_bytes_hex :: !Text
-  , cmQlow_bytes_hex :: !Text
-  , cmQmid_bytes_hex :: !Text
-  , cmQhigh_bytes_hex :: !Text
-  , proof1_bytes_hex :: !Text
-  , proof2_bytes_hex :: !Text
+  { cmA_bytes :: !ByteStringFromHex
+  , cmB_bytes :: !ByteStringFromHex
+  , cmC_bytes :: !ByteStringFromHex
+  , cmF_bytes :: !ByteStringFromHex
+  , cmH1_bytes :: !ByteStringFromHex
+  , cmH2_bytes :: !ByteStringFromHex
+  , cmZ1_bytes :: !ByteStringFromHex
+  , cmZ2_bytes :: !ByteStringFromHex
+  , cmQlow_bytes :: !ByteStringFromHex
+  , cmQmid_bytes :: !ByteStringFromHex
+  , cmQhigh_bytes :: !ByteStringFromHex
+  , proof1_bytes :: !ByteStringFromHex
+  , proof2_bytes :: !ByteStringFromHex
   , a_xi_int :: !Integer
   , b_xi_int :: !Integer
   , c_xi_int :: !Integer
@@ -197,51 +234,36 @@ instance Swagger.ToSchema ZKProofBytes where
     Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions
       & addSwaggerDescription "Proof bytes where bytes are represented in hexadecimal encoding."
 
-zkProofToPlutus :: ZKProofBytes -> Either String ProofBytes
-zkProofToPlutus ZKProofBytes{..} = do
-  cmA <- hexToBytes cmA_bytes_hex
-  cmB <- hexToBytes cmB_bytes_hex
-  cmC <- hexToBytes cmC_bytes_hex
-  cmF <- hexToBytes cmF_bytes_hex
-  cmH1 <- hexToBytes cmH1_bytes_hex
-  cmH2 <- hexToBytes cmH2_bytes_hex
-  cmZ1 <- hexToBytes cmZ1_bytes_hex
-  cmZ2 <- hexToBytes cmZ2_bytes_hex
-  cmQlow <- hexToBytes cmQlow_bytes_hex
-  cmQmid <- hexToBytes cmQmid_bytes_hex
-  cmQhigh <- hexToBytes cmQhigh_bytes_hex
-  proof1 <- hexToBytes proof1_bytes_hex
-  proof2 <- hexToBytes proof2_bytes_hex
-
-  pure $
-    ProofBytes
-      { cmA_bytes = cmA
-      , cmB_bytes = cmB
-      , cmC_bytes = cmC
-      , cmF_bytes = cmF
-      , cmH1_bytes = cmH1
-      , cmH2_bytes = cmH2
-      , cmZ1_bytes = cmZ1
-      , cmZ2_bytes = cmZ2
-      , cmQlow_bytes = cmQlow
-      , cmQmid_bytes = cmQmid
-      , cmQhigh_bytes = cmQhigh
-      , proof1_bytes = proof1
-      , proof2_bytes = proof2
-      , a_xi_int = a_xi_int
-      , b_xi_int = b_xi_int
-      , c_xi_int = c_xi_int
-      , s1_xi_int = s1_xi_int
-      , s2_xi_int = s2_xi_int
-      , f_xi_int = f_xi_int
-      , t_xi_int = t_xi_int
-      , t_xi'_int = t_xi'_int
-      , z1_xi'_int = z1_xi'_int
-      , z2_xi'_int = z2_xi'_int
-      , h1_xi'_int = h1_xi'_int
-      , h2_xi_int = h2_xi_int
-      , l1_xi = coerce l1_xi
-      }
+proofToPlutus :: ZKProofBytes -> ProofBytes
+proofToPlutus ZKProofBytes{..} =
+  ProofBytes
+    { cmA_bytes = bsFromHexToPlutus cmA_bytes
+    , cmB_bytes = bsFromHexToPlutus cmB_bytes
+    , cmC_bytes = bsFromHexToPlutus cmC_bytes
+    , cmF_bytes = bsFromHexToPlutus cmF_bytes
+    , cmH1_bytes = bsFromHexToPlutus cmH1_bytes
+    , cmH2_bytes = bsFromHexToPlutus cmH2_bytes
+    , cmZ1_bytes = bsFromHexToPlutus cmZ1_bytes
+    , cmZ2_bytes = bsFromHexToPlutus cmZ2_bytes
+    , cmQlow_bytes = bsFromHexToPlutus cmQlow_bytes
+    , cmQmid_bytes = bsFromHexToPlutus cmQmid_bytes
+    , cmQhigh_bytes = bsFromHexToPlutus cmQhigh_bytes
+    , proof1_bytes = bsFromHexToPlutus proof1_bytes
+    , proof2_bytes = bsFromHexToPlutus proof2_bytes
+    , a_xi_int = a_xi_int
+    , b_xi_int = b_xi_int
+    , c_xi_int = c_xi_int
+    , s1_xi_int = s1_xi_int
+    , s2_xi_int = s2_xi_int
+    , f_xi_int = f_xi_int
+    , t_xi_int = t_xi_int
+    , t_xi'_int = t_xi'_int
+    , z1_xi'_int = z1_xi'_int
+    , z2_xi'_int = z2_xi'_int
+    , h1_xi'_int = h1_xi'_int
+    , h2_xi_int = h2_xi_int
+    , l1_xi = coerce l1_xi
+    }
  where
-  hexToBytes :: Text -> Either String PlutusTx.BuiltinByteString
-  hexToBytes t = BS16.decode (encodeUtf8 t) <&> PlutusTx.toBuiltin
+  bsFromHexToPlutus :: ByteStringFromHex -> PlutusTx.BuiltinByteString
+  bsFromHexToPlutus (ByteStringFromHex bs) = PlutusTx.toBuiltin bs

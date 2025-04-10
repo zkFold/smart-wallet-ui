@@ -1,6 +1,7 @@
 module ZkFold.Cardano.SmartWallet.Api (
   addressFromEmail,
   createWallet,
+  createWallet',
   sendFunds,
 ) where
 
@@ -16,6 +17,7 @@ import PlutusTx.Builtins qualified as PlutusTx
 import ZkFold.Cardano.SmartWallet.Types
 import ZkFold.Cardano.UPLC.Wallet.Types
 
+-- | Converts 'Text' to 'BuiltinByteString' assuming hex encoding for the associated bytestring.
 textToBuiltinByteString :: Text -> PlutusTx.BuiltinByteString
 textToBuiltinByteString = PlutusTx.toBuiltin >>> PlutusTx.encodeUtf8
 
@@ -72,7 +74,7 @@ createWallet' ZKCreateWalletInfo{..} ZKInitializedWalletScripts{..} = do
   let
     -- 'fromJust' is safe as key hashes are <= 32 bytes (28 bytes actually).
     tn = zkcwiPaymentKeyHash & keyHashToRawBytes & tokenNameFromBS & fromJust
-    red = Web2Auth jwtParts zkcwiProofBytes (tokenNameToPlutus tn)
+    red = Web2Auth jwtParts (proofToPlutus zkcwiProofBytes) (tokenNameToPlutus tn)
   pure $
     mustMint
       (GYBuildPlutusScript $ GYBuildPlutusScriptInlined zkiwsWeb2Auth)
