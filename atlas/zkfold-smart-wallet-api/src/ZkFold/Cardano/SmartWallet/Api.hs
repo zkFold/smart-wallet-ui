@@ -5,14 +5,13 @@ module ZkFold.Cardano.SmartWallet.Api (
   sendFunds,
 ) where
 
-import Control.Monad ((>=>))
 import Control.Monad.Reader (MonadReader (..))
+import Data.Foldable (find)
 import Data.Maybe (fromJust)
 import Data.Text qualified as Text
-import GeniusYield.Imports (Text, (&), (<&>), (>>>))
+import GeniusYield.Imports (Text, (&), (>>>))
 import GeniusYield.TxBuilder
 import GeniusYield.Types
-import PlutusTx qualified
 import PlutusTx.Builtins qualified as PlutusTx
 import ZkFold.Cardano.SmartWallet.Types
 import ZkFold.Cardano.UPLC.Wallet.Types
@@ -59,9 +58,17 @@ initializeWalletScripts email = do
 
 addressFromEmail :: (ZKWalletQueryMonad m) => Email -> m (ZKInitializedWalletScripts, GYAddress)
 addressFromEmail email = do
-  nid <- networkId
   zkiws@ZKInitializedWalletScripts{zkiwsWallet} <- initializeWalletScripts email
-  pure $ (zkiws, addressFromValidatorHash nid (scriptHash zkiwsWallet))
+  walletAddr <- addressFromScriptM zkiwsWallet
+  pure $ (zkiws, walletAddr)
+
+addressFromScriptM :: (GYTxQueryMonad m) => GYScript 'PlutusV3 -> m GYAddress
+addressFromScriptM script = do
+  nid <- networkId
+  pure $ addressFromValidatorHash nid (scriptHash script)
+
+tokenNameFromKeyHash :: GYPaymentKeyHash -> GYTokenName
+tokenNameFromKeyHash = keyHashToRawBytes >>> tokenNameFromBS >>> fromJust -- 'fromJust' is safe as key hashes are <= 32 bytes (28 bytes actually).
 
 createWallet :: (ZKWalletQueryMonad m) => ZKCreateWalletInfo -> m (GYTxSkeleton 'PlutusV3)
 createWallet zkcwi@ZKCreateWalletInfo{..} = do
@@ -71,9 +78,9 @@ createWallet zkcwi@ZKCreateWalletInfo{..} = do
 createWallet' :: (GYTxQueryMonad m) => ZKCreateWalletInfo -> ZKInitializedWalletScripts -> m (GYTxSkeleton 'PlutusV3)
 createWallet' ZKCreateWalletInfo{..} ZKInitializedWalletScripts{..} = do
   jwtParts <- jwtPartsFromJWT zkcwiEmail zkcwiJWT
+  zkWalletAddr <- addressFromScriptM zkiwsWallet
   let
-    -- 'fromJust' is safe as key hashes are <= 32 bytes (28 bytes actually).
-    tn = zkcwiPaymentKeyHash & keyHashToRawBytes & tokenNameFromBS & fromJust
+    tn = tokenNameFromKeyHash zkcwiPaymentKeyHash
     red = Web2Auth jwtParts (proofToPlutus zkcwiProofBytes) (tokenNameToPlutus tn)
   pure $
     mustMint
@@ -81,29 +88,55 @@ createWallet' ZKCreateWalletInfo{..} ZKInitializedWalletScripts{..} = do
       (redeemerFromPlutusData red)
       tn
       1
+      -- Not strictly required, but we prefer for token to be at zk wallet's address.
+      <> mustHaveOutput (mkGYTxOutNoDatum zkWalletAddr (valueSingleton (GYToken (mintingPolicyId zkiwsWeb2Auth) tn) 1))
 
 -- | Send funds from a zk-wallet to a given address.
-sendFunds :: (ZKWalletQueryMonad m) => Email -> GYAddress -> GYValue -> m (GYTxSkeleton 'PlutusV3)
-sendFunds email sendAddr sendVal = undefined -- validatorSetupFromEmail email >>= \validatorSetup -> sendFunds' validatorSetup sendAddr sendVal
-
--- sendFunds' :: (ZKWalletQueryMonad m) => ValidatorSetup -> GYAddress -> GYValue -> m (GYTxSkeleton 'PlutusV3)
--- sendFunds' (sb, ws) sendAddr sendVal = do
---   nid <- networkId
---   zkwbi <- ask
---   let stakeAddr = stakeAddressFromCredential nid (GYCredentialByScript $ scriptHash $ zkwbiSmartWalletValidator zkwbi sb ws)
---   let mockStakeAddr = stakeAddressFromCredential nid (GYCredentialByScript $ scriptHash $ zkwbiMockStakeValidator zkwbi)
---   -- TODO: Perhaps stake address information is not required if we are sure that withdrawal amount would always be zero.
---   si <-
---     stakeAddressInfo stakeAddr >>= \case
---       Just si -> pure si
---       Nothing -> throwAppError $ ZKWEStakeAddressInfoNotFound stakeAddr
---   pure $
---     mustHaveOutput (mkGYTxOutNoDatum sendAddr sendVal)
---       -- TODO: To make use of reference scripts?
---       <> mustHaveWithdrawal
---         ( GYTxWdrl
---             { gyTxWdrlStakeAddress = mockStakeAddr
---             , gyTxWdrlAmount = gyStakeAddressInfoAvailableRewards si
---             , gyTxWdrlWitness = GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined (zkwbiMockStakeValidator zkwbi)) dummyRedeemer
---             }
---         )
+sendFunds :: (ZKWalletQueryMonad m, Foldable f) => ZKSpendWalletInfo -> f BuildOut -> m (GYTxSkeleton 'PlutusV3)
+sendFunds ZKSpendWalletInfo{..} outs = do
+  -- Find a UTxO at wallet's address that has a proof validity token. Require that token to be in output.
+  (ZKInitializedWalletScripts{..}, walletAddress) <- addressFromEmail zkswiEmail
+  walletOuts <- utxosAtAddress walletAddress Nothing
+  let tn = tokenNameFromKeyHash zkswiPaymentKeyHash
+      ac = GYToken (mintingPolicyId zkiwsWeb2Auth) tn
+  authOut <- case find (\out -> valueAssetPresent (utxoValue out) ac) (utxosToList walletOuts) of
+    Nothing -> throwAppError (ZKWENoAuthToken zkswiEmail walletAddress tn)
+    Just out -> pure out
+  nid <- networkId
+  let stakeAddr = stakeAddressFromCredential nid (GYCredentialByScript $ scriptHash zkiwsCheckSig)
+  si <-
+    stakeAddressInfo stakeAddr >>= \case
+      Just si -> pure si
+      Nothing -> throwAppError $ ZKWEStakeAddressInfoNotFound stakeAddr
+  pure $
+    mustHaveInput (GYTxIn{gyTxInTxOutRef = utxoRef authOut, gyTxInWitness = GYTxInWitnessScript (GYBuildPlutusScriptInlined zkiwsWallet) Nothing unitRedeemer})
+      <>
+      -- Marking the first output with token for easy redeemer computation of withdrawal script.
+      mustHaveOutput (mkGYTxOutNoDatum (utxoAddress authOut) (valueSingleton ac 1))
+      <> foldMap
+        ( \BuildOut{..} ->
+            mustHaveOutput $
+              GYTxOut
+                { gyTxOutValue = boValue
+                , gyTxOutRefS = Nothing
+                , gyTxOutDatum =
+                    fmap
+                      ( \(dat, toInline) ->
+                          ( dat
+                          , if toInline then GYTxOutUseInlineDatum else GYTxOutDontUseInlineDatum
+                          )
+                      )
+                      boDatum
+                , gyTxOutAddress = boAddress
+                }
+        )
+        outs
+      <> mustBeSignedBy zkswiPaymentKeyHash
+      -- FIXME: Discuss if we can match signature by giving token name rather than it's index. Or adapt Atlas to allow list instead of set...
+      <> mustHaveWithdrawal
+        ( GYTxWdrl
+            { gyTxWdrlStakeAddress = stakeAddr
+            , gyTxWdrlAmount = gyStakeAddressInfoAvailableRewards si
+            , gyTxWdrlWitness = GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined zkiwsCheckSig) (redeemerFromPlutusData $ Signature 0 0)
+            }
+        )

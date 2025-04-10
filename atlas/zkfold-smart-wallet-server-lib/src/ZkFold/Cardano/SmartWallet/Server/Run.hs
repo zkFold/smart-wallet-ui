@@ -28,7 +28,6 @@ import ZkFold.Cardano.SmartWallet.Server.Ctx
 import ZkFold.Cardano.SmartWallet.Server.ErrorMiddleware
 import ZkFold.Cardano.SmartWallet.Server.RequestLoggerMiddleware (gcpReqLogger)
 import ZkFold.Cardano.SmartWallet.Server.Utils
-import ZkFold.Cardano.SmartWallet.Types (ZKWalletBuildInfo (..))
 
 runServer :: Maybe FilePath -> IO ()
 runServer mfp = do
@@ -38,6 +37,9 @@ runServer mfp = do
       >>= \case
         Nothing -> throwIO $ userError "Collateral signing key not found."
         Just k -> pure k
+  wbi <- case zkWalletBuildInfo of
+    Left e -> throwIO $ userError e
+    Right s -> pure s
   let nid = scNetworkId serverConfig
       coreCfg = coreConfigFromServerConfig serverConfig
   withCfgProviders coreCfg "server" $ \providers -> do
@@ -72,7 +74,7 @@ runServer mfp = do
         Ctx
           { ctxProviders = providers
           , ctxNetworkId = nid
-          , ctxSmartWalletBuildInfo = ZKWalletBuildInfo smartWalletValidator mockSmartWalletStakeValidator
+          , ctxSmartWalletBuildInfo = wbi
           , ctxCollateral = scCollateral serverConfig
           , ctxCollateralKey = collateralKey
           }

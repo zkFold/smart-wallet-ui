@@ -16,6 +16,8 @@ module ZkFold.Cardano.SmartWallet.Types (
   ZKF (..),
   ZKProofBytes (..),
   proofToPlutus,
+  BuildOut (..),
+  ZKSpendWalletInfo (..),
 ) where
 
 import Control.Exception (Exception)
@@ -30,17 +32,19 @@ import Data.Swagger.Internal.Schema qualified as Swagger
 import Data.Text (Text)
 import Data.Text qualified as Text
 import Data.Text.Encoding (decodeUtf8, encodeUtf8)
-import GHC.Generics (Generic)
+import Deriving.Aeson
+import GHC.TypeLits (Symbol)
 import GeniusYield.HTTP.Errors (GYApiError (..), IsGYApiError (..))
-import GeniusYield.Imports (FromJSON (..), ToJSON (..), coerce, (&), (<&>))
+import GeniusYield.Imports (FromJSON (..), ToJSON (..), coerce, (&))
 import GeniusYield.Swagger.Utils
 import GeniusYield.TxBuilder (GYTxQueryMonad)
-import GeniusYield.Types (GYMintingPolicyId, GYPaymentKeyHash, GYPubKeyHash, GYScript, GYScriptHash, GYStakeAddress, PlutusVersion (..))
+import GeniusYield.Types
 import GeniusYield.Types.OpenApi ()
 import Network.HTTP.Types (status400, status500)
 import PlutusTx.Builtins qualified as PlutusTx
 import ZkFold.Cardano.OnChain.BLS12_381.F (F (..))
 import ZkFold.Cardano.OnChain.Plonkup.Data (ProofBytes (..))
+import ZkFold.Cardano.SmartWallet.Orphans ()
 import ZkFold.Cardano.UPLC.Wallet.Types
 
 -- | Information required to build transactions for a zk-wallet.
@@ -104,6 +108,8 @@ data ZKWalletException
     ZKWEEmailError !ZKEmailError
   | -- | Errors related to invalid JWT.
     ZKWEJWTError !ZKJWTError
+  | -- | Wallet does not have authentication token.
+    ZKWENoAuthToken !Email !GYAddress !GYTokenName
   deriving stock (Show)
   deriving anyclass (Exception)
 
@@ -130,6 +136,12 @@ instance IsGYApiError ZKWalletException where
           , gaeHttpStatus = status400
           , gaeMsg = Text.pack $ "Provided JWT, " <> show jwt <> ", does not contain email, " <> show email <> "."
           }
+  toApiError (ZKWENoAuthToken email walletAddr tokenName) =
+    GYApiError
+      { gaeErrorCode = "AUTH_TOKEN_NOT_FOUND"
+      , gaeHttpStatus = status400
+      , gaeMsg = Text.pack $ "Could not find authentication token, " <> show tokenName <> " for user's wallet, " <> show walletAddr <> " associated with email, " <> show email <> "."
+      }
 
 -- | Email address.
 newtype Email = Email Text
@@ -267,3 +279,27 @@ proofToPlutus ZKProofBytes{..} =
  where
   bsFromHexToPlutus :: ByteStringFromHex -> PlutusTx.BuiltinByteString
   bsFromHexToPlutus (ByteStringFromHex bs) = PlutusTx.toBuiltin bs
+
+type BuildOutPrefix :: Symbol
+type BuildOutPrefix = "bo"
+
+data BuildOut = BuildOut
+  { boAddress :: GYAddress
+  , boValue :: GYValue
+  , boDatum :: Maybe (GYDatum, Bool)
+  }
+  deriving stock (Show, Generic)
+  deriving
+    (FromJSON, ToJSON)
+    via CustomJSON '[FieldLabelModifier '[StripPrefix BuildOutPrefix, CamelToSnake]] BuildOut
+
+instance Swagger.ToSchema BuildOut where
+  declareNamedSchema =
+    Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @BuildOutPrefix}
+      & addSwaggerDescription "Output to be created. Note that our balancer may add additional lovelace to satisfy minimum lovelace requirement for this output."
+
+-- | Information required to spend funds from user's wallet.
+data ZKSpendWalletInfo = ZKSpendWalletInfo
+  { zkswiEmail :: !Email
+  , zkswiPaymentKeyHash :: !GYPaymentKeyHash
+  }

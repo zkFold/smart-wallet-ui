@@ -41,6 +41,7 @@ library
   exposed-modules:
     ZkFold.Cardano.SmartWallet.Api
     ZkFold.Cardano.SmartWallet.Constants
+    ZkFold.Cardano.SmartWallet.Orphans
     ZkFold.Cardano.SmartWallet.Types
 
   -- other-modules:
@@ -53,6 +54,7 @@ library
     base16-bytestring,
     bytestring,
     containers,
+    deriving-aeson,
     file-embed,
     http-types,
     lens,

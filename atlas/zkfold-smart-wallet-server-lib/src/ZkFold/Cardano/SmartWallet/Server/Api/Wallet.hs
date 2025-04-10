@@ -3,18 +3,21 @@ module ZkFold.Cardano.SmartWallet.Server.Api.Wallet (
   handleWalletApi,
 ) where
 
+import Data.Default (Default (..))
 import Data.Maybe (fromMaybe)
 import Data.Swagger qualified as Swagger
 import Deriving.Aeson
 import Fmt
 import GHC.TypeLits (Symbol)
 import GeniusYield.Imports ((&))
+import GeniusYield.Transaction.Common
 import GeniusYield.Types
 import GeniusYield.Types.OpenApi ()
 import Servant
 import ZkFold.Cardano.SmartWallet.Api
 import ZkFold.Cardano.SmartWallet.Server.Ctx
 import ZkFold.Cardano.SmartWallet.Server.Orphans ()
+import ZkFold.Cardano.SmartWallet.Server.Tx (handleTxSignCollateral)
 import ZkFold.Cardano.SmartWallet.Server.Utils
 import ZkFold.Cardano.SmartWallet.Types
 
@@ -94,7 +97,8 @@ type SendFundsPrefix = "sfp"
 data SendFundsParameters = SendFundsParameters
   { sfpValue :: !GYValue
   , sfpEmail :: !Email
-  , sfpSendAddress :: !GYAddressBech32
+  , sfpPaymentKeyHash :: !GYPaymentKeyHash
+  , sfpOuts :: ![BuildOut]
   }
   deriving stock (Show, Generic)
   deriving
@@ -183,53 +187,27 @@ handleCreateWallet ctx cwp@CreateWalletParameters{..} = do
       }
 
 handleSendFunds :: Ctx -> SendFundsParameters -> IO SendFundsResponse
-handleSendFunds ctx@Ctx{..} sfp@SendFundsParameters{..} = undefined
-
--- logInfo ctx $ "Send funds requested. Parameters: " +|| sfp ||+ ""
--- validatorSetup <- runQuery ctx $ validatorSetupFromEmail sfpEmail
--- senderWalletAddress <- runQuery ctx $ addressFromValidatorSetup validatorSetup
--- logInfo ctx $ "Sender wallet address: " +|| senderWalletAddress ||+ ""
--- let ec =
---       GYTxExtraConfiguration
---         { gytxecUtxoInputMapper = \GYUTxO{..} ->
---             GYTxInDetailed
---               { gyTxInDet = GYTxIn utxoRef undefined -- FIXME: Give script witness.
---               , gyTxInDetAddress = undefined -- FIXME: Change address to fake script that allows forged proofs.
---               , gyTxInDetValue = utxoValue
---               , gyTxInDetDatum = utxoOutDatum
---               , gyTxInDetScriptRef = utxoRefScript
---               }
---         , -- FIXME: Provide pre & post content mappers.
---           gytxecPreBodyContentMapper = \body ->
---             -- When balancing, @makeTransactionBodyAutoBalance@ function of @cardano-api@ that is used internally inside Atlas, adds following output before computing execution units, thus we need to do same here to make sure that script execution doesn't fail.
---             let bodyWithExtraOut =
---                   body
---                     { Api.txOuts = Api.txOuts body <> [txOutToApi (GYTxOut senderWalletAddress (valueFromLovelace $ 2 ^ (64 :: Integer) - 1) Nothing Nothing)]
---                     }
---              in body
---                   { Api.txWithdrawals =
---                       Api.TxWithdrawals Api.ShelleyBasedEraConway $
---                         [ txWdrlToApi $
---                             GYTxWdrl
---                               { gyTxWdrlStakeAddress = undefined
---                               , gyTxWdrlAmount = undefined
---                               , gyTxWdrlWitness = GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined @'PlutusV3 @'PlutusV3 undefined) undefined
---                               -- compute proof using inputs & outputs of @bodyWithExtraOut@.
---                               }
---                         ]
---                   }
---         , gytxecPostBodyContentMapper = \body ->
---             -- Correct address of inputs.
---             -- Correct withdrawal address.
---             undefined
---         }
--- txBody <- runSkeletonWithExtraConfigurationI ec ctx [senderWalletAddress] senderWalletAddress (Just ctxCollateral) $ do
---   sendFunds' validatorSetup (addressFromBech32 sfpSendAddress) sfpValue
--- signedTx <- handleTxSignCollateral ctx $ unsignedTx txBody
--- tid <- handleTxSubmit ctx signedTx
--- pure $
---   SendFundsResponse
---     { sfrTransaction = signedTx
---     , sfrTransactionId = tid
---     , sfrTransactionFee = fromIntegral $ txBodyFee txBody
---     }
+handleSendFunds ctx@Ctx{..} sfp@SendFundsParameters{..} = do
+  logInfo ctx $ "Send funds requested. Parameters: " +|| sfp ||+ ""
+  (zkiws, walletAddress) <- runQuery ctx $ addressFromEmail sfpEmail
+  logInfo ctx $ "Wallet address: " +|| addressToBech32 walletAddress ||+ ""
+  let ec =
+        def
+          { gytxecUtxoInputMapper = \GYUTxO{..} ->
+              GYTxInDetailed
+                { gyTxInDet = GYTxIn utxoRef (GYTxInWitnessScript (GYBuildPlutusScriptInlined $ zkiwsWallet zkiws) Nothing unitRedeemer)
+                , gyTxInDetAddress = utxoAddress
+                , gyTxInDetValue = utxoValue
+                , gyTxInDetDatum = utxoOutDatum
+                , gyTxInDetScriptRef = utxoRefScript
+                }
+          }
+  txBody <- runSkeletonWithExtraConfigurationI ec ctx [walletAddress] walletAddress (Just ctxCollateral) $ do
+    sendFunds (ZKSpendWalletInfo{zkswiPaymentKeyHash = sfpPaymentKeyHash, zkswiEmail = sfpEmail}) sfpOuts
+  signedTx <- handleTxSignCollateral ctx $ unsignedTx txBody
+  pure $
+    SendFundsResponse
+      { sfrTransaction = signedTx
+      , sfrTransactionId = txBodyTxId txBody
+      , sfrTransactionFee = fromIntegral $ txBodyFee txBody
+      }
