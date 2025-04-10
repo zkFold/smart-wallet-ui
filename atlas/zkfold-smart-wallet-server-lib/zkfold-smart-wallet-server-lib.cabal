@@ -97,6 +97,8 @@ library
     wai-extra,
     warp,
     yaml,
+    zkfold-cardano,
+    zkfold-cardano-scripts-common,
     zkfold-smart-wallet-api,
 
   hs-source-dirs: src
