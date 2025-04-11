@@ -13,27 +13,14 @@ import ZkFold.Cardano.SmartWallet.Server.Ctx
 import ZkFold.Cardano.SmartWallet.Server.Utils
 
 type TxAPI =
-  "sign-collateral"
-    :> Summary "Sign a transaction"
-    :> Description "Signs the given transaction using collateral key configured in server."
+  "submit"
+    :> Summary "Submit a transaction"
+    :> Description "Submits the given transaction to the network."
     :> ReqBody '[JSON] GYTx
-    :> Post '[JSON] GYTx
-    :<|> "sign-collateral-and-submit"
-      :> Summary "Sign and submit a transaction"
-      :> Description "Signs the given transaction using collateral key configured in server and submits it to the network."
-      :> ReqBody '[JSON] GYTx
-      :> Post '[JSON] GYTxId
-    :<|> "submit"
-      :> Summary "Submit a transaction"
-      :> Description "Submits the given transaction to the network."
-      :> ReqBody '[JSON] GYTx
-      :> Post '[JSON] GYTxId
+    :> Post '[JSON] GYTxId
 
 handleTxApi :: Ctx -> ServerT TxAPI IO
-handleTxApi ctx =
-  handleTxSignCollateral ctx
-    :<|> handleTxSignCollateralAndSubmit ctx
-    :<|> handleTxSubmit ctx
+handleTxApi = handleTxSubmit
 
 handleTxSignCollateral :: Ctx -> GYTx -> IO GYTx
 handleTxSignCollateral ctx@Ctx{..} tx = do

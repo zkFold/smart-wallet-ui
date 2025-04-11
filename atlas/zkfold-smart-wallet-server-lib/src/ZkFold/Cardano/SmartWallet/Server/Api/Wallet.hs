@@ -58,11 +58,17 @@ type CreateWalletPrefix = "cwp"
 
 data CreateWalletParameters = CreateWalletParameters
   { cwpEmail :: !Email
+  -- ^ User's email.
   , cwpJWT :: !JWT
+  -- ^ JSON web token.
   , cwpPaymentKeyHash :: !GYPaymentKeyHash
+  -- ^ Associated payment key hash.
   , cwpProofBytes :: !ZKProofBytes
+  -- ^ Computed proof bytes.
   , cwpFundAddress :: !(Maybe GYAddressBech32)
+  -- ^ Address which will fund this transaction. If not provided, we assume address of user's zk wallet.
   , cwpCollateral :: !(Maybe GYTxOutRef)
+  -- ^ Optional collateral to use. If not provided, we try picking suitable UTxO for collateral from fund address.
   }
   deriving stock (Show, Generic)
   deriving
