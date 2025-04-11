@@ -37,7 +37,7 @@ runServer mfp = do
       >>= \case
         Nothing -> throwIO $ userError "Collateral signing key not found."
         Just k -> pure k
-  wbi <- case zkWalletBuildInfo of
+  wbi <- case ezkWalletBuildInfo of
     Left e -> throwIO $ userError e
     Right s -> pure s
   let nid = scNetworkId serverConfig

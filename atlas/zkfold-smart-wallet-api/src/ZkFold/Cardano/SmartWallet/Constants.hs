@@ -1,4 +1,5 @@
 module ZkFold.Cardano.SmartWallet.Constants (
+  ezkWalletBuildInfo,
   zkWalletBuildInfo,
 )
 where
@@ -37,8 +38,8 @@ selectValScript vals valTitle = do
     Just cc -> Right cc
   encodeUtf8 (compiledValidatorCode valCC) & BS16.decode <&> scriptFromSerialisedScript . SBS.toShort
 
-zkWalletBuildInfo :: Either String ZKWalletBuildInfo
-zkWalletBuildInfo = do
+ezkWalletBuildInfo :: Either String ZKWalletBuildInfo
+ezkWalletBuildInfo = do
   bp <- Aeson.eitherDecodeStrict smartWalletBPFile
   let vals = contractValidators bp
   web2Auth <- selectValScript @PlutusV3 vals "web2Auth"
@@ -50,3 +51,6 @@ zkWalletBuildInfo = do
       , zkwbiWalletValidator = applyParam wallet . scriptHashToPlutus
       , zkwbiCheckSigRewardValidator = applyParam checkSig . mintingPolicyIdToCurrencySymbol
       }
+
+zkWalletBuildInfo :: ZKWalletBuildInfo
+zkWalletBuildInfo = either error id ezkWalletBuildInfo

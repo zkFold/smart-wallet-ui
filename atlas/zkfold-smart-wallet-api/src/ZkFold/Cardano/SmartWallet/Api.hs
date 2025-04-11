@@ -4,13 +4,16 @@ module ZkFold.Cardano.SmartWallet.Api (
   createWallet',
   sendFunds,
   sendFunds',
+  extraBuildConfiguration,
 ) where
 
 import Control.Monad.Reader (MonadReader (..))
+import Data.Default (Default (..))
 import Data.Foldable (find)
 import Data.Maybe (fromJust)
 import Data.Text qualified as Text
 import GeniusYield.Imports (Text, (&), (>>>))
+import GeniusYield.Transaction.Common
 import GeniusYield.TxBuilder
 import GeniusYield.Types
 import PlutusTx.Builtins qualified as PlutusTx
@@ -155,3 +158,17 @@ sendFunds' ZKInitializedWalletScripts{..} walletAddress ZKSpendWalletInfo{..} ou
             , gyTxWdrlWitness = GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined zkiwsCheckSig) (redeemerFromPlutusData $ Signature 0 0)
             }
         )
+
+-- | Extra build configuration to use when building transactions for zk wallet.
+extraBuildConfiguration :: ZKInitializedWalletScripts -> GYTxExtraConfiguration 'PlutusV3
+extraBuildConfiguration zkiws =
+  def
+    { gytxecUtxoInputMapper = \GYUTxO{..} ->
+        GYTxInDetailed
+          { gyTxInDet = GYTxIn utxoRef (GYTxInWitnessScript (GYBuildPlutusScriptInlined $ zkiwsWallet zkiws) Nothing unitRedeemer)
+          , gyTxInDetAddress = utxoAddress
+          , gyTxInDetValue = utxoValue
+          , gyTxInDetDatum = utxoOutDatum
+          , gyTxInDetScriptRef = utxoRefScript
+          }
+    }

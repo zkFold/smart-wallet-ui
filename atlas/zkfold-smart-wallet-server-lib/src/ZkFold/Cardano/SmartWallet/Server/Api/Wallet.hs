@@ -1,18 +1,21 @@
 module ZkFold.Cardano.SmartWallet.Server.Api.Wallet (
+  ZKWalletBuildException,
   WalletAPI,
   handleWalletApi,
 ) where
 
-import Data.Default (Default (..))
-import Data.Maybe (fromMaybe)
+import Control.Exception (Exception, throwIO)
+import Control.Monad (when)
+import Data.Maybe (fromMaybe, isNothing)
 import Data.Swagger qualified as Swagger
 import Deriving.Aeson
 import Fmt
 import GHC.TypeLits (Symbol)
+import GeniusYield.HTTP.Errors
 import GeniusYield.Imports ((&))
-import GeniusYield.Transaction.Common
 import GeniusYield.Types
 import GeniusYield.Types.OpenApi ()
+import Network.HTTP.Types (status400)
 import Servant
 import ZkFold.Cardano.SmartWallet.Api
 import ZkFold.Cardano.SmartWallet.Server.Ctx
@@ -134,6 +137,20 @@ instance Swagger.ToSchema SendFundsResponse where
     Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @SendFundsResponsePrefix}
       & addSwaggerDescription "Send funds response."
 
+data ZKWalletBuildException
+  = -- | We can't take UTxO as collateral from zk smart wallet as collateral UTxO can't themselves be locked by plutus script.
+    ZKWBENoCollateralAvailable
+  deriving stock (Show)
+  deriving anyclass (Exception)
+
+instance IsGYApiError ZKWalletBuildException where
+  toApiError ZKWBENoCollateralAvailable =
+    GYApiError
+      { gaeErrorCode = "COLLATERAL_CANT_BE_CHOSEN"
+      , gaeHttpStatus = status400
+      , gaeMsg = "No collateral output was provided. Note that we can't take UTxO from zk smart wallet as collateral since collateral UTxOs can't themselves be locked by plutus script."
+      }
+
 type WalletAPI =
   Summary "Obtain address."
     :> Description "Obtain address of the wallet initialized with the given mail."
@@ -174,6 +191,7 @@ handleCreateWallet ctx cwp@CreateWalletParameters{..} = do
   let fundWallet = fromMaybe walletAddress cwpFundAddress
       fundWallet' = addressFromBech32 fundWallet
   logInfo ctx $ "Fund wallet address: " +|| fundWallet ||+ ""
+  when (isNothing cwpFundAddress && isNothing cwpCollateral) $ throwIO ZKWBENoCollateralAvailable
   body <-
     runSkeletonI ctx [fundWallet'] fundWallet' cwpCollateral $
       createWallet'
@@ -197,17 +215,7 @@ handleSendFunds ctx@Ctx{..} sfp@SendFundsParameters{..} = do
   logInfo ctx $ "Send funds requested. Parameters: " +|| sfp ||+ ""
   (zkiws, walletAddress) <- runQuery ctx $ addressFromEmail sfpEmail
   logInfo ctx $ "Wallet address: " +|| addressToBech32 walletAddress ||+ ""
-  let ec =
-        def
-          { gytxecUtxoInputMapper = \GYUTxO{..} ->
-              GYTxInDetailed
-                { gyTxInDet = GYTxIn utxoRef (GYTxInWitnessScript (GYBuildPlutusScriptInlined $ zkiwsWallet zkiws) Nothing unitRedeemer)
-                , gyTxInDetAddress = utxoAddress
-                , gyTxInDetValue = utxoValue
-                , gyTxInDetDatum = utxoOutDatum
-                , gyTxInDetScriptRef = utxoRefScript
-                }
-          }
+  let ec = extraBuildConfiguration zkiws
   txBody <- runSkeletonWithExtraConfigurationI ec ctx [walletAddress] walletAddress (Just ctxCollateral) $ do
     sendFunds' zkiws walletAddress (ZKSpendWalletInfo{zkswiPaymentKeyHash = sfpPaymentKeyHash, zkswiEmail = sfpEmail}) sfpOuts
   signedTx <- handleTxSignCollateral ctx $ unsignedTx txBody
