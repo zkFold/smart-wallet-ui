@@ -83,6 +83,7 @@ data ZKCreateWalletInfo = ZKCreateWalletInfo
   , zkcwiProofBytes :: !ZKProofBytes
   }
 
+-- | Fully applied plutus scripts associated with an email.
 data ZKInitializedWalletScripts = ZKInitializedWalletScripts
   { zkiwsWeb2Auth :: !(GYScript 'PlutusV3)
   , zkiwsWallet :: !(GYScript 'PlutusV3)
@@ -283,6 +284,7 @@ proofToPlutus ZKProofBytes{..} =
 type BuildOutPrefix :: Symbol
 type BuildOutPrefix = "bo"
 
+-- | An output to be created. Note that our balancer may add additional lovelace to satisfy minimum lovelace requirement for this output.
 data BuildOut = BuildOut
   { boAddress :: GYAddress
   , boValue :: GYValue

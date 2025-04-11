@@ -10,16 +10,17 @@ import Data.Foldable (find)
 import Data.Text (unpack)
 import GeniusYield.Imports (Text, encodeUtf8, (&), (<&>))
 import GeniusYield.Types
+import ZkFold.Cardano.OnChain.Plonkup.Data (SetupBytes)
 import ZkFold.Cardano.SmartWallet.Types (ZKWalletBuildInfo (..))
 import ZkFold.Cardano.UPLC.Wallet.CompiledScript
-import ZkFold.Cardano.OnChain.Plonkup.Data (SetupBytes)
 
--- FIXME:
+-- FIXME: Implement this.
 
 -- | Common 'SetupBytes' used across multiple zk-wallets.
 walletSetupBytes :: SetupBytes
 walletSetupBytes = undefined
 
+-- | Select a particular validator from blueprints file.
 selectValScript ::
   (SingPlutusVersionI v, Foldable f, Show (f ValidatorBlueprint)) =>
   -- | Validators in a blueprint file.

@@ -203,7 +203,7 @@ handleSendFunds ctx@Ctx{..} sfp@SendFundsParameters{..} = do
                 }
           }
   txBody <- runSkeletonWithExtraConfigurationI ec ctx [walletAddress] walletAddress (Just ctxCollateral) $ do
-    sendFunds (ZKSpendWalletInfo{zkswiPaymentKeyHash = sfpPaymentKeyHash, zkswiEmail = sfpEmail}) sfpOuts
+    sendFunds' zkiws walletAddress (ZKSpendWalletInfo{zkswiPaymentKeyHash = sfpPaymentKeyHash, zkswiEmail = sfpEmail}) sfpOuts
   signedTx <- handleTxSignCollateral ctx $ unsignedTx txBody
   pure $
     SendFundsResponse

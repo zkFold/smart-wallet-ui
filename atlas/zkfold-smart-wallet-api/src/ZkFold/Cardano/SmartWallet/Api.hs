@@ -3,6 +3,7 @@ module ZkFold.Cardano.SmartWallet.Api (
   createWallet,
   createWallet',
   sendFunds,
+  sendFunds',
 ) where
 
 import Control.Monad.Reader (MonadReader (..))
@@ -43,6 +44,7 @@ jwtPartsFromJWT email jwt = do
           , jwtSuffix = textToBuiltinByteString $ Text.drop (Text.length emailT) suffixWithMail
           }
 
+-- | Obtain fully applied plutus scripts associated with this email.
 initializeWalletScripts :: (ZKWalletQueryMonad m) => Email -> m ZKInitializedWalletScripts
 initializeWalletScripts email = do
   ZKWalletBuildInfo{..} <- ask
@@ -62,7 +64,7 @@ addressFromEmail email = do
   walletAddr <- addressFromScriptM zkiwsWallet
   pure $ (zkiws, walletAddr)
 
-addressFromScriptM :: (GYTxQueryMonad m) => GYScript 'PlutusV3 -> m GYAddress
+addressFromScriptM :: (GYTxQueryMonad m) => GYScript v -> m GYAddress
 addressFromScriptM script = do
   nid <- networkId
   pure $ addressFromValidatorHash nid (scriptHash script)
@@ -70,11 +72,13 @@ addressFromScriptM script = do
 tokenNameFromKeyHash :: GYPaymentKeyHash -> GYTokenName
 tokenNameFromKeyHash = keyHashToRawBytes >>> tokenNameFromBS >>> fromJust -- 'fromJust' is safe as key hashes are <= 32 bytes (28 bytes actually).
 
+-- | Initialize a zk-wallet.
 createWallet :: (ZKWalletQueryMonad m) => ZKCreateWalletInfo -> m (GYTxSkeleton 'PlutusV3)
 createWallet zkcwi@ZKCreateWalletInfo{..} = do
   zkiws <- initializeWalletScripts zkcwiEmail
   createWallet' zkcwi zkiws
 
+-- | Initialize a zk-wallet.
 createWallet' :: (GYTxQueryMonad m) => ZKCreateWalletInfo -> ZKInitializedWalletScripts -> m (GYTxSkeleton 'PlutusV3)
 createWallet' ZKCreateWalletInfo{..} ZKInitializedWalletScripts{..} = do
   jwtParts <- jwtPartsFromJWT zkcwiEmail zkcwiJWT
@@ -91,11 +95,23 @@ createWallet' ZKCreateWalletInfo{..} ZKInitializedWalletScripts{..} = do
       -- Not strictly required, but we prefer for token to be at zk wallet's address.
       <> mustHaveOutput (mkGYTxOutNoDatum zkWalletAddr (valueSingleton (GYToken (mintingPolicyId zkiwsWeb2Auth) tn) 1))
 
--- | Send funds from a zk-wallet to a given address.
+-- | Send funds from a zk-wallet.
 sendFunds :: (ZKWalletQueryMonad m, Foldable f) => ZKSpendWalletInfo -> f BuildOut -> m (GYTxSkeleton 'PlutusV3)
-sendFunds ZKSpendWalletInfo{..} outs = do
+sendFunds zkswi@ZKSpendWalletInfo{..} outs = do
+  (zkiws, walletAddress) <- addressFromEmail zkswiEmail
+  sendFunds' zkiws walletAddress zkswi outs
+
+-- | Send funds from a zk-wallet.
+sendFunds' ::
+  (GYTxQueryMonad m, Foldable f) =>
+  ZKInitializedWalletScripts ->
+  -- | Address of the zk wallet.
+  GYAddress ->
+  ZKSpendWalletInfo ->
+  f BuildOut ->
+  m (GYTxSkeleton 'PlutusV3)
+sendFunds' ZKInitializedWalletScripts{..} walletAddress ZKSpendWalletInfo{..} outs = do
   -- Find a UTxO at wallet's address that has a proof validity token. Require that token to be in output.
-  (ZKInitializedWalletScripts{..}, walletAddress) <- addressFromEmail zkswiEmail
   walletOuts <- utxosAtAddress walletAddress Nothing
   let tn = tokenNameFromKeyHash zkswiPaymentKeyHash
       ac = GYToken (mintingPolicyId zkiwsWeb2Auth) tn
@@ -132,7 +148,6 @@ sendFunds ZKSpendWalletInfo{..} outs = do
         )
         outs
       <> mustBeSignedBy zkswiPaymentKeyHash
-      -- FIXME: Discuss if we can match signature by giving token name rather than it's index. Or adapt Atlas to allow list instead of set...
       <> mustHaveWithdrawal
         ( GYTxWdrl
             { gyTxWdrlStakeAddress = stakeAddr
