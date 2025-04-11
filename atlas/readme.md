@@ -10,6 +10,7 @@ This repository houses off-chain code and server endpoints to interact with zk b
   - [zkFold Smart Wallet API Server](#zkfold-smart-wallet-api-server)
     - [Building locally from source using the Haskell Toolchain](#building-locally-from-source-using-the-haskell-toolchain)
     - [OpenApi documentation](#openapi-documentation)
+  - [Tests](#tests)
 
 ## Structure of repository
 
@@ -98,3 +99,12 @@ This repository houses off-chain code and server endpoints to interact with zk b
 ### OpenApi documentation
 
 Endpoints made available by server are specified [here](./web/openapi/api.yaml).
+
+## Tests
+
+To run for privnet tests:
+
+```
+cabal install --package-env=$(pwd) --overwrite-policy=always cardano-cli cardano-node
+cabal run zkfold-smart-contract-wallet-server-test -- -j1
+```
