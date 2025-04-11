@@ -47,7 +47,6 @@ library
   -- other-modules:
   -- other-extensions:
   build-depends:
-    -- TODO: Possible to get rid of `plutus-ledger-api` by defining higher types?
     aeson,
     atlas-cardano,
     base ^>=4.18.2.1,

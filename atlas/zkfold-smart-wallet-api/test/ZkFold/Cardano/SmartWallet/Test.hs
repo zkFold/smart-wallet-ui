@@ -66,5 +66,4 @@ smartWalletTests setup =
         info $ "send funds tx body: " <> show spendWalletBody
         tidSpend <- ctxRun ctx (ctxUserF ctx) $ submitTxBodyConfirmed spendWalletBody [GYSomeSigningKey newKey, GYSomeSigningKey (ctxUserF ctx & userPaymentSKey)]
         info $ "Submitted tx: " <> show tidSpend
-        undefined
     ]
