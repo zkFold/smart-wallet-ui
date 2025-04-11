@@ -1,5 +1,16 @@
 components:
   schemas:
+    AddWitAndSubmitParameters:
+      description: Add witness to a transaction, and submit it.
+      properties:
+        original_unsigned_tx:
+          $ref: '#/components/schemas/GYTx'
+        wallet_witness:
+          $ref: '#/components/schemas/GYTxWitness'
+      required:
+      - original_unsigned_tx
+      - wallet_witness
+      type: object
     BuildOut:
       description: Output to be created. Note that our balancer may add additional
         lovelace to satisfy minimum lovelace requirement for this output.
@@ -25,11 +36,9 @@ components:
       type: string
     CreateWalletParameters:
       description: Initialize zk smart wallet. If "fund_address" is not provided,
-        we use address of the wallet (which is to be initialized here). If "collateral"
-        is not provided, we use suitable collateral from "fund_address".
+        we use address of the wallet (which is to be initialized here). Collateral
+        UTxO configured inside server is used for this transaction.
       properties:
-        collateral:
-          $ref: '#/components/schemas/GYTxOutRef'
         email:
           $ref: '#/components/schemas/Email'
         fund_address:
@@ -53,9 +62,15 @@ components:
           $ref: '#/components/schemas/GYAddressBech32'
         transaction:
           $ref: '#/components/schemas/GYTx'
+        transaction_fee:
+          $ref: '#/components/schemas/GYNatural'
+        transaction_id:
+          $ref: '#/components/schemas/GYTxId'
       required:
       - address
       - transaction
+      - transaction_id
+      - transaction_fee
       type: object
     Email:
       description: User's email address.
@@ -100,6 +115,8 @@ components:
       format: hex
       pattern: '[0-9a-fA-F]{64}#"d+'
       type: string
+    GYTxWitness:
+      type: string
     GYValue:
       additionalProperties:
         type: integer
@@ -139,10 +156,7 @@ components:
           type: array
         payment_key_hash:
           $ref: '#/components/schemas/GYKeyHash'
-        value:
-          $ref: '#/components/schemas/GYValue'
       required:
-      - value
       - email
       - payment_key_hash
       - outs
@@ -305,6 +319,34 @@ paths:
       summary: Server settings
       tags:
       - Settings
+  /v0/tx/add-wit-and-submit:
+    post:
+      requestBody:
+        content:
+          application/json;charset=utf-8:
+            schema:
+              $ref: '#/components/schemas/AddWitAndSubmitParameters'
+      responses:
+        '200':
+          content:
+            application/json;charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/GYTxId'
+          description: ''
+        '400':
+          description: Invalid `body`
+        '401':
+          description: Unauthorized access - API key missing
+        '403':
+          description: Forbidden - The API key does not have permission to perform
+            the request
+        '500':
+          description: Internal server error
+      security:
+      - api-key: []
+      summary: Add a witness to the transaction and submit it.
+      tags:
+      - Tx
   /v0/tx/submit:
     post:
       description: Submits the given transaction to the network.

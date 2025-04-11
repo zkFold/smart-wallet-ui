@@ -1,21 +1,16 @@
 module ZkFold.Cardano.SmartWallet.Server.Api.Wallet (
-  ZKWalletBuildException,
   WalletAPI,
   handleWalletApi,
 ) where
 
-import Control.Exception (Exception, throwIO)
-import Control.Monad (when)
-import Data.Maybe (fromMaybe, isNothing)
+import Data.Maybe (fromMaybe)
 import Data.Swagger qualified as Swagger
 import Deriving.Aeson
 import Fmt
 import GHC.TypeLits (Symbol)
-import GeniusYield.HTTP.Errors
 import GeniusYield.Imports ((&))
 import GeniusYield.Types
 import GeniusYield.Types.OpenApi ()
-import Network.HTTP.Types (status400)
 import Servant
 import ZkFold.Cardano.SmartWallet.Api
 import ZkFold.Cardano.SmartWallet.Server.Ctx
@@ -70,8 +65,6 @@ data CreateWalletParameters = CreateWalletParameters
   -- ^ Computed proof bytes.
   , cwpFundAddress :: !(Maybe GYAddressBech32)
   -- ^ Address which will fund this transaction. If not provided, we assume address of user's zk wallet.
-  , cwpCollateral :: !(Maybe GYTxOutRef)
-  -- ^ Optional collateral to use. If not provided, we try picking suitable UTxO for collateral from fund address.
   }
   deriving stock (Show, Generic)
   deriving
@@ -81,14 +74,17 @@ data CreateWalletParameters = CreateWalletParameters
 instance Swagger.ToSchema CreateWalletParameters where
   declareNamedSchema =
     Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @CreateWalletPrefix}
-      & addSwaggerDescription "Initialize zk smart wallet. If \"fund_address\" is not provided, we use address of the wallet (which is to be initialized here). If \"collateral\" is not provided, we use suitable collateral from \"fund_address\"."
+      & addSwaggerDescription "Initialize zk smart wallet. If \"fund_address\" is not provided, we use address of the wallet (which is to be initialized here). Collateral UTxO configured inside server is used for this transaction."
 
 type CreateWalletResponsePrefix :: Symbol
 type CreateWalletResponsePrefix = "cwr"
 
 data CreateWalletResponse = CreateWalletResponse
   { cwrAddress :: !GYAddressBech32
+  -- ^ Address of the zk-wallet.
   , cwrTransaction :: !GYTx
+  , cwrTransactionId :: !GYTxId
+  , cwrTransactionFee :: !GYNatural
   }
   deriving stock (Generic)
   deriving
@@ -104,8 +100,7 @@ type SendFundsPrefix :: Symbol
 type SendFundsPrefix = "sfp"
 
 data SendFundsParameters = SendFundsParameters
-  { sfpValue :: !GYValue
-  , sfpEmail :: !Email
+  { sfpEmail :: !Email
   , sfpPaymentKeyHash :: !GYPaymentKeyHash
   , sfpOuts :: ![BuildOut]
   }
@@ -136,20 +131,6 @@ instance Swagger.ToSchema SendFundsResponse where
   declareNamedSchema =
     Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @SendFundsResponsePrefix}
       & addSwaggerDescription "Send funds response."
-
-data ZKWalletBuildException
-  = -- | We can't take UTxO as collateral from zk smart wallet as collateral UTxO can't themselves be locked by plutus script.
-    ZKWBENoCollateralAvailable
-  deriving stock (Show)
-  deriving anyclass (Exception)
-
-instance IsGYApiError ZKWalletBuildException where
-  toApiError ZKWBENoCollateralAvailable =
-    GYApiError
-      { gaeErrorCode = "COLLATERAL_CANT_BE_CHOSEN"
-      , gaeHttpStatus = status400
-      , gaeMsg = "No collateral output was provided. Note that we can't take UTxO from zk smart wallet as collateral since collateral UTxOs can't themselves be locked by plutus script."
-      }
 
 type WalletAPI =
   Summary "Obtain address."
@@ -191,9 +172,8 @@ handleCreateWallet ctx cwp@CreateWalletParameters{..} = do
   let fundWallet = fromMaybe walletAddress cwpFundAddress
       fundWallet' = addressFromBech32 fundWallet
   logInfo ctx $ "Fund wallet address: " +|| fundWallet ||+ ""
-  when (isNothing cwpFundAddress && isNothing cwpCollateral) $ throwIO ZKWBENoCollateralAvailable
   body <-
-    runSkeletonI ctx [fundWallet'] fundWallet' cwpCollateral $
+    runSkeletonI ctx [fundWallet'] fundWallet' (Just $ ctxCollateral ctx) $
       createWallet'
         ( ZKCreateWalletInfo
             { zkcwiProofBytes = cwpProofBytes
@@ -204,10 +184,13 @@ handleCreateWallet ctx cwp@CreateWalletParameters{..} = do
         )
         zkiws
   logInfo ctx $ "Tranasction body: " +|| body ||+ ""
+  collSignedTx <- handleTxSignCollateral ctx (unsignedTx body)
   pure $
     CreateWalletResponse
       { cwrAddress = walletAddress
-      , cwrTransaction = unsignedTx body
+      , cwrTransaction = collSignedTx
+      , cwrTransactionId = txBodyTxId body
+      , cwrTransactionFee = txBodyFee body & fromIntegral
       }
 
 handleSendFunds :: Ctx -> SendFundsParameters -> IO SendFundsResponse

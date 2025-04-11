@@ -108,3 +108,5 @@ To run for privnet tests:
 cabal install --package-env=$(pwd) --overwrite-policy=always cardano-cli cardano-node
 cabal run zkfold-smart-contract-wallet-server-test -- -j1
 ```
+
+Sometimes, node instances are still running even after completion of tests, execute `killall cardano-node` after running tests to kill node instances.

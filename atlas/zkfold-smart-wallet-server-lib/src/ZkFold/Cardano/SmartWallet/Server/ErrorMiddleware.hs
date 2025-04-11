@@ -32,7 +32,6 @@ import Network.HTTP.Types (
  )
 import Network.Wai qualified as Wai
 import Servant.Server (ServerError (..))
-import ZkFold.Cardano.SmartWallet.Server.Api.Wallet (ZKWalletBuildException)
 import ZkFold.Cardano.SmartWallet.Types (ZKWalletException)
 
 {- | This is used for turning non-json responses into JSON.
@@ -156,7 +155,6 @@ exceptionHandler =
         GYDatumMismatch actualDatum scriptWitness -> someBackendError $ "Actual datum in UTxO is: " <> tShow actualDatum <> ", but witness has wrong corresponding datum information: " <> tShow scriptWitness
         GYApplicationException e -> toApiError e
     , WH $ \(e :: ZKWalletException) -> toApiError e
-    , WH $ \(e :: ZKWalletBuildException) -> toApiError e
     ]
 
 sinkStreamingBody :: ((Wai.StreamingBody -> IO ()) -> IO ()) -> IO LBS.ByteString
