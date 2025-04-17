@@ -147,18 +147,31 @@ obtainTxBodyContentBuildTx (txBodyToApi -> txBody@(CApi.ShelleyTxBody sbe ltxBod
     , case stakeAddressToCredential (stakeAddressFromApi stakeAddr) of
         GYCredentialByKey _ -> CApi.BuildTxWith $ CApi.KeyWitness CApi.KeyWitnessForStakeAddr
         GYCredentialByScript sh ->
-          case findScript sh of
-            Nothing -> CApi.BuildTxWith $ CApi.KeyWitness CApi.KeyWitnessForStakeAddr -- TODO: To throw an app error here?
-            Just (Ledger.TimelockScript _) -> CApi.BuildTxWith $ CApi.KeyWitness CApi.KeyWitnessForStakeAddr -- TODO: To throw an app error here?
-            -- Just (Ledger.PlutusScript ps) ->
-            --   CApi.BuildTxWith $ CApi.ScriptWitness CApi.ScriptWitnessForStakeAddr $
-            --     (
-            --       let h =
-            --               Ledger.withPlutusScript
-            --                 ps
-            --                 ( scriptHashFromLedger . Ledger.hashPlutusScript
-            --                 )
-            --          in case Map.lookup h refScripts of
-            --               Nothing ->
-            --                 validatorToApiPlutusScriptWitness
+          case Map.lookup sh refScripts of
+            Nothing ->
+              case findScript sh of
+                Nothing -> CApi.BuildTxWith $ CApi.KeyWitness CApi.KeyWitnessForStakeAddr -- TODO: To throw an app error here?
+                Just (Ledger.TimelockScript ts) ->
+                  CApi.BuildTxWith $ CApi.ScriptWitness CApi.ScriptWitnessForStakeAddr $ CApi.SimpleScriptWitness CApi.SimpleScriptInConway $ CApi.SScript (CApi.fromAllegraTimelock ts)
+                Just (Ledger.PlutusScript ps) ->
+                  CApi.BuildTxWith $
+                    CApi.ScriptWitness CApi.ScriptWitnessForStakeAddr $
+                      ( case ps of
+                          Ledger.ConwayPlutusV1 ps' -> Ledger.plutusBinary ps' & Ledger.unPlutusBinary & scriptFromSerialisedScript @'PlutusV1 & stakeValidatorToApiPlutusScriptWitness
+                          Ledger.ConwayPlutusV2 ps' -> Ledger.plutusBinary ps' & Ledger.unPlutusBinary & scriptFromSerialisedScript @'PlutusV2 & stakeValidatorToApiPlutusScriptWitness
+                          Ledger.ConwayPlutusV3 ps' -> Ledger.plutusBinary ps' & Ledger.unPlutusBinary & scriptFromSerialisedScript @'PlutusV3 & stakeValidatorToApiPlutusScriptWitness
+                      )
+                        (redeemerToApi unitRedeemer)
+                        (CApi.ExecutionUnits 0 0)
+            Just (ref, as) -> CApi.BuildTxWith $
+              CApi.ScriptWitness CApi.ScriptWitnessForStakeAddr $
+                case as of
+                  GYPlutusScript ps ->
+                    referenceScriptToApiPlutusScriptWitness
+                      ref
+                      ps
+                      CApi.NoScriptDatumForStake
+                      (redeemerToApi unitRedeemer)
+                      (CApi.ExecutionUnits 0 0)
+                  GYSimpleScript _ss -> CApi.SimpleScriptWitness CApi.SimpleScriptInConway $ CApi.SReferenceScript $ txOutRefToApi ref
     )
