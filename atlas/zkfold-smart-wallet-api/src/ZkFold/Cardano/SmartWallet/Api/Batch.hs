@@ -50,22 +50,20 @@ obtainTxBodyContentBuildTx (txBodyToApi -> txBody@(CApi.ShelleyTxBody sbe ltxBod
   resolvedRefIns <- utxosAtTxOutRefs $ map txOutRefFromApi $ case CApi.txInsReference txBodyContentViewTx of
     CApi.TxInsReferenceNone -> []
     CApi.TxInsReference _ refIns -> refIns
-  let refScripts :: Map GYScriptHash (GYTxOutRef, GYScript 'PlutusV3) =
+  let refScripts :: Map GYScriptHash (GYTxOutRef, GYAnyScript) =
         foldl'
           ( \acc GYUTxO{..} -> case utxoRefScript of
-              Just (GYPlutusScript s) -> case scriptVersion s of
-                SingPlutusV1 -> acc
-                SingPlutusV2 -> acc
-                SingPlutusV3 -> Map.insert (scriptHash s) (utxoRef, s) acc
-              _anyOther -> acc
-              -- Just rs -> Map.insert (hashAnyScript rs) (utxoRef, rs) acc
+              Nothing -> acc
+              Just as -> Map.insert (hashAnyScript as) (utxoRef, as) acc
           )
           mempty
           (utxosToList resolvedRefIns <> map fst resolvedSpendIns)
   pp <- protocolParams
   pure $
     CApi.TxBodyContent
-      { txWithdrawals = undefined
+      { txWithdrawals = case CApi.txWithdrawals txBodyContentViewTx of
+          CApi.TxWithdrawalsNone -> CApi.TxWithdrawalsNone
+          CApi.TxWithdrawals wsbe wdrls -> CApi.TxWithdrawals wsbe $ map (wdrlFromApi refScripts) wdrls
       , txVotingProcedures = Nothing
       , txValidityUpperBound = CApi.txValidityUpperBound txBodyContentViewTx
       , txValidityLowerBound = CApi.txValidityLowerBound txBodyContentViewTx
@@ -89,24 +87,26 @@ obtainTxBodyContentBuildTx (txBodyToApi -> txBody@(CApi.ShelleyTxBody sbe ltxBod
       , txAuxScripts = CApi.txAuxScripts txBodyContentViewTx
       }
  where
+  findScript sh =
+    find
+      ( \case
+          Ledger.TimelockScript ts -> CApi.fromAllegraTimelock ts & simpleScriptFromApi & hashSimpleScript & \sh' -> sh' == sh
+          Ledger.PlutusScript ps ->
+            Ledger.withPlutusScript
+              ps
+              ( \ps' ->
+                  scriptHashFromLedger (Ledger.hashPlutusScript ps') == sh
+              )
+      )
+      lscripts
   inFromApi refScripts (utxo, mdatum) =
     ( utxoRef utxo & txOutRefToApi
     , case fromJust $ addressToPaymentCredential $ utxoAddress utxo of
         GYCredentialByKey _ -> CApi.BuildTxWith $ CApi.KeyWitness CApi.KeyWitnessForSpending
         GYCredentialByScript sh ->
-          case find
-            ( \case
-                Ledger.TimelockScript _ -> False
-                Ledger.PlutusScript ps ->
-                  Ledger.withPlutusScript
-                    ps
-                    ( \ps' ->
-                        scriptHashFromLedger (Ledger.hashPlutusScript ps') == sh
-                    )
-            )
-            lscripts of
+          case findScript sh of
             Nothing -> CApi.BuildTxWith $ CApi.KeyWitness CApi.KeyWitnessForSpending -- TODO: To throw an app error here?
-            Just (Ledger.TimelockScript _) -> undefined
+            Just (Ledger.TimelockScript ts) -> CApi.BuildTxWith $ CApi.ScriptWitness CApi.ScriptWitnessForSpending $ CApi.SimpleScriptWitness CApi.SimpleScriptInConway $ CApi.SScript (CApi.fromAllegraTimelock ts) -- TODO: To check for reference script here.
             Just (Ledger.PlutusScript ps) ->
               CApi.BuildTxWith $
                 CApi.ScriptWitness CApi.ScriptWitnessForSpending $
@@ -123,14 +123,47 @@ obtainTxBodyContentBuildTx (txBodyToApi -> txBody@(CApi.ShelleyTxBody sbe ltxBod
                                   ( \ps' -> Ledger.plutusBinary ps' & Ledger.unPlutusBinary & scriptFromSerialisedScript @'PlutusV3
                                   )
                               )
-                          Just (ref, s) ->
-                            referenceScriptToApiPlutusScriptWitness ref s
+                              ( case utxoOutDatum utxo of
+                                  GYOutDatumInline _ -> CApi.InlineScriptDatum
+                                  GYOutDatumNone -> CApi.ScriptDatumForTxIn Nothing
+                                  GYOutDatumHash _ -> CApi.ScriptDatumForTxIn $ datumToApi' <$> mdatum
+                              )
+                              (redeemerToApi unitRedeemer)
+                              (CApi.ExecutionUnits 0 0)
+                          Just (ref, as) ->
+                            case as of
+                              GYPlutusScript ps ->
+                                referenceScriptToApiPlutusScriptWitness
+                                  ref
+                                  ps
+                                  ( case utxoOutDatum utxo of
+                                      GYOutDatumInline _ -> CApi.InlineScriptDatum
+                                      GYOutDatumNone -> CApi.ScriptDatumForTxIn Nothing
+                                      GYOutDatumHash _ -> CApi.ScriptDatumForTxIn $ datumToApi' <$> mdatum
+                                  )
+                                  (redeemerToApi unitRedeemer)
+                                  (CApi.ExecutionUnits 0 0)
+                              GYSimpleScript _ss -> CApi.SimpleScriptWitness CApi.SimpleScriptInConway $ CApi.SReferenceScript $ txOutRefToApi ref
                   )
-                    ( case utxoOutDatum utxo of
-                        GYOutDatumInline _ -> CApi.InlineScriptDatum
-                        GYOutDatumNone -> CApi.ScriptDatumForTxIn Nothing
-                        GYOutDatumHash _ -> CApi.ScriptDatumForTxIn $ datumToApi' <$> mdatum
-                    )
-                    (redeemerToApi unitRedeemer)
-                    (CApi.ExecutionUnits 0 0)
+    )
+  wdrlFromApi refScripts (stakeAddr, coin, _) =
+    ( stakeAddr
+    , coin
+    , case stakeAddressToCredential (stakeAddressFromApi stakeAddr) of
+        GYCredentialByKey _ -> CApi.BuildTxWith $ CApi.KeyWitness CApi.KeyWitnessForStakeAddr
+        GYCredentialByScript sh ->
+          case findScript sh of
+            Nothing -> CApi.BuildTxWith $ CApi.KeyWitness CApi.KeyWitnessForStakeAddr -- TODO: To throw an app error here?
+            Just (Ledger.TimelockScript _) -> CApi.BuildTxWith $ CApi.KeyWitness CApi.KeyWitnessForStakeAddr -- TODO: To throw an app error here?
+            -- Just (Ledger.PlutusScript ps) ->
+            --   CApi.BuildTxWith $ CApi.ScriptWitness CApi.ScriptWitnessForStakeAddr $
+            --     (
+            --       let h =
+            --               Ledger.withPlutusScript
+            --                 ps
+            --                 ( scriptHashFromLedger . Ledger.hashPlutusScript
+            --                 )
+            --          in case Map.lookup h refScripts of
+            --               Nothing ->
+            --                 validatorToApiPlutusScriptWitness
     )
