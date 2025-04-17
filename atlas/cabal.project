@@ -32,7 +32,7 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/geniusyield/atlas
-  tag: ec970e526f917798b354ebb31f271b3445dac185
+  tag: 47d172b66899cc8a0ed4c309574c75a811db49cb
 
 -------- Begin contents from @atlas@'s @cabal.project@ file. --------
 
