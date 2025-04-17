@@ -113,12 +113,11 @@ obtainTxBodyContentBuildTx (txBodyToApi -> txBody@(CApi.ShelleyTxBody sbe ltxBod
                 Just (Ledger.PlutusScript ps) ->
                   CApi.BuildTxWith $
                     CApi.ScriptWitness CApi.ScriptWitnessForSpending $
-                      validatorToApiPlutusScriptWitness
-                        ( Ledger.withPlutusScript
-                            ps
-                            ( \ps' -> Ledger.plutusBinary ps' & Ledger.unPlutusBinary & scriptFromSerialisedScript @'PlutusV3 -- TODO: Cater for all plutus versions.
-                            )
-                        )
+                      ( case ps of
+                          Ledger.ConwayPlutusV1 ps' -> Ledger.plutusBinary ps' & Ledger.unPlutusBinary & scriptFromSerialisedScript @'PlutusV1 & validatorToApiPlutusScriptWitness
+                          Ledger.ConwayPlutusV2 ps' -> Ledger.plutusBinary ps' & Ledger.unPlutusBinary & scriptFromSerialisedScript @'PlutusV2 & validatorToApiPlutusScriptWitness
+                          Ledger.ConwayPlutusV3 ps' -> Ledger.plutusBinary ps' & Ledger.unPlutusBinary & scriptFromSerialisedScript @'PlutusV3 & validatorToApiPlutusScriptWitness
+                      )
                         ( case utxoOutDatum utxo of
                             GYOutDatumInline _ -> CApi.InlineScriptDatum
                             GYOutDatumNone -> CApi.ScriptDatumForTxIn Nothing
