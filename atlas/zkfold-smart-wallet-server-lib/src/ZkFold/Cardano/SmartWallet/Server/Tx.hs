@@ -7,14 +7,17 @@ module ZkFold.Cardano.SmartWallet.Server.Tx (
 ) where
 
 import Data.Function ((&))
+import Data.List.NonEmpty qualified as NE
 import Data.Swagger qualified as Swagger
 import Deriving.Aeson
 import Fmt
 import GHC.TypeLits (Symbol)
 import GeniusYield.Types
 import Servant
+import ZkFold.Cardano.SmartWallet.Api (batchTxs)
 import ZkFold.Cardano.SmartWallet.Server.Ctx
 import ZkFold.Cardano.SmartWallet.Server.Utils
+import ZkFold.Cardano.SmartWallet.Types (ZKBatchWalletInfo)
 
 type AddWitAndSubmitPrefix :: Symbol
 type AddWitAndSubmitPrefix = "awasp"
@@ -43,11 +46,16 @@ type TxAPI =
       :> Summary "Add a witness to the transaction and submit it."
       :> ReqBody '[JSON] AddWitAndSubmitParameters
       :> Post '[JSON] GYTxId
+    :<|> "batch"
+      :> Summary "Batch a list of wallet transactions"
+      :> ReqBody '[JSON] (NE.NonEmpty ZKBatchWalletInfo)
+      :> Post '[JSON] GYTx
 
 handleTxApi :: Ctx -> ServerT TxAPI IO
 handleTxApi ctx =
   handleTxSubmit ctx
     :<|> handleTxAddWitAndSubmit ctx
+    :<|> handleTxBatch ctx
 
 handleTxSignCollateral :: Ctx -> GYTx -> IO GYTx
 handleTxSignCollateral ctx@Ctx{..} tx = do
@@ -69,3 +77,9 @@ handleTxAddWitAndSubmit :: Ctx -> AddWitAndSubmitParameters -> IO GYTxId
 handleTxAddWitAndSubmit ctx AddWitAndSubmitParameters{..} = do
   logInfo ctx $ "AddWitAndSubmitParameters, tx: " +| txToHex awaspOriginalUnsignedTx |+ ", witness: " +|| awaspWalletWitness ||+ ""
   handleTxSubmit ctx $ appendWitnessGYTx awaspWalletWitness awaspOriginalUnsignedTx
+
+handleTxBatch :: Ctx -> NE.NonEmpty ZKBatchWalletInfo -> IO GYTx
+handleTxBatch ctx zkbwiList = do
+  logInfo ctx $ "Batching transactions: " +|| zkbwiList ||+ ""
+  tx <- runQuery ctx $ batchTxs zkbwiList
+  pure $ signGYTx' tx [somePaymentSigningKeyToSomeSigningKey $ fst $ ctxCollateralKey ctx]

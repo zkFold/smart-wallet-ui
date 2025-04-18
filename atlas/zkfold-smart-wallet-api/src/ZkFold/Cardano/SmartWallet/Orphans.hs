@@ -16,3 +16,7 @@ instance Swagger.ToSchema GYDatum where
       Swagger.named "GYDatum" $
         mempty & Swagger.description
           ?~ "JSON representation of datum"
+
+-- TODO: Move it to Atlas?
+instance Show GYTx where
+  show = show . txToApi

@@ -5,6 +5,7 @@ module ZkFold.Cardano.SmartWallet.Api (
   sendFunds,
   sendFunds',
   extraBuildConfiguration,
+  batchTxs,
 ) where
 
 import Data.Default (Default (..))
@@ -12,6 +13,7 @@ import Data.Foldable (find)
 import GeniusYield.Transaction.Common
 import GeniusYield.TxBuilder
 import GeniusYield.Types
+import ZkFold.Cardano.SmartWallet.Api.Batch
 import ZkFold.Cardano.SmartWallet.Api.Create
 import ZkFold.Cardano.SmartWallet.Types
 import ZkFold.Cardano.UPLC.Wallet.Types
