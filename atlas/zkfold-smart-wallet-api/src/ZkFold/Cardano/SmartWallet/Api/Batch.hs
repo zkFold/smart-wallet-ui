@@ -10,11 +10,13 @@ import Cardano.Ledger.Alonzo.Scripts qualified as Ledger
 import Cardano.Ledger.Alonzo.TxWits qualified as Ledger
 import Cardano.Ledger.Conway.Scripts qualified as Ledger
 import Cardano.Ledger.Plutus.Language qualified as Ledger
+import Control.Lens ((^.))
 import Data.Foldable (Foldable (foldl'))
 import Data.List (elemIndex, union)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isNothing)
+import Data.Ratio ((%))
 import Data.Set qualified as Set
 import GeniusYield.Imports
 import GeniusYield.TxBuilder
@@ -65,53 +67,74 @@ batchTxs bwis = do
           & Set.union (Set.fromList $ NE.toList $ fmap (zkbwiPaymentKeyHash >>> paymentKeyHashToApi) bwis)
           & Set.toList
       combinedTxBodyContent =
-        foldl'
-          ( \(accBodyContent, pastOutsNum) (txBodyContent, walletScript, paymentKeyHashToApi -> pkh) ->
-              ( accBodyContent
-                  { CApi.txWithdrawals =
-                      combineTxWithdrawals
-                        (CApi.txWithdrawals accBodyContent)
-                        (CApi.txWithdrawals txBodyContent)
-                        ( updateRedeemer
-                            (stakeAddressFromCredential nid (GYCredentialByScript $ scriptHash (zkiwsCheckSig walletScript)) & stakeAddressToApi)
-                            pastOutsNum
-                            (findSignatoryIndex oreqSigs pkh)
-                        )
-                  , CApi.txValidityUpperBound = combineValidityUpperBound (CApi.txValidityUpperBound accBodyContent) (CApi.txValidityUpperBound txBodyContent)
-                  , CApi.txValidityLowerBound = combineValidityLowerBound (CApi.txValidityLowerBound accBodyContent) (CApi.txValidityLowerBound txBodyContent)
-                  , CApi.txOuts = CApi.txOuts accBodyContent <> CApi.txOuts txBodyContent
-                  , CApi.txInsReference = combineTxInsReference (CApi.txInsReference accBodyContent) (CApi.txInsReference txBodyContent)
-                  , CApi.txInsCollateral = combineTxInsCollateral (CApi.txInsCollateral accBodyContent) (CApi.txInsCollateral txBodyContent)
-                  , CApi.txIns = CApi.txIns accBodyContent `union` CApi.txIns txBodyContent
-                  , CApi.txFee = CApi.txFee accBodyContent `addTxFee` CApi.txFee txBodyContent
-                  }
-              , pastOutsNum + fromIntegral (length (CApi.txOuts txBodyContent))
-              )
-          )
-          ( let (fstTxBodyContent, fstWalletScript, paymentKeyHashToApi -> pkh) = NE.head bwisResolved
-                stakeAddr = stakeAddressFromCredential nid (GYCredentialByScript $ scriptHash (zkiwsCheckSig fstWalletScript))
-             in ( fstTxBodyContent
-                    { CApi.txExtraKeyWits = CApi.TxExtraKeyWitnesses CApi.AlonzoEraOnwardsConway oreqSigs
-                    , CApi.txReturnCollateral = CApi.TxReturnCollateralNone -- Updated later.
-                    , CApi.txTotalCollateral = CApi.TxTotalCollateralNone -- Updated later.
-                    , CApi.txWithdrawals = case CApi.txWithdrawals fstTxBodyContent of
-                        CApi.TxWithdrawalsNone -> CApi.TxWithdrawalsNone
-                        CApi.TxWithdrawals sbe ls ->
-                          CApi.TxWithdrawals
-                            sbe
-                            ( map
-                                ( updateRedeemer
-                                    (stakeAddressToApi stakeAddr)
-                                    0
-                                    (findSignatoryIndex oreqSigs pkh)
-                                )
-                                ls
-                            )
+        fst $
+          foldl'
+            ( \(accBodyContent, pastOutsNum) (txBodyContent, walletScript, paymentKeyHashToApi -> pkh) ->
+                ( accBodyContent
+                    { CApi.txWithdrawals =
+                        combineTxWithdrawals
+                          (CApi.txWithdrawals accBodyContent)
+                          (CApi.txWithdrawals txBodyContent)
+                          ( updateRedeemer
+                              (stakeAddressFromCredential nid (GYCredentialByScript $ scriptHash (zkiwsCheckSig walletScript)) & stakeAddressToApi)
+                              pastOutsNum
+                              (findSignatoryIndex oreqSigs pkh)
+                          )
+                    , CApi.txValidityUpperBound = combineValidityUpperBound (CApi.txValidityUpperBound accBodyContent) (CApi.txValidityUpperBound txBodyContent)
+                    , CApi.txValidityLowerBound = combineValidityLowerBound (CApi.txValidityLowerBound accBodyContent) (CApi.txValidityLowerBound txBodyContent)
+                    , CApi.txOuts = CApi.txOuts accBodyContent <> CApi.txOuts txBodyContent
+                    , CApi.txInsReference = combineTxInsReference (CApi.txInsReference accBodyContent) (CApi.txInsReference txBodyContent)
+                    , CApi.txInsCollateral = combineTxInsCollateral (CApi.txInsCollateral accBodyContent) (CApi.txInsCollateral txBodyContent)
+                    , CApi.txIns = CApi.txIns accBodyContent `union` CApi.txIns txBodyContent
+                    , CApi.txFee = CApi.txFee accBodyContent `addTxFee` CApi.txFee txBodyContent
                     }
-                , fromIntegral (length (CApi.txOuts fstTxBodyContent))
+                , pastOutsNum + fromIntegral (length (CApi.txOuts txBodyContent))
                 )
-          )
-          (NE.tail bwisResolved)
+            )
+            ( let (fstTxBodyContent, fstWalletScript, paymentKeyHashToApi -> pkh) = NE.head bwisResolved
+                  stakeAddr = stakeAddressFromCredential nid (GYCredentialByScript $ scriptHash (zkiwsCheckSig fstWalletScript))
+               in ( fstTxBodyContent
+                      { CApi.txExtraKeyWits = CApi.TxExtraKeyWitnesses CApi.AlonzoEraOnwardsConway oreqSigs
+                      , CApi.txReturnCollateral = CApi.TxReturnCollateralNone -- Updated later.
+                      , CApi.txTotalCollateral = CApi.TxTotalCollateralNone -- Updated later.
+                      , CApi.txWithdrawals = case CApi.txWithdrawals fstTxBodyContent of
+                          CApi.TxWithdrawalsNone -> CApi.TxWithdrawalsNone
+                          CApi.TxWithdrawals sbe ls ->
+                            CApi.TxWithdrawals
+                              sbe
+                              ( map
+                                  ( updateRedeemer
+                                      (stakeAddressToApi stakeAddr)
+                                      0
+                                      (findSignatoryIndex oreqSigs pkh)
+                                  )
+                                  ls
+                              )
+                      }
+                  , fromIntegral (length (CApi.txOuts fstTxBodyContent))
+                  )
+            )
+            (NE.tail bwisResolved)
+      collateralIns = case CApi.txInsCollateral combinedTxBodyContent of
+        CApi.TxInsCollateralNone -> []
+        CApi.TxInsCollateral _ ins -> fmap txOutRefFromApi ins
+  collateralUtxos <- utxosAtTxOutRefs collateralIns
+  let collBalance = foldMapUTxOs utxoValue collateralUtxos
+      collLovelace = valueSplitAda collBalance & fst
+      Ledger.Coin txFee = case CApi.txFee combinedTxBodyContent of
+        CApi.TxFeeExplicit _ fee -> fee
+      balanceNeeded :: Integer = ceiling $ (txFee * toInteger (pp ^. ppCollateralPercentageL)) % 100
+  when (collLovelace < balanceNeeded) $ do
+    throwError $ GYBuildTxException $ GYBuildTxCollateralShortFall (fromIntegral balanceNeeded) (fromIntegral collLovelace)
+  let acollUTxO = utxosToList collateralUtxos & headMaybe
+  when (isNothing acollUTxO) $ do
+    throwError $ GYBuildTxException GYBuildTxNoSuitableCollateral
+  let combinedTxBodyContent' =
+        combinedTxBodyContent
+          { CApi.txReturnCollateral = CApi.TxReturnCollateral CApi.BabbageEraOnwardsConway $ txOutToApi $ GYTxOut (utxoAddress (fromJust acollUTxO)) (collBalance `valueMinus` valueFromLovelace balanceNeeded) Nothing Nothing
+          , CApi.txTotalCollateral = CApi.TxTotalCollateral CApi.BabbageEraOnwardsConway (Ledger.Coin balanceNeeded)
+          }
+  combinedTxBody <- either (throwError . GYBuildTxException . GYBuildTxBodyErrorAutoBalance . CApi.TxBodyError) pure $ CApi.createTransactionBody CApi.ShelleyBasedEraConway combinedTxBodyContent'
   undefined
  where
   updateRedeemer ::
@@ -136,7 +159,11 @@ batchTxs bwis = do
           )
       else (stakeAddr, coin, CApi.BuildTxWith wit)
 
-  findSignatoryIndex oreqSigs pkh = elemIndex pkh oreqSigs & fromJust & fromIntegral
+  findSignatoryIndex oreqSigs pkh =
+    elemIndex pkh oreqSigs
+      -- Impossible to fail since we already included this pkh in @oreqSigs@.
+      & fromJust
+      & fromIntegral
 
   addTxFee (CApi.TxFeeExplicit sbe a) (CApi.TxFeeExplicit _sbe b) = CApi.TxFeeExplicit sbe (a + b)
 
@@ -171,3 +198,7 @@ batchTxs bwis = do
     CApi.TxWithdrawals
       sbe
       (a <> b)
+
+  headMaybe :: [a] -> Maybe a
+  headMaybe [] = Nothing
+  headMaybe (x : _) = Just x
