@@ -11,12 +11,16 @@ import Cardano.Ledger.Alonzo.TxWits qualified as Ledger
 import Cardano.Ledger.Conway.Scripts qualified as Ledger
 import Cardano.Ledger.Plutus.Language qualified as Ledger
 import Data.Foldable (Foldable (foldl'))
+import Data.List (elemIndex, union)
+import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromJust)
 import Data.Set qualified as Set
 import GeniusYield.Imports
 import GeniusYield.TxBuilder
+import GeniusYield.TxBuilder.Class
 import GeniusYield.Types
+import ZkFold.Cardano.UPLC.Wallet.Types (Signature (..))
 
 {- | Combine zk smart-wallet transactions into a single transaction.
 
@@ -31,146 +35,169 @@ However, currently it is not clear if fees of combined transaction will be highe
 
 __NOTE__: We assume transactions provided are those returned by our API when sending funds from our zk based smart-wallet. This combining function need not necessarily work for other transactions.
 -}
-combineTxs :: (GYTxSpecialQueryMonad m) => [GYTx] -> m GYTx
+combineTxs :: (GYTxSpecialQueryMonad m) => NE.NonEmpty GYTx -> m GYTx
 combineTxs txs = do
   {- Following is the high level strategy:
     * We obtain `TxBodyContent` with `BuildTx` parameter.
   -}
   -- We ignore for key witnesses since they won't be valid anyway.
-  let txBodies = map getTxBody txs
-  txBodiesContent <- mapM (obtainTxBodyContentBuildTx) txBodies
-  undefined
-
-obtainTxBodyContentBuildTx :: (GYTxSpecialQueryMonad m) => GYTxBody -> m (CApi.TxBodyContent CApi.BuildTx ApiEra)
-obtainTxBodyContentBuildTx (txBodyToApi -> txBody@(CApi.ShelleyTxBody sbe ltxBody lscripts scriptData _ _)) = do
-  let
-    -- We obtained `TxBodyContent ViewTx`. Now we need to obtain `BuildTx` version of it.
-    txBodyContentViewTx = CApi.getTxBodyContent txBody
-
-  resolvedSpendIns <- utxosAtTxOutRefsWithDatums $ map (txOutRefFromApi . fst) (CApi.txIns txBodyContentViewTx)
-  resolvedRefIns <- utxosAtTxOutRefs $ map txOutRefFromApi $ case CApi.txInsReference txBodyContentViewTx of
-    CApi.TxInsReferenceNone -> []
-    CApi.TxInsReference _ refIns -> refIns
-  let refScripts :: Map GYScriptHash (GYTxOutRef, GYAnyScript) =
-        foldl'
-          ( \acc GYUTxO{..} -> case utxoRefScript of
-              Nothing -> acc
-              Just as -> Map.insert (hashAnyScript as) (utxoRef, as) acc
-          )
-          mempty
-          (utxosToList resolvedRefIns <> map fst resolvedSpendIns)
+  let txBodies = fmap getTxBody txs
+  txBodiesContent <- mapM obtainTxBodyContentBuildTx txBodies
   pp <- protocolParams
-  pure $
-    CApi.TxBodyContent
-      { txWithdrawals = case CApi.txWithdrawals txBodyContentViewTx of
-          CApi.TxWithdrawalsNone -> CApi.TxWithdrawalsNone
-          CApi.TxWithdrawals wsbe wdrls -> CApi.TxWithdrawals wsbe $ zipWith (curry (wdrlFromApi refScripts)) [0 ..] wdrls
-      , txVotingProcedures = Nothing
-      , txValidityUpperBound = CApi.txValidityUpperBound txBodyContentViewTx
-      , txValidityLowerBound = CApi.txValidityLowerBound txBodyContentViewTx
-      , txUpdateProposal = CApi.txUpdateProposal txBodyContentViewTx
-      , txTreasuryDonation = CApi.txTreasuryDonation txBodyContentViewTx
-      , txTotalCollateral = CApi.txTotalCollateral txBodyContentViewTx
-      , txScriptValidity = CApi.txScriptValidity txBodyContentViewTx
-      , txReturnCollateral = CApi.txReturnCollateral txBodyContentViewTx
-      , txProtocolParams = CApi.BuildTxWith $ Just $ CApi.S.LedgerProtocolParameters pp
-      , txProposalProcedures = Nothing
-      , txOuts = CApi.txOuts txBodyContentViewTx
-      , txMintValue = CApi.TxMintNone
-      , txMetadata = CApi.txMetadata txBodyContentViewTx
-      , txInsReference = CApi.txInsReference txBodyContentViewTx
-      , txInsCollateral = CApi.txInsCollateral txBodyContentViewTx
-      , txIns = zipWith (curry (inFromApi refScripts)) [0 ..] resolvedSpendIns
-      , txFee = CApi.txFee txBodyContentViewTx
-      , txExtraKeyWits = CApi.txExtraKeyWits txBodyContentViewTx
-      , txCurrentTreasuryValue = CApi.txCurrentTreasuryValue txBodyContentViewTx
-      , txCertificates = CApi.TxCertificatesNone
-      , txAuxScripts = CApi.txAuxScripts txBodyContentViewTx
-      }
- where
-  findScript sh =
-    find
-      ( \case
-          Ledger.TimelockScript ts -> CApi.fromAllegraTimelock ts & simpleScriptFromApi & hashSimpleScript & \sh' -> sh' == sh
-          Ledger.PlutusScript ps ->
-            Ledger.withPlutusScript
-              ps
-              ( \ps' ->
-                  scriptHashFromLedger (Ledger.hashPlutusScript ps') == sh
+  -- Ordered list of required extra-key witnesses.
+  let oreqSigs =
+        foldMap
+          ( CApi.txExtraKeyWits >>> \case
+              CApi.TxExtraKeyWitnessesNone -> mempty
+              CApi.TxExtraKeyWitnesses _ ks -> Set.fromList ks
+          )
+          txBodiesContent
+          & Set.toList
+      combinedTxBodyContent =
+        foldl'
+          ( \(accBodyContent, pastOutsNum) txBodyContent ->
+              ( accBodyContent
+                  { CApi.txWithdrawals = combineTxWithdrawals (CApi.txWithdrawals accBodyContent) (CApi.txWithdrawals txBodyContent) (updateRedeemer pastOutsNum (findSignatoryIndex oreqSigs (CApi.txExtraKeyWits txBodyContent)))
+                  , CApi.txValidityUpperBound = combineValidityUpperBound (CApi.txValidityUpperBound accBodyContent) (CApi.txValidityUpperBound txBodyContent)
+                  , CApi.txValidityLowerBound = combineValidityLowerBound (CApi.txValidityLowerBound accBodyContent) (CApi.txValidityLowerBound txBodyContent)
+                  , CApi.txOuts = CApi.txOuts accBodyContent <> CApi.txOuts txBodyContent
+                  , CApi.txInsReference = combineTxInsReference (CApi.txInsReference accBodyContent) (CApi.txInsReference txBodyContent)
+                  , CApi.txInsCollateral = combineTxInsCollateral (CApi.txInsCollateral accBodyContent) (CApi.txInsCollateral txBodyContent)
+                  , CApi.txIns = CApi.txIns accBodyContent `union` CApi.txIns txBodyContent
+                  , CApi.txFee = CApi.txFee accBodyContent `addTxFee` CApi.txFee txBodyContent
+                  }
+              , pastOutsNum + fromIntegral (length (CApi.txOuts txBodyContent))
               )
+          )
+          ( let fstTxBodyContent = NE.head txBodiesContent
+             in ( fstTxBodyContent
+                    { CApi.txExtraKeyWits = CApi.TxExtraKeyWitnesses CApi.AlonzoEraOnwardsConway oreqSigs
+                    , CApi.txReturnCollateral = CApi.TxReturnCollateralNone -- Updated later.
+                    , CApi.txTotalCollateral = CApi.TxTotalCollateralNone -- Updated later.
+                    , CApi.txWithdrawals = case CApi.txWithdrawals fstTxBodyContent of
+                        CApi.TxWithdrawalsNone -> CApi.TxWithdrawalsNone
+                        CApi.TxWithdrawals sbe ls ->
+                          CApi.TxWithdrawals
+                            sbe
+                            ( map
+                                ( updateRedeemer
+                                    0
+                                    (findSignatoryIndex oreqSigs $ CApi.txExtraKeyWits fstTxBodyContent)
+                                )
+                                ls
+                            )
+                    }
+                , fromIntegral (length (CApi.txOuts fstTxBodyContent))
+                )
+          )
+          (NE.tail txBodiesContent)
+  undefined
+ where
+  updateRedeemer ::
+    Integer ->
+    Integer ->
+    (CApi.StakeAddress, Ledger.Coin, CApi.BuildTxWith CApi.BuildTx (CApi.Witness CApi.WitCtxStake ApiEra)) ->
+    (CApi.StakeAddress, Ledger.Coin, CApi.BuildTxWith CApi.BuildTx (CApi.Witness CApi.WitCtxStake ApiEra))
+  updateRedeemer outIx sigIx (stakeAddr, coin, CApi.BuildTxWith wit) = case wit of
+    CApi.KeyWitness _ -> (stakeAddr, coin, CApi.BuildTxWith wit)
+    CApi.ScriptWitness swi sw ->
+      ( stakeAddr
+      , coin
+      , CApi.BuildTxWith $
+          CApi.ScriptWitness swi $
+            case sw of
+              CApi.SimpleScriptWitness _ _ -> sw
+              CApi.PlutusScriptWitness slie psv psori sd _sr eu ->
+                CApi.PlutusScriptWitness slie psv psori sd (Signature outIx sigIx & redeemerFromPlutusData & redeemerToApi) eu
       )
-      lscripts
-  resolveRedeemer purp = case scriptData of
-    CApi.TxBodyNoScriptData -> Nothing
-    CApi.TxBodyScriptData _aeo _dats reds -> Ledger.lookupRedeemer purp reds >>= Just . bimap (CApi.unsafeHashableScriptData . CApi.fromPlutusData . Ledger.unData) CApi.fromAlonzoExUnits
-  resolveRedeemer' purp = case resolveRedeemer purp of
-    Nothing -> error "TODO:" -- TODO: To throw an app error here.
-    Just red -> red
-  resolveScriptWitness ::
-    forall kr witRole.
-    Map GYScriptHash (GYTxOutRef, GYAnyScript) ->
-    GYCredential kr ->
-    CApi.KeyWitnessInCtx witRole ->
-    CApi.ScriptWitnessInCtx witRole ->
-    (CApi.HashableScriptData, CApi.ExecutionUnits) ->
-    CApi.ScriptDatum witRole ->
-    CApi.BuildTxWith CApi.BuildTx (CApi.Witness witRole CApi.ConwayEra)
-  resolveScriptWitness refScripts cred keyWitFor scriptWitFor (red, exUnits) dat = case cred of
-    GYCredentialByKey _ -> CApi.BuildTxWith $ CApi.KeyWitness keyWitFor
-    GYCredentialByScript sh ->
-      case Map.lookup sh refScripts of
-        Nothing ->
-          case findScript sh of
-            Nothing -> CApi.BuildTxWith $ CApi.KeyWitness keyWitFor -- TODO: To throw an app error here?
-            Just (Ledger.TimelockScript ts) ->
-              CApi.BuildTxWith $ CApi.ScriptWitness scriptWitFor $ CApi.SimpleScriptWitness CApi.SimpleScriptInConway $ CApi.SScript (CApi.fromAllegraTimelock ts)
-            Just (Ledger.PlutusScript ps) ->
-              CApi.BuildTxWith $
-                CApi.ScriptWitness scriptWitFor $
-                  ( case ps of
-                      Ledger.ConwayPlutusV1 ps' -> Ledger.plutusBinary ps' & Ledger.unPlutusBinary & scriptFromSerialisedScript @'PlutusV1 & scriptToApiPlutusScriptWitness
-                      Ledger.ConwayPlutusV2 ps' -> Ledger.plutusBinary ps' & Ledger.unPlutusBinary & scriptFromSerialisedScript @'PlutusV2 & scriptToApiPlutusScriptWitness
-                      Ledger.ConwayPlutusV3 ps' -> Ledger.plutusBinary ps' & Ledger.unPlutusBinary & scriptFromSerialisedScript @'PlutusV3 & scriptToApiPlutusScriptWitness
-                  )
-                    dat
-                    red
-                    exUnits
-        Just (ref, as) -> CApi.BuildTxWith $
-          CApi.ScriptWitness scriptWitFor $
-            case as of
-              GYPlutusScript ps ->
-                referenceScriptToApiPlutusScriptWitness
-                  ref
-                  ps
-                  dat
-                  red
-                  exUnits
-              GYSimpleScript _ss -> CApi.SimpleScriptWitness CApi.SimpleScriptInConway $ CApi.SReferenceScript $ txOutRefToApi ref
-  inFromApi refScripts (ix, (utxo, mdatum)) =
-    ( utxoRef utxo & txOutRefToApi
-    , resolveScriptWitness
-        refScripts
-        ( fromJust $ addressToPaymentCredential $ utxoAddress utxo
+  -- TODO: Use apperrors here.
+  findSignatoryIndex oreqSigs CApi.TxExtraKeyWitnessesNone = error "TODO:"
+  findSignatoryIndex oreqSigs (CApi.TxExtraKeyWitnesses _ ks) = elemIndex (head ks) oreqSigs & fromJust & fromIntegral
+
+  addTxFee (CApi.TxFeeExplicit sbe a) (CApi.TxFeeExplicit _sbe b) = CApi.TxFeeExplicit sbe (a + b)
+
+  combineValidityLowerBound CApi.TxValidityNoLowerBound b = b
+  combineValidityLowerBound a CApi.TxValidityNoLowerBound = a
+  combineValidityLowerBound (CApi.TxValidityLowerBound aeo a) (CApi.TxValidityLowerBound _aeo b) = CApi.TxValidityLowerBound aeo (min a b)
+
+  combineValidityUpperBound (CApi.TxValidityUpperBound _sbe Nothing) b = b
+  combineValidityUpperBound a (CApi.TxValidityUpperBound _sbe Nothing) = a
+  combineValidityUpperBound (CApi.TxValidityUpperBound sbe (Just a)) (CApi.TxValidityUpperBound _sbe (Just b)) = CApi.TxValidityUpperBound sbe (Just (max a b))
+
+  combineTxInsCollateral CApi.TxInsCollateralNone b = b
+  combineTxInsCollateral a CApi.TxInsCollateralNone = a
+  combineTxInsCollateral (CApi.TxInsCollateral aeo a) (CApi.TxInsCollateral _aeo b) = CApi.TxInsCollateral aeo (a `union` b)
+
+  combineTxInsReference CApi.TxInsReferenceNone b = b
+  combineTxInsReference a CApi.TxInsReferenceNone = a
+  combineTxInsReference (CApi.TxInsReference beo a) (CApi.TxInsReference _beo b) = CApi.TxInsReference beo (a `union` b)
+
+  combineTxWithdrawals a b updateF = combineTxWithdrawals' a $ case b of
+    CApi.TxWithdrawalsNone -> CApi.TxWithdrawalsNone
+    CApi.TxWithdrawals sbe ls ->
+      CApi.TxWithdrawals
+        sbe
+        ( map
+            updateF
+            ls
         )
-        CApi.KeyWitnessForSpending
-        CApi.ScriptWitnessForSpending
-        ( Ledger.ConwaySpending (Ledger.AsIx ix) & resolveRedeemer'
-        )
-        ( case utxoOutDatum utxo of
-            GYOutDatumInline _ -> CApi.InlineScriptDatum
-            GYOutDatumNone -> CApi.ScriptDatumForTxIn Nothing
-            GYOutDatumHash _ -> CApi.ScriptDatumForTxIn $ datumToApi' <$> mdatum
-        )
+  combineTxWithdrawals' a CApi.TxWithdrawalsNone = a
+  combineTxWithdrawals' CApi.TxWithdrawalsNone b = b
+  combineTxWithdrawals' (CApi.TxWithdrawals sbe a) (CApi.TxWithdrawals _sbe b) =
+    CApi.TxWithdrawals
+      sbe
+      (a <> b)
+
+mergeTxBodyContent (_oreqSigs, _pastOutsNum) [] = error "ZkFold.Cardano.SmartWallet.Api.Batch.mergeTxBodyContent: absurd"
+mergeTxBodyContent (_oreqSigs, _pastOutsNum) [txBodyContent] = txBodyContent
+mergeTxBodyContent (oreqSigs, pastOutsNum) (txBodyContent1 : txBodyContent2 : txBodyContents) =
+  mergeTxBodyContent
+    (oreqSigs, pastOutsNum + (length $ CApi.txOuts txBodyContent1))
+    ( CApi.TxBodyContent
+        { txWithdrawals =
+            -- We need to update redeemer of both tx to have correct index of signatory. And we need to update redeemer of second tx to have correct index for it's output.
+            let
+             in -- tx1WdrlRedeemer = Signature (pastOutsNum) (findSignatoryIndex oreqSigs )
+                undefined
+        , txVotingProcedures = Nothing
+        , txValidityUpperBound = combineValidityUpperBound (CApi.txValidityUpperBound txBodyContent1) (CApi.txValidityUpperBound txBodyContent2)
+        , txValidityLowerBound = combineValidityLowerBound (CApi.txValidityLowerBound txBodyContent1) (CApi.txValidityLowerBound txBodyContent2)
+        , txUpdateProposal = CApi.TxUpdateProposalNone
+        , txTreasuryDonation = Nothing
+        , txTotalCollateral = CApi.TxTotalCollateralNone -- Updated later.
+        , txScriptValidity = CApi.txScriptValidity txBodyContent1
+        , txReturnCollateral = CApi.TxReturnCollateralNone -- Updated later.
+        , txProtocolParams = CApi.txProtocolParams txBodyContent1
+        , txProposalProcedures = Nothing
+        , txOuts = CApi.txOuts txBodyContent1 <> CApi.txOuts txBodyContent2
+        , txMintValue = CApi.TxMintNone
+        , txMetadata = CApi.TxMetadataNone
+        , txInsReference = combineTxInsReference (CApi.txInsReference txBodyContent1) (CApi.txInsReference txBodyContent2)
+        , txInsCollateral = combineTxInsCollateral (CApi.txInsCollateral txBodyContent1) (CApi.txInsCollateral txBodyContent2)
+        , txIns = CApi.txIns txBodyContent1 `union` CApi.txIns txBodyContent2
+        , txFee = CApi.txFee txBodyContent1 `addTxFee` CApi.txFee txBodyContent2
+        , txExtraKeyWits = CApi.TxExtraKeyWitnesses CApi.AlonzoEraOnwardsConway oreqSigs
+        , txCurrentTreasuryValue = Nothing
+        , txCertificates = CApi.TxCertificatesNone
+        , txAuxScripts = CApi.TxAuxScriptsNone
+        }
+        : txBodyContents
     )
-  wdrlFromApi refScripts (ix, (stakeAddr, coin, _)) =
-    ( stakeAddr
-    , coin
-    , resolveScriptWitness
-        refScripts
-        (stakeAddressToCredential (stakeAddressFromApi stakeAddr))
-        CApi.KeyWitnessForStakeAddr
-        CApi.ScriptWitnessForStakeAddr
-        ( Ledger.ConwayRewarding (Ledger.AsIx ix) & resolveRedeemer'
-        )
-        CApi.NoScriptDatumForStake
-    )
+ where
+  addTxFee (CApi.TxFeeExplicit sbe a) (CApi.TxFeeExplicit _sbe b) = CApi.TxFeeExplicit sbe (a + b)
+
+  combineValidityLowerBound CApi.TxValidityNoLowerBound b = b
+  combineValidityLowerBound a CApi.TxValidityNoLowerBound = a
+  combineValidityLowerBound (CApi.TxValidityLowerBound aeo a) (CApi.TxValidityLowerBound _aeo b) = CApi.TxValidityLowerBound aeo (min a b)
+
+  combineValidityUpperBound (CApi.TxValidityUpperBound _sbe Nothing) b = b
+  combineValidityUpperBound a (CApi.TxValidityUpperBound _sbe Nothing) = a
+  combineValidityUpperBound (CApi.TxValidityUpperBound sbe (Just a)) (CApi.TxValidityUpperBound _sbe (Just b)) = CApi.TxValidityUpperBound sbe (Just (max a b))
+
+  combineTxInsCollateral CApi.TxInsCollateralNone b = b
+  combineTxInsCollateral a CApi.TxInsCollateralNone = a
+  combineTxInsCollateral (CApi.TxInsCollateral aeo a) (CApi.TxInsCollateral _aeo b) = CApi.TxInsCollateral aeo (a `union` b)
+
+  combineTxInsReference CApi.TxInsReferenceNone b = b
+  combineTxInsReference a CApi.TxInsReferenceNone = a
+  combineTxInsReference (CApi.TxInsReference beo a) (CApi.TxInsReference _beo b) = CApi.TxInsReference beo (a `union` b)
