@@ -1,27 +1,20 @@
 module ZkFold.Cardano.SmartWallet.Api.Batch (
-
+  batchTxs,
 ) where
 
 import Cardano.Api qualified as CApi
+import Cardano.Api.Fees qualified as CApi
 import Cardano.Api.Ledger qualified as Ledger
 import Cardano.Api.Shelley qualified as CApi
-import Cardano.Api.Shelley qualified as CApi.S
-import Cardano.Ledger.Alonzo.Scripts qualified as Ledger
-import Cardano.Ledger.Alonzo.TxWits qualified as Ledger
-import Cardano.Ledger.Conway.Scripts qualified as Ledger
-import Cardano.Ledger.Plutus.Language qualified as Ledger
 import Control.Lens ((^.))
-import Data.Foldable (Foldable (foldl'))
 import Data.List (elemIndex, union)
 import Data.List.NonEmpty qualified as NE
 import Data.Map.Strict qualified as Map
 import Data.Maybe (fromJust, isNothing)
 import Data.Ratio ((%))
 import Data.Set qualified as Set
-import GHC.IsList (toList)
 import GeniusYield.Imports hiding (toList)
 import GeniusYield.TxBuilder
-import GeniusYield.TxBuilder.Class
 import GeniusYield.Types
 import ZkFold.Cardano.SmartWallet.Api.Create (initializeWalletScripts)
 import ZkFold.Cardano.SmartWallet.Types
@@ -159,15 +152,14 @@ batchTxs bwis = do
         exUnitsMap' <-
           case Map.mapEither id exUnitsMap of
             (failures, exUnitsMap') ->
-              handleExUnitsErrors
+              CApi.handleExUnitsErrors
                 (CApi.txScriptValidityToScriptValidity (CApi.txScriptValidity combinedTxBodyContentWithColl))
                 failures
                 exUnitsMap'
         finalTxBodyContent <- CApi.substituteExecutionUnits exUnitsMap' combinedTxBodyContentWithColl
-        undefined
-
-  -- combinedTxBody <- either (throwError . GYBuildTxException . GYBuildTxBodyErrorAutoBalance . CApi.TxBodyError) pure $
-  undefined
+        CApi.createTransactionBody CApi.ShelleyBasedEraConway finalTxBodyContent & first CApi.TxBodyError
+  combinedTxBody <- either (throwError . GYBuildTxException . GYBuildTxBodyErrorAutoBalance) pure ecombinedTxBody
+  pure $ unsignedTx $ txBodyFromApi combinedTxBody
  where
   updateRedeemer ::
     CApi.StakeAddress ->
@@ -234,20 +226,3 @@ batchTxs bwis = do
   headMaybe :: [a] -> Maybe a
   headMaybe [] = Nothing
   headMaybe (x : _) = Just x
-
-handleExUnitsErrors ::
-  -- | Mark script as expected to pass or fail validation
-  CApi.ScriptValidity ->
-  Map CApi.ScriptWitnessIndex CApi.ScriptExecutionError ->
-  Map CApi.ScriptWitnessIndex CApi.ExecutionUnits ->
-  Either (CApi.TxBodyErrorAutoBalance era) (Map CApi.ScriptWitnessIndex CApi.ExecutionUnits)
-handleExUnitsErrors CApi.ScriptValid failuresMap exUnitsMap =
-  if null failures
-    then Right exUnitsMap
-    else Left (CApi.TxBodyScriptExecutionError failures)
- where
-  failures :: [(CApi.ScriptWitnessIndex, CApi.ScriptExecutionError)]
-  failures = toList failuresMap
-handleExUnitsErrors CApi.ScriptInvalid failuresMap exUnitsMap
-  | null failuresMap = Left CApi.TxBodyScriptBadScriptValidity
-  | otherwise = Right $ Map.map (\_ -> CApi.ExecutionUnits 0 0) failuresMap <> exUnitsMap

@@ -55,6 +55,7 @@ library
     base16-bytestring,
     bytestring,
     cardano-api,
+    cardano-api:internal,
     cardano-ledger-alonzo,
     cardano-ledger-conway,
     cardano-ledger-core,

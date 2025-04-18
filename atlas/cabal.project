@@ -70,8 +70,7 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/sourabhxyz/cardano-api
-  tag: 14674d6b099e8fc36e5044e206bfc32164f75cee
-  --sha256: sha256-Qr4rv9bLz+wJdICYjxDVnnzgsVwx+wsU+tSFwDYr/kE=
+  tag: bf7d979c4a985b3fcda671d74b8197de10400bae
   subdir:
     cardano-api
     cardano-api-gen
