@@ -18,7 +18,8 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (fromJust, isNothing)
 import Data.Ratio ((%))
 import Data.Set qualified as Set
-import GeniusYield.Imports
+import GHC.IsList (toList)
+import GeniusYield.Imports hiding (toList)
 import GeniusYield.TxBuilder
 import GeniusYield.TxBuilder.Class
 import GeniusYield.Types
@@ -46,14 +47,16 @@ batchTxs bwis = do
     * We concatenate the `TxBodyContent`s by adding up the fees and updating redeemers for withdrawals script.
   -}
   -- We ignore for key witnesses since they won't be valid anyway.
-  bwisResolved <-
+  bwisResolvedWithIns <-
     mapM
       ( \ZKBatchWalletInfo{..} -> do
-          txBodyContent <- obtainTxBodyContentBuildTx $ getTxBody $ zkbwiTx
+          (txBodyContent, inUtxos) <- obtainTxBodyContentBuildTx' $ getTxBody $ zkbwiTx
           walletScript <- initializeWalletScripts zkbwiEmail
-          pure (txBodyContent, walletScript, zkbwiPaymentKeyHash)
+          pure ((txBodyContent, walletScript, zkbwiPaymentKeyHash), inUtxos)
       )
       bwis
+  let bwisResolved = fmap fst bwisResolvedWithIns
+      inUtxos = foldMap snd bwisResolvedWithIns
   pp <- protocolParams
   nid <- networkId
   -- Ordered list of required extra-key witnesses.
@@ -129,12 +132,41 @@ batchTxs bwis = do
   let acollUTxO = utxosToList collateralUtxos & headMaybe
   when (isNothing acollUTxO) $ do
     throwError $ GYBuildTxException GYBuildTxNoSuitableCollateral
-  let combinedTxBodyContent' =
+  eh <- eraHistory
+  ss <- systemStart
+  let combinedTxBodyContentWithColl =
         combinedTxBodyContent
           { CApi.txReturnCollateral = CApi.TxReturnCollateral CApi.BabbageEraOnwardsConway $ txOutToApi $ GYTxOut (utxoAddress (fromJust acollUTxO)) (collBalance `valueMinus` valueFromLovelace balanceNeeded) Nothing Nothing
           , CApi.txTotalCollateral = CApi.TxTotalCollateral CApi.BabbageEraOnwardsConway (Ledger.Coin balanceNeeded)
           }
-  combinedTxBody <- either (throwError . GYBuildTxException . GYBuildTxBodyErrorAutoBalance . CApi.TxBodyError) pure $ CApi.createTransactionBody CApi.ShelleyBasedEraConway combinedTxBodyContent'
+  let inUtxosWithColl = inUtxos <> collateralUtxos
+      inUtxosWithCollApi = utxosToApi inUtxosWithColl
+      ppApi = CApi.LedgerProtocolParameters pp
+      era = CApi.toCardanoEra CApi.ShelleyBasedEraConway
+      ehApi = CApi.toLedgerEpochInfo eh
+      ecombinedTxBody = do
+        txBodyForExUnits <- CApi.createTransactionBody CApi.ShelleyBasedEraConway combinedTxBodyContentWithColl & first CApi.TxBodyError
+        exUnitsMapWithLogs <-
+          first CApi.TxBodyErrorValidityInterval $
+            CApi.evaluateTransactionExecutionUnits
+              era
+              ss
+              ehApi
+              ppApi
+              inUtxosWithCollApi
+              txBodyForExUnits
+        let exUnitsMap = Map.map (fmap snd) exUnitsMapWithLogs
+        exUnitsMap' <-
+          case Map.mapEither id exUnitsMap of
+            (failures, exUnitsMap') ->
+              handleExUnitsErrors
+                (CApi.txScriptValidityToScriptValidity (CApi.txScriptValidity combinedTxBodyContentWithColl))
+                failures
+                exUnitsMap'
+        finalTxBodyContent <- CApi.substituteExecutionUnits exUnitsMap' combinedTxBodyContentWithColl
+        undefined
+
+  -- combinedTxBody <- either (throwError . GYBuildTxException . GYBuildTxBodyErrorAutoBalance . CApi.TxBodyError) pure $
   undefined
  where
   updateRedeemer ::
@@ -202,3 +234,20 @@ batchTxs bwis = do
   headMaybe :: [a] -> Maybe a
   headMaybe [] = Nothing
   headMaybe (x : _) = Just x
+
+handleExUnitsErrors ::
+  -- | Mark script as expected to pass or fail validation
+  CApi.ScriptValidity ->
+  Map CApi.ScriptWitnessIndex CApi.ScriptExecutionError ->
+  Map CApi.ScriptWitnessIndex CApi.ExecutionUnits ->
+  Either (CApi.TxBodyErrorAutoBalance era) (Map CApi.ScriptWitnessIndex CApi.ExecutionUnits)
+handleExUnitsErrors CApi.ScriptValid failuresMap exUnitsMap =
+  if null failures
+    then Right exUnitsMap
+    else Left (CApi.TxBodyScriptExecutionError failures)
+ where
+  failures :: [(CApi.ScriptWitnessIndex, CApi.ScriptExecutionError)]
+  failures = toList failuresMap
+handleExUnitsErrors CApi.ScriptInvalid failuresMap exUnitsMap
+  | null failuresMap = Left CApi.TxBodyScriptBadScriptValidity
+  | otherwise = Right $ Map.map (\_ -> CApi.ExecutionUnits 0 0) failuresMap <> exUnitsMap
