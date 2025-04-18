@@ -20,6 +20,8 @@ import GeniusYield.Imports
 import GeniusYield.TxBuilder
 import GeniusYield.TxBuilder.Class
 import GeniusYield.Types
+import ZkFold.Cardano.SmartWallet.Api.Create (initializeWalletScripts)
+import ZkFold.Cardano.SmartWallet.Types
 import ZkFold.Cardano.UPLC.Wallet.Types (Signature (..))
 
 {- | Combine zk smart-wallet transactions into a single transaction.
@@ -35,14 +37,16 @@ However, currently it is not clear if fees of combined transaction will be highe
 
 __NOTE__: We assume transactions provided are those returned by our API when sending funds from our zk based smart-wallet. This combining function need not necessarily work for other transactions.
 -}
-combineTxs :: (GYTxSpecialQueryMonad m) => NE.NonEmpty GYTx -> m GYTx
-combineTxs txs = do
+batchTxs :: (ZKWalletQueryMonad m) => NE.NonEmpty ZKBatchWalletInfo -> m GYTx
+batchTxs bwis = do
   {- Following is the high level strategy:
     * We obtain `TxBodyContent` with `BuildTx` parameter.
+    * We concatenate the `TxBodyContent`s by adding up the fees and updating redeemers for withdrawals script.
   -}
   -- We ignore for key witnesses since they won't be valid anyway.
-  let txBodies = fmap getTxBody txs
-  txBodiesContent <- mapM obtainTxBodyContentBuildTx txBodies
+  txBodiesContent <- mapM (obtainTxBodyContentBuildTx . getTxBody . zkbwiTx) bwis
+  walletScripts <- mapM (zkbwiEmail >>> initializeWalletScripts) bwis
+  let txBodiesContentWithWalletScripts = NE.zip txBodiesContent walletScripts
   pp <- protocolParams
   -- Ordered list of required extra-key witnesses.
   let oreqSigs =
@@ -147,57 +151,3 @@ combineTxs txs = do
     CApi.TxWithdrawals
       sbe
       (a <> b)
-
-mergeTxBodyContent (_oreqSigs, _pastOutsNum) [] = error "ZkFold.Cardano.SmartWallet.Api.Batch.mergeTxBodyContent: absurd"
-mergeTxBodyContent (_oreqSigs, _pastOutsNum) [txBodyContent] = txBodyContent
-mergeTxBodyContent (oreqSigs, pastOutsNum) (txBodyContent1 : txBodyContent2 : txBodyContents) =
-  mergeTxBodyContent
-    (oreqSigs, pastOutsNum + (length $ CApi.txOuts txBodyContent1))
-    ( CApi.TxBodyContent
-        { txWithdrawals =
-            -- We need to update redeemer of both tx to have correct index of signatory. And we need to update redeemer of second tx to have correct index for it's output.
-            let
-             in -- tx1WdrlRedeemer = Signature (pastOutsNum) (findSignatoryIndex oreqSigs )
-                undefined
-        , txVotingProcedures = Nothing
-        , txValidityUpperBound = combineValidityUpperBound (CApi.txValidityUpperBound txBodyContent1) (CApi.txValidityUpperBound txBodyContent2)
-        , txValidityLowerBound = combineValidityLowerBound (CApi.txValidityLowerBound txBodyContent1) (CApi.txValidityLowerBound txBodyContent2)
-        , txUpdateProposal = CApi.TxUpdateProposalNone
-        , txTreasuryDonation = Nothing
-        , txTotalCollateral = CApi.TxTotalCollateralNone -- Updated later.
-        , txScriptValidity = CApi.txScriptValidity txBodyContent1
-        , txReturnCollateral = CApi.TxReturnCollateralNone -- Updated later.
-        , txProtocolParams = CApi.txProtocolParams txBodyContent1
-        , txProposalProcedures = Nothing
-        , txOuts = CApi.txOuts txBodyContent1 <> CApi.txOuts txBodyContent2
-        , txMintValue = CApi.TxMintNone
-        , txMetadata = CApi.TxMetadataNone
-        , txInsReference = combineTxInsReference (CApi.txInsReference txBodyContent1) (CApi.txInsReference txBodyContent2)
-        , txInsCollateral = combineTxInsCollateral (CApi.txInsCollateral txBodyContent1) (CApi.txInsCollateral txBodyContent2)
-        , txIns = CApi.txIns txBodyContent1 `union` CApi.txIns txBodyContent2
-        , txFee = CApi.txFee txBodyContent1 `addTxFee` CApi.txFee txBodyContent2
-        , txExtraKeyWits = CApi.TxExtraKeyWitnesses CApi.AlonzoEraOnwardsConway oreqSigs
-        , txCurrentTreasuryValue = Nothing
-        , txCertificates = CApi.TxCertificatesNone
-        , txAuxScripts = CApi.TxAuxScriptsNone
-        }
-        : txBodyContents
-    )
- where
-  addTxFee (CApi.TxFeeExplicit sbe a) (CApi.TxFeeExplicit _sbe b) = CApi.TxFeeExplicit sbe (a + b)
-
-  combineValidityLowerBound CApi.TxValidityNoLowerBound b = b
-  combineValidityLowerBound a CApi.TxValidityNoLowerBound = a
-  combineValidityLowerBound (CApi.TxValidityLowerBound aeo a) (CApi.TxValidityLowerBound _aeo b) = CApi.TxValidityLowerBound aeo (min a b)
-
-  combineValidityUpperBound (CApi.TxValidityUpperBound _sbe Nothing) b = b
-  combineValidityUpperBound a (CApi.TxValidityUpperBound _sbe Nothing) = a
-  combineValidityUpperBound (CApi.TxValidityUpperBound sbe (Just a)) (CApi.TxValidityUpperBound _sbe (Just b)) = CApi.TxValidityUpperBound sbe (Just (max a b))
-
-  combineTxInsCollateral CApi.TxInsCollateralNone b = b
-  combineTxInsCollateral a CApi.TxInsCollateralNone = a
-  combineTxInsCollateral (CApi.TxInsCollateral aeo a) (CApi.TxInsCollateral _aeo b) = CApi.TxInsCollateral aeo (a `union` b)
-
-  combineTxInsReference CApi.TxInsReferenceNone b = b
-  combineTxInsReference a CApi.TxInsReferenceNone = a
-  combineTxInsReference (CApi.TxInsReference beo a) (CApi.TxInsReference _beo b) = CApi.TxInsReference beo (a `union` b)

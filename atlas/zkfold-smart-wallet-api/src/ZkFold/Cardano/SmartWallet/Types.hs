@@ -18,6 +18,7 @@ module ZkFold.Cardano.SmartWallet.Types (
   proofToPlutus,
   BuildOut (..),
   ZKSpendWalletInfo (..),
+  ZKBatchWalletInfo (..),
 ) where
 
 import Control.Exception (Exception)
@@ -37,7 +38,7 @@ import GHC.TypeLits (Symbol)
 import GeniusYield.HTTP.Errors (GYApiError (..), IsGYApiError (..))
 import GeniusYield.Imports (FromJSON (..), ToJSON (..), coerce, (&))
 import GeniusYield.Swagger.Utils
-import GeniusYield.TxBuilder (GYTxQueryMonad)
+import GeniusYield.TxBuilder (GYTxQueryMonad, GYTxSpecialQueryMonad)
 import GeniusYield.Types
 import GeniusYield.Types.OpenApi ()
 import Network.HTTP.Types (status400, status500)
@@ -57,7 +58,7 @@ data ZKWalletBuildInfo = ZKWalletBuildInfo
   -- ^ Reward validator for wallet's spending validator parameterized by web 2 auth minting policy id.
   }
 
-type ZKWalletQueryMonad m = (GYTxQueryMonad m, MonadReader ZKWalletBuildInfo m)
+type ZKWalletQueryMonad m = (GYTxSpecialQueryMonad m, MonadReader ZKWalletBuildInfo m)
 
 -- | JSON web token, to be given in textual format.
 newtype JWT = JWT Text
@@ -304,4 +305,10 @@ instance Swagger.ToSchema BuildOut where
 data ZKSpendWalletInfo = ZKSpendWalletInfo
   { zkswiEmail :: !Email
   , zkswiPaymentKeyHash :: !GYPaymentKeyHash
+  }
+
+-- | Information required to batch a particular transaction.
+data ZKBatchWalletInfo = ZKBatchWalletInfo
+  { zkbwiEmail :: !Email
+  , zkbwiTx :: !GYTx
   }

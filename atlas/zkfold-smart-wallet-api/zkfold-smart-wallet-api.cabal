@@ -41,6 +41,7 @@ library
   exposed-modules:
     ZkFold.Cardano.SmartWallet.Api
     ZkFold.Cardano.SmartWallet.Api.Batch
+    ZkFold.Cardano.SmartWallet.Api.Create
     ZkFold.Cardano.SmartWallet.Constants
     ZkFold.Cardano.SmartWallet.Orphans
     ZkFold.Cardano.SmartWallet.Types
