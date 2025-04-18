@@ -311,4 +311,5 @@ data ZKSpendWalletInfo = ZKSpendWalletInfo
 data ZKBatchWalletInfo = ZKBatchWalletInfo
   { zkbwiEmail :: !Email
   , zkbwiTx :: !GYTx
+  , zkbwiPaymentKeyHash :: !GYPaymentKeyHash
   }

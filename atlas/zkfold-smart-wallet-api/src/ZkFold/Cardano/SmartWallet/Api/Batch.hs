@@ -44,24 +44,39 @@ batchTxs bwis = do
     * We concatenate the `TxBodyContent`s by adding up the fees and updating redeemers for withdrawals script.
   -}
   -- We ignore for key witnesses since they won't be valid anyway.
-  txBodiesContent <- mapM (obtainTxBodyContentBuildTx . getTxBody . zkbwiTx) bwis
-  walletScripts <- mapM (zkbwiEmail >>> initializeWalletScripts) bwis
-  let txBodiesContentWithWalletScripts = NE.zip txBodiesContent walletScripts
+  bwisResolved <-
+    mapM
+      ( \ZKBatchWalletInfo{..} -> do
+          txBodyContent <- obtainTxBodyContentBuildTx $ getTxBody $ zkbwiTx
+          walletScript <- initializeWalletScripts zkbwiEmail
+          pure (txBodyContent, walletScript, zkbwiPaymentKeyHash)
+      )
+      bwis
   pp <- protocolParams
+  nid <- networkId
   -- Ordered list of required extra-key witnesses.
   let oreqSigs =
         foldMap
-          ( CApi.txExtraKeyWits >>> \case
+          ( (\(a, _b, _c) -> a) >>> CApi.txExtraKeyWits >>> \case
               CApi.TxExtraKeyWitnessesNone -> mempty
               CApi.TxExtraKeyWitnesses _ ks -> Set.fromList ks
           )
-          txBodiesContent
+          bwisResolved
+          & Set.union (Set.fromList $ NE.toList $ fmap (zkbwiPaymentKeyHash >>> paymentKeyHashToApi) bwis)
           & Set.toList
       combinedTxBodyContent =
         foldl'
-          ( \(accBodyContent, pastOutsNum) txBodyContent ->
+          ( \(accBodyContent, pastOutsNum) (txBodyContent, walletScript, paymentKeyHashToApi -> pkh) ->
               ( accBodyContent
-                  { CApi.txWithdrawals = combineTxWithdrawals (CApi.txWithdrawals accBodyContent) (CApi.txWithdrawals txBodyContent) (updateRedeemer pastOutsNum (findSignatoryIndex oreqSigs (CApi.txExtraKeyWits txBodyContent)))
+                  { CApi.txWithdrawals =
+                      combineTxWithdrawals
+                        (CApi.txWithdrawals accBodyContent)
+                        (CApi.txWithdrawals txBodyContent)
+                        ( updateRedeemer
+                            (stakeAddressFromCredential nid (GYCredentialByScript $ scriptHash (zkiwsCheckSig walletScript)) & stakeAddressToApi)
+                            pastOutsNum
+                            (findSignatoryIndex oreqSigs pkh)
+                        )
                   , CApi.txValidityUpperBound = combineValidityUpperBound (CApi.txValidityUpperBound accBodyContent) (CApi.txValidityUpperBound txBodyContent)
                   , CApi.txValidityLowerBound = combineValidityLowerBound (CApi.txValidityLowerBound accBodyContent) (CApi.txValidityLowerBound txBodyContent)
                   , CApi.txOuts = CApi.txOuts accBodyContent <> CApi.txOuts txBodyContent
@@ -73,7 +88,8 @@ batchTxs bwis = do
               , pastOutsNum + fromIntegral (length (CApi.txOuts txBodyContent))
               )
           )
-          ( let fstTxBodyContent = NE.head txBodiesContent
+          ( let (fstTxBodyContent, fstWalletScript, paymentKeyHashToApi -> pkh) = NE.head bwisResolved
+                stakeAddr = stakeAddressFromCredential nid (GYCredentialByScript $ scriptHash (zkiwsCheckSig fstWalletScript))
              in ( fstTxBodyContent
                     { CApi.txExtraKeyWits = CApi.TxExtraKeyWitnesses CApi.AlonzoEraOnwardsConway oreqSigs
                     , CApi.txReturnCollateral = CApi.TxReturnCollateralNone -- Updated later.
@@ -85,8 +101,9 @@ batchTxs bwis = do
                             sbe
                             ( map
                                 ( updateRedeemer
+                                    (stakeAddressToApi stakeAddr)
                                     0
-                                    (findSignatoryIndex oreqSigs $ CApi.txExtraKeyWits fstTxBodyContent)
+                                    (findSignatoryIndex oreqSigs pkh)
                                 )
                                 ls
                             )
@@ -94,29 +111,32 @@ batchTxs bwis = do
                 , fromIntegral (length (CApi.txOuts fstTxBodyContent))
                 )
           )
-          (NE.tail txBodiesContent)
+          (NE.tail bwisResolved)
   undefined
  where
   updateRedeemer ::
+    CApi.StakeAddress ->
     Integer ->
     Integer ->
     (CApi.StakeAddress, Ledger.Coin, CApi.BuildTxWith CApi.BuildTx (CApi.Witness CApi.WitCtxStake ApiEra)) ->
     (CApi.StakeAddress, Ledger.Coin, CApi.BuildTxWith CApi.BuildTx (CApi.Witness CApi.WitCtxStake ApiEra))
-  updateRedeemer outIx sigIx (stakeAddr, coin, CApi.BuildTxWith wit) = case wit of
-    CApi.KeyWitness _ -> (stakeAddr, coin, CApi.BuildTxWith wit)
-    CApi.ScriptWitness swi sw ->
-      ( stakeAddr
-      , coin
-      , CApi.BuildTxWith $
-          CApi.ScriptWitness swi $
-            case sw of
-              CApi.SimpleScriptWitness _ _ -> sw
-              CApi.PlutusScriptWitness slie psv psori sd _sr eu ->
-                CApi.PlutusScriptWitness slie psv psori sd (Signature outIx sigIx & redeemerFromPlutusData & redeemerToApi) eu
-      )
-  -- TODO: Use apperrors here.
-  findSignatoryIndex oreqSigs CApi.TxExtraKeyWitnessesNone = error "TODO:"
-  findSignatoryIndex oreqSigs (CApi.TxExtraKeyWitnesses _ ks) = elemIndex (head ks) oreqSigs & fromJust & fromIntegral
+  updateRedeemer reqStakeAddr outIx sigIx (stakeAddr, coin, CApi.BuildTxWith wit) =
+    if stakeAddr == reqStakeAddr
+      then case wit of
+        CApi.KeyWitness _ -> (stakeAddr, coin, CApi.BuildTxWith wit)
+        CApi.ScriptWitness swi sw ->
+          ( stakeAddr
+          , coin
+          , CApi.BuildTxWith $
+              CApi.ScriptWitness swi $
+                case sw of
+                  CApi.SimpleScriptWitness _ _ -> sw
+                  CApi.PlutusScriptWitness slie psv psori sd _sr eu ->
+                    CApi.PlutusScriptWitness slie psv psori sd (Signature outIx sigIx & redeemerFromPlutusData & redeemerToApi) eu
+          )
+      else (stakeAddr, coin, CApi.BuildTxWith wit)
+
+  findSignatoryIndex oreqSigs pkh = elemIndex pkh oreqSigs & fromJust & fromIntegral
 
   addTxFee (CApi.TxFeeExplicit sbe a) (CApi.TxFeeExplicit _sbe b) = CApi.TxFeeExplicit sbe (a + b)
 
