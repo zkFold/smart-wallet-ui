@@ -37,6 +37,14 @@ source-repository-package
     plutus/atlas-onchain-common
     .
 
+-- TODO: Temporary, remove once https://github.com/IntersectMBO/cardano-api/pull/820 is in upstream.
+source-repository-package
+  type: git
+  location: https://github.com/sourabhxyz/cardano-api
+  tag: 4b7d11fa37d4a5f652226e0f6ddc7204bdc19fbd
+  subdir:
+    cardano-api
+
 
 -------- Begin contents from @atlas@'s @cabal.project@ file. --------
 
