@@ -5,6 +5,7 @@ module ZkFold.Cardano.SmartWallet.Constants (
 where
 
 import Data.Aeson qualified as Aeson
+import Data.ByteString (ByteString)
 import Data.ByteString.Base16 qualified as BS16
 import Data.ByteString.Short qualified as SBS
 import Data.Foldable (find)
@@ -12,14 +13,15 @@ import Data.Text (unpack)
 import GeniusYield.Imports (Text, encodeUtf8, (&), (<&>))
 import GeniusYield.Types
 import ZkFold.Cardano.OnChain.Plonkup.Data (SetupBytes)
-import ZkFold.Cardano.SmartWallet.Types (ZKWalletBuildInfo (..))
+import ZkFold.Cardano.SmartWallet.Types (ZKWalletBuildInfo (..), expModSetupMock, setupToPlutus, mkSetup)
 import ZkFold.Cardano.UPLC.Wallet.CompiledScript
+import ZkFold.Base.Algebra.Basic.Field (toZp)
 
--- FIXME: Implement this.
+-- FIXME: replace zero with an appropriate secret
 
 -- | Common 'SetupBytes' used across multiple zk-wallets.
 walletSetupBytes :: SetupBytes
-walletSetupBytes = undefined
+walletSetupBytes = setupToPlutus . mkSetup $ expModSetupMock @ByteString (toZp 0)
 
 -- | Select a particular validator from blueprints file.
 selectValScript ::
