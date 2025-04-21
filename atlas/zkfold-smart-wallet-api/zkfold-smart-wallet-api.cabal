@@ -55,7 +55,6 @@ library
     base16-bytestring,
     bytestring,
     cardano-api,
-    cardano-api:internal,
     containers,
     data-default,
     deriving-aeson,

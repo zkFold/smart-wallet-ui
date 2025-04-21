@@ -276,7 +276,7 @@ proofToPlutus ZKProofBytes{..} =
     , z2_xi'_int = z2_xi'_int
     , h1_xi'_int = h1_xi'_int
     , h2_xi_int = h2_xi_int
-    , l1_xi = coerce l1_xi
+    , l_xi = [coerce l1_xi]
     }
  where
   bsFromHexToPlutus :: ByteStringFromHex -> PlutusTx.BuiltinByteString

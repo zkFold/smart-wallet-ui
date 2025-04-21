@@ -3,7 +3,7 @@ module ZkFold.Cardano.SmartWallet.Api.Batch (
 ) where
 
 import Cardano.Api qualified as CApi
-import Cardano.Api.Fees qualified as CApi
+import Cardano.Api.Internal.Fees qualified as CApi
 import Cardano.Api.Ledger qualified as Ledger
 import Cardano.Api.Shelley qualified as CApi
 import Control.Lens ((^.))
