@@ -51,7 +51,7 @@ library
   build-depends:
     aeson,
     atlas-cardano,
-    base ^>=4.18.2.1,
+    base >=4.18.2.1 && <5,
     base16-bytestring,
     bytestring,
     cardano-api,
@@ -82,7 +82,7 @@ test-suite zkfold-smart-contract-wallet-server-test
 
   build-depends:
     atlas-cardano,
-    base ^>=4.18.2.1,
+    base,
     mtl,
     tasty,
     tasty-hunit,

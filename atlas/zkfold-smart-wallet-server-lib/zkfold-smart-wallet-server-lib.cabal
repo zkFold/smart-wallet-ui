@@ -64,7 +64,7 @@ library
   build-depends:
     aeson,
     atlas-cardano,
-    base ^>=4.18.2.1,
+    base,
     binary,
     bytestring,
     data-default,
@@ -100,7 +100,7 @@ executable zkfold-smart-wallet-server
   -- other-modules:
   -- other-extensions:
   build-depends:
-    base ^>=4.18.2.1,
+    base,
     optparse-applicative,
     zkfold-smart-wallet-server-lib,
 

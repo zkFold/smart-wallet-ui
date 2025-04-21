@@ -26,7 +26,7 @@ source-repository-package
 source-repository-package
   type: git
   location: https://github.com/zkFold/symbolic.git
-  tag: dd37b9cd4c346cc9ce8b64d776aa24fb22468a58
+  tag: 450277ec9a940f271beecc8f9869e198c871c347
   subdir: symbolic-base
 
 source-repository-package
@@ -145,6 +145,11 @@ if impl (ghc >= 9.12)
     -- https://github.com/haskellari/postgresql-simple/pull/153
     , postgresql-simple:base
     , postgresql-simple:template-haskell
+
+    -- https://github.com/biocad/servant-openapi3/pull/58
+    , servant-openapi3:base
+    , servant-openapi3:base-compat
+    , servant-openapi3:doctest
 
 -- Using RDRAND instead of /dev/urandom as an entropy source for key
 -- generation is dubious. Set the flag so we use /dev/urandom by default.
