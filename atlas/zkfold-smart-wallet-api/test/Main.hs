@@ -9,6 +9,6 @@ main = do
   withPrivnet cardanoDefaultTestnetOptionsConway $ \setup ->
     defaultMain $
       testGroup
-        "zkfold-wallet-privnet-tests"
+        "zkfold-wallet-tests"
         [ smartWalletTests setup
         ]

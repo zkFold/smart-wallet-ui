@@ -19,6 +19,10 @@ instance Swagger.ToSchema GYDatum where
         mempty & Swagger.description
           ?~ "JSON representation of datum"
 
+-- TODO: Move it to Atlas?
+instance Show GYTx where
+  show = show . txToApi
+
 instance Swagger.ToSchema ZKF where
   declareNamedSchema =
     Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions
@@ -38,4 +42,3 @@ instance Swagger.ToSchema ZKProofBytes where
   declareNamedSchema =
     Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions
       & addSwaggerDescription "Proof bytes where bytes are represented in hexadecimal encoding."
-

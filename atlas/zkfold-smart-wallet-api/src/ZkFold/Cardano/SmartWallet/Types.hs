@@ -25,6 +25,7 @@ module ZkFold.Cardano.SmartWallet.Types (
   expModProofMock,
   BuildOut (..),
   ZKSpendWalletInfo (..),
+  ZKBatchWalletInfo (..),
 ) where
 
 import Control.Exception (Exception)
@@ -38,7 +39,7 @@ import GHC.TypeLits (Symbol)
 import GeniusYield.HTTP.Errors (GYApiError (..), IsGYApiError (..))
 import GeniusYield.Imports (FromJSON (..), coerce, (&))
 import GeniusYield.Swagger.Utils
-import GeniusYield.TxBuilder (GYTxQueryMonad)
+import GeniusYield.TxBuilder (GYTxSpecialQueryMonad)
 import GeniusYield.Types
 import GeniusYield.Types.OpenApi ()
 import Network.HTTP.Types (status400, status500)
@@ -60,7 +61,7 @@ data ZKWalletBuildInfo = ZKWalletBuildInfo
   -- ^ Reward validator for wallet's spending validator parameterized by web 2 auth minting policy id.
   }
 
-type ZKWalletQueryMonad m = (GYTxQueryMonad m, MonadReader ZKWalletBuildInfo m)
+type ZKWalletQueryMonad m = (GYTxSpecialQueryMonad m, MonadReader ZKWalletBuildInfo m)
 
 -- | JSON web token, to be given in textual format.
 newtype JWT = JWT Text
@@ -252,3 +253,22 @@ data ZKSpendWalletInfo = ZKSpendWalletInfo
   { zkswiEmail :: !Email
   , zkswiPaymentKeyHash :: !GYPaymentKeyHash
   }
+
+type ZKBatchWalletInfoPrefix :: Symbol
+type ZKBatchWalletInfoPrefix = "zkbwi"
+
+-- | Information required to batch a particular transaction.
+data ZKBatchWalletInfo = ZKBatchWalletInfo
+  { zkbwiEmail :: !Email
+  , zkbwiTx :: !GYTx
+  , zkbwiPaymentKeyHash :: !GYPaymentKeyHash
+  }
+  deriving stock (Show, Generic)
+  deriving
+    (FromJSON, ToJSON)
+    via CustomJSON '[FieldLabelModifier '[StripPrefix ZKBatchWalletInfoPrefix, CamelToSnake]] ZKBatchWalletInfo
+
+instance Swagger.ToSchema ZKBatchWalletInfo where
+  declareNamedSchema =
+    Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @ZKBatchWalletInfoPrefix}
+      & addSwaggerDescription "Information required to batch a particular transaction."

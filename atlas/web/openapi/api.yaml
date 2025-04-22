@@ -192,6 +192,20 @@ components:
       - collateral
       - collateral_address
       type: object
+    ZKBatchWalletInfo:
+      description: Information required to batch a particular transaction.
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        payment_key_hash:
+          $ref: '#/components/schemas/GYKeyHash'
+        tx:
+          $ref: '#/components/schemas/GYTx'
+      required:
+      - email
+      - tx
+      - payment_key_hash
+      type: object
     ZKF:
       description: Field element.
       type: integer
@@ -345,6 +359,37 @@ paths:
       security:
       - api-key: []
       summary: Add a witness to the transaction and submit it.
+      tags:
+      - Tx
+  /v0/tx/batch:
+    post:
+      requestBody:
+        content:
+          application/json;charset=utf-8:
+            schema:
+              items:
+                $ref: '#/components/schemas/ZKBatchWalletInfo'
+              minItems: 1
+              type: array
+      responses:
+        '200':
+          content:
+            application/json;charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/GYTx'
+          description: ''
+        '400':
+          description: Invalid `body`
+        '401':
+          description: Unauthorized access - API key missing
+        '403':
+          description: Forbidden - The API key does not have permission to perform
+            the request
+        '500':
+          description: Internal server error
+      security:
+      - api-key: []
+      summary: Batch a list of wallet transactions
       tags:
       - Tx
   /v0/tx/submit:

@@ -46,7 +46,7 @@ proofBytesFromJwt jwt keyHash = mkProof $ expModProofMock @ByteString zero (Plon
 smartWalletTests :: Setup -> TestTree
 smartWalletTests setup =
   testGroup
-    "smartWalletTests"
+    "privnet-smart-wallet-tests"
     [ testCaseSteps "able to initialize and send funds from a zk based smart wallet" $ \info -> withSetup info setup $ \ctx -> do
         -- Obtain address of wallet.
         let email = emailFromText "zkfold@gmail.com" & either error id

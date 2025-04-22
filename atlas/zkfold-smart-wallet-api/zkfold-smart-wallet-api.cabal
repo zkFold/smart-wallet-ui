@@ -40,6 +40,8 @@ library
   import: common
   exposed-modules:
     ZkFold.Cardano.SmartWallet.Api
+    ZkFold.Cardano.SmartWallet.Api.Batch
+    ZkFold.Cardano.SmartWallet.Api.Create
     ZkFold.Cardano.SmartWallet.Constants
     ZkFold.Cardano.SmartWallet.Orphans
     ZkFold.Cardano.SmartWallet.Types
@@ -49,9 +51,11 @@ library
   build-depends:
     aeson,
     atlas-cardano,
-    base ^>=4.18.2.1,
+    base >=4.18.2.1 && <5,
     base16-bytestring,
     bytestring,
+    cardano-api,
+    containers,
     data-default,
     deriving-aeson,
     http-types,
@@ -80,7 +84,7 @@ test-suite zkfold-smart-contract-wallet-server-test
 
   build-depends:
     atlas-cardano,
-    base ^>=4.18.2.1,
+    base,
     bytestring,
     cryptohash-sha256,
     mtl,
