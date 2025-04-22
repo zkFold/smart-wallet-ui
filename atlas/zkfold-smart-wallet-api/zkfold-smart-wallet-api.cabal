@@ -64,6 +64,8 @@ library
     plutus-tx,
     swagger2,
     text,
+    symbolic-base,
+    symbolic-cardano,
     zkfold-cardano,
     zkfold-cardano-scripts-common,
 
@@ -83,7 +85,13 @@ test-suite zkfold-smart-contract-wallet-server-test
   build-depends:
     atlas-cardano,
     base,
+    bytestring,
+    cryptohash-sha256,
     mtl,
+    random,
+    RSA < 1.1,
     tasty,
     tasty-hunit,
+    text,
+    symbolic-base,
     zkfold-smart-wallet-api,

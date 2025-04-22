@@ -14,29 +14,30 @@ module ZkFold.Cardano.SmartWallet.Types (
   emailToText,
   ByteStringFromHex (..),
   ZKF (..),
+  ZKSetupBytes (..),
   ZKProofBytes (..),
+  setupToPlutus,
   proofToPlutus,
+  mkSetup,
+  mkProof,
+  ExpModProofInput (..),
+  expModSetupMock,
+  expModProofMock,
   BuildOut (..),
   ZKSpendWalletInfo (..),
   ZKBatchWalletInfo (..),
 ) where
 
 import Control.Exception (Exception)
-import Control.Lens ((?~))
 import Control.Monad.Reader (MonadReader)
 import Data.Aeson (withText)
-import Data.Aeson qualified as Aeson
-import Data.ByteString (ByteString)
-import Data.ByteString.Base16 qualified as BS16
 import Data.Swagger qualified as Swagger
-import Data.Swagger.Internal.Schema qualified as Swagger
 import Data.Text (Text)
 import Data.Text qualified as Text
-import Data.Text.Encoding (decodeUtf8, encodeUtf8)
 import Deriving.Aeson
 import GHC.TypeLits (Symbol)
 import GeniusYield.HTTP.Errors (GYApiError (..), IsGYApiError (..))
-import GeniusYield.Imports (FromJSON (..), ToJSON (..), coerce, (&))
+import GeniusYield.Imports (FromJSON (..), coerce, (&))
 import GeniusYield.Swagger.Utils
 import GeniusYield.TxBuilder (GYTxSpecialQueryMonad)
 import GeniusYield.Types
@@ -44,9 +45,11 @@ import GeniusYield.Types.OpenApi ()
 import Network.HTTP.Types (status400, status500)
 import PlutusTx.Builtins qualified as PlutusTx
 import ZkFold.Cardano.OnChain.BLS12_381.F (F (..))
-import ZkFold.Cardano.OnChain.Plonkup.Data (ProofBytes (..))
+import ZkFold.Cardano.OnChain.Plonkup.Data (ProofBytes (..), SetupBytes (..))
 import ZkFold.Cardano.SmartWallet.Orphans ()
 import ZkFold.Cardano.UPLC.Wallet.Types
+import ZkFold.Symbolic.Cardano.Contracts.SmartWallet (ZKProofBytes (..), ZKSetupBytes (..), ZKF (..), ByteStringFromHex (..), 
+                                                      ExpModProofInput (..), expModSetupMock, expModProofMock, mkSetup, mkProof)
 
 -- | Information required to build transactions for a zk-wallet.
 data ZKWalletBuildInfo = ZKWalletBuildInfo
@@ -170,84 +173,6 @@ emailFromText = Right . coerce
 emailToText :: Email -> Text
 emailToText = coerce
 
--- | Field element.
-newtype ZKF = ZKF Integer
-  deriving stock (Show, Eq, Ord, Generic)
-  deriving newtype (FromJSON, ToJSON)
-
-instance Swagger.ToSchema ZKF where
-  declareNamedSchema =
-    Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions
-      & addSwaggerDescription "Field element."
-
--- | 'ByteString' whose on wire representation is given in hexadecimal encoding.
-newtype ByteStringFromHex = ByteStringFromHex ByteString
-  deriving stock (Generic)
-  deriving newtype (Eq, Ord)
-
-byteStringFromHexToHex :: ByteStringFromHex -> Text
-byteStringFromHexToHex = decodeUtf8 . BS16.encode . coerce
-
-instance Show ByteStringFromHex where
-  showsPrec d bs =
-    showParen (d > 10) $
-      showString "ByteStringFromHex "
-        . showsPrec 11 (byteStringFromHexToHex bs)
-
-instance FromJSON ByteStringFromHex where
-  parseJSON = withText "ByteStringFromHex" $ \t ->
-    either (fail . show) (pure . ByteStringFromHex) $ BS16.decode (encodeUtf8 t)
-
-instance ToJSON ByteStringFromHex where
-  toJSON = Aeson.String . byteStringFromHexToHex
-
-instance Swagger.ToSchema ByteStringFromHex where
-  declareNamedSchema _ =
-    pure $
-      Swagger.named "ByteStringFromHex" $
-        mempty & Swagger.type_
-          ?~ Swagger.SwaggerString & Swagger.format
-          ?~ "hex"
-            & Swagger.description
-          ?~ "Bytes encoded in hex."
-
--- | ZK proof bytes, assuming hex encoding for relevant bytes.
-data ZKProofBytes = ZKProofBytes
-  { cmA_bytes :: !ByteStringFromHex
-  , cmB_bytes :: !ByteStringFromHex
-  , cmC_bytes :: !ByteStringFromHex
-  , cmF_bytes :: !ByteStringFromHex
-  , cmH1_bytes :: !ByteStringFromHex
-  , cmH2_bytes :: !ByteStringFromHex
-  , cmZ1_bytes :: !ByteStringFromHex
-  , cmZ2_bytes :: !ByteStringFromHex
-  , cmQlow_bytes :: !ByteStringFromHex
-  , cmQmid_bytes :: !ByteStringFromHex
-  , cmQhigh_bytes :: !ByteStringFromHex
-  , proof1_bytes :: !ByteStringFromHex
-  , proof2_bytes :: !ByteStringFromHex
-  , a_xi_int :: !Integer
-  , b_xi_int :: !Integer
-  , c_xi_int :: !Integer
-  , s1_xi_int :: !Integer
-  , s2_xi_int :: !Integer
-  , f_xi_int :: !Integer
-  , t_xi_int :: !Integer
-  , t_xi'_int :: !Integer
-  , z1_xi'_int :: !Integer
-  , z2_xi'_int :: !Integer
-  , h1_xi'_int :: !Integer
-  , h2_xi_int :: !Integer
-  , l1_xi :: !ZKF
-  }
-  deriving stock (Show, Generic)
-  deriving anyclass (FromJSON, ToJSON)
-
-instance Swagger.ToSchema ZKProofBytes where
-  declareNamedSchema =
-    Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions
-      & addSwaggerDescription "Proof bytes where bytes are represented in hexadecimal encoding."
-
 proofToPlutus :: ZKProofBytes -> ProofBytes
 proofToPlutus ZKProofBytes{..} =
   ProofBytes
@@ -278,9 +203,31 @@ proofToPlutus ZKProofBytes{..} =
     , h2_xi_int = h2_xi_int
     , l_xi = [coerce l1_xi]
     }
- where
-  bsFromHexToPlutus :: ByteStringFromHex -> PlutusTx.BuiltinByteString
-  bsFromHexToPlutus (ByteStringFromHex bs) = PlutusTx.toBuiltin bs
+  where
+    bsFromHexToPlutus :: ByteStringFromHex -> PlutusTx.BuiltinByteString
+    bsFromHexToPlutus (ByteStringFromHex bs) = PlutusTx.toBuiltin bs
+
+
+setupToPlutus :: ZKSetupBytes -> SetupBytes
+setupToPlutus ZKSetupBytes{..} =
+  SetupBytes
+    { n = n          
+    , pow = pow       
+    , omega = coerce omega_int  
+    , k1 = coerce k1_int
+    , k2 = coerce k2_int
+    , h1_bytes   = PlutusTx.toBuiltin h1_bytes
+    , cmQm_bytes = PlutusTx.toBuiltin cmQm_bytes
+    , cmQl_bytes = PlutusTx.toBuiltin cmQl_bytes
+    , cmQr_bytes = PlutusTx.toBuiltin cmQr_bytes
+    , cmQo_bytes = PlutusTx.toBuiltin cmQo_bytes
+    , cmQc_bytes = PlutusTx.toBuiltin cmQc_bytes
+    , cmQk_bytes = PlutusTx.toBuiltin cmQk_bytes
+    , cmS1_bytes = PlutusTx.toBuiltin cmS1_bytes
+    , cmS2_bytes = PlutusTx.toBuiltin cmS2_bytes
+    , cmS3_bytes = PlutusTx.toBuiltin cmS3_bytes
+    , cmT1_bytes = PlutusTx.toBuiltin cmT1_bytes
+    }
 
 type BuildOutPrefix :: Symbol
 type BuildOutPrefix = "bo"
