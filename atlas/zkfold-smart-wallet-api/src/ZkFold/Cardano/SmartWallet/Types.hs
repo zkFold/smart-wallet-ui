@@ -49,8 +49,17 @@ import ZkFold.Cardano.OnChain.BLS12_381.F (F (..))
 import ZkFold.Cardano.OnChain.Plonkup.Data (ProofBytes (..), SetupBytes (..))
 import ZkFold.Cardano.SmartWallet.Orphans ()
 import ZkFold.Cardano.UPLC.Wallet.Types
-import ZkFold.Symbolic.Cardano.Contracts.SmartWallet (ZKProofBytes (..), ZKSetupBytes (..), ZKF (..), ByteStringFromHex (..), 
-                                                      ExpModProofInput (..), expModSetupMock, expModProofMock, mkSetup, mkProof)
+import ZkFold.Symbolic.Cardano.Contracts.SmartWallet (
+  ByteStringFromHex (..),
+  ExpModProofInput (..),
+  ZKF (..),
+  ZKProofBytes (..),
+  ZKSetupBytes (..),
+  expModProofMock,
+  expModSetupMock,
+  mkProof,
+  mkSetup,
+ )
 
 -- | Information required to build transactions for a zk-wallet.
 data ZKWalletBuildInfo = ZKWalletBuildInfo
@@ -94,6 +103,7 @@ data ZKInitializedWalletScripts = ZKInitializedWalletScripts
   , zkiwsWallet :: !(GYScript 'PlutusV3)
   , zkiwsCheckSig :: !(GYScript 'PlutusV3)
   }
+  deriving stock (Show)
 
 -- | Errors related to invalid email.
 data ZKEmailError
@@ -204,23 +214,22 @@ proofToPlutus ZKProofBytes{..} =
     , h2_xi_int = h2_xi_int
     , l_xi = [coerce l1_xi]
     }
-  where
-    bsFromHexToPlutus :: ByteStringFromHex -> PlutusTx.BuiltinByteString
-    bsFromHexToPlutus (ByteStringFromHex bs) = 
-        case BS16.decode bs of
-          Right b -> PlutusTx.toBuiltin b
-          Left e -> error e
-
+ where
+  bsFromHexToPlutus :: ByteStringFromHex -> PlutusTx.BuiltinByteString
+  bsFromHexToPlutus (ByteStringFromHex bs) =
+    case BS16.decode bs of
+      Right b -> PlutusTx.toBuiltin b
+      Left e -> error e
 
 setupToPlutus :: ZKSetupBytes -> SetupBytes
 setupToPlutus ZKSetupBytes{..} =
   SetupBytes
-    { n = n          
-    , pow = pow       
-    , omega = coerce omega_int  
+    { n = n
+    , pow = pow
+    , omega = coerce omega_int
     , k1 = coerce k1_int
     , k2 = coerce k2_int
-    , h1_bytes   = PlutusTx.toBuiltin h1_bytes
+    , h1_bytes = PlutusTx.toBuiltin h1_bytes
     , cmQm_bytes = PlutusTx.toBuiltin cmQm_bytes
     , cmQl_bytes = PlutusTx.toBuiltin cmQl_bytes
     , cmQr_bytes = PlutusTx.toBuiltin cmQr_bytes
