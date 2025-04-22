@@ -89,6 +89,7 @@ source-repository-package
 allow-newer:
     katip:Win32
   , ekg-wai:time
+  , symbolic-base:QuickCheck
 
 if impl (ghc >= 9.10)
   allow-newer:
