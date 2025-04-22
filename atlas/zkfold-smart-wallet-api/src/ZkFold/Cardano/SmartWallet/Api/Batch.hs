@@ -43,7 +43,7 @@ batchTxs bwis = do
   bwisResolvedWithIns <-
     mapM
       ( \ZKBatchWalletInfo{..} -> do
-          (txBodyContent, inUtxos) <- obtainTxBodyContentBuildTx' $ getTxBody $ zkbwiTx
+          (txBodyContent, inUtxos) <- obtainTxBodyContentBuildTx' $ getTxBody zkbwiTx
           walletScript <- initializeWalletScripts zkbwiEmail
           pure ((txBodyContent, walletScript, zkbwiPaymentKeyHash), inUtxos)
       )

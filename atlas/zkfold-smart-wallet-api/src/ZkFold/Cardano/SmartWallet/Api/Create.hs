@@ -7,12 +7,9 @@ module ZkFold.Cardano.SmartWallet.Api.Create (
 ) where
 
 import Control.Monad.Reader (MonadReader (..))
-import Data.Default (Default (..))
-import Data.Foldable (find)
 import Data.Maybe (fromJust)
 import Data.Text qualified as Text
 import GeniusYield.Imports (Text, (&), (>>>))
-import GeniusYield.Transaction.Common
 import GeniusYield.TxBuilder
 import GeniusYield.Types
 import PlutusTx.Builtins qualified as PlutusTx
@@ -64,7 +61,7 @@ addressFromEmail :: (ZKWalletQueryMonad m) => Email -> m (ZKInitializedWalletScr
 addressFromEmail email = do
   zkiws@ZKInitializedWalletScripts{zkiwsWallet} <- initializeWalletScripts email
   walletAddr <- addressFromScriptM zkiwsWallet
-  pure $ (zkiws, walletAddr)
+  pure (zkiws, walletAddr)
 
 addressFromScriptM :: (GYTxQueryMonad m) => GYScript v -> m GYAddress
 addressFromScriptM script = do

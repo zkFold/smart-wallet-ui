@@ -12,10 +12,10 @@ import Data.Foldable (find)
 import Data.Text (unpack)
 import GeniusYield.Imports (Text, encodeUtf8, (&), (<&>))
 import GeniusYield.Types
+import ZkFold.Algebra.Field (toZp)
 import ZkFold.Cardano.OnChain.Plonkup.Data (SetupBytes)
-import ZkFold.Cardano.SmartWallet.Types (ZKWalletBuildInfo (..), expModSetupMock, setupToPlutus, mkSetup)
+import ZkFold.Cardano.SmartWallet.Types (ZKWalletBuildInfo (..), expModSetupMock, mkSetup, setupToPlutus)
 import ZkFold.Cardano.UPLC.Wallet.CompiledScript
-import ZkFold.Base.Algebra.Basic.Field (toZp)
 
 -- FIXME: replace zero with an appropriate secret
 

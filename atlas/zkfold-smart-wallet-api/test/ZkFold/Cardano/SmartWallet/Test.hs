@@ -1,47 +1,46 @@
 module ZkFold.Cardano.SmartWallet.Test (smartWalletTests) where
 
-import Data.ByteString (unpack, ByteString)
 import Codec.Crypto.RSA (generateKeyPair)
 import Codec.Crypto.RSA qualified as R
 import Crypto.Hash.SHA256 (hash)
-import System.Random (mkStdGen)
+import Data.ByteString (ByteString, unpack)
 import Data.Text.Encoding (encodeUtf8)
-import GeniusYield.Imports ((&), Text)
+import GeniusYield.Imports (Text, (&))
 import GeniusYield.Test.Privnet.Ctx
 import GeniusYield.Test.Privnet.Setup
 import GeniusYield.TxBuilder
 import GeniusYield.Types
+import System.Random (mkStdGen)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCaseSteps)
+import ZkFold.Algebra.Class (zero)
 import ZkFold.Cardano.SmartWallet.Api (addressFromEmail, createWallet', extraBuildConfiguration, sendFunds')
 import ZkFold.Cardano.SmartWallet.Test.Utils
 import ZkFold.Cardano.SmartWallet.Types
-import ZkFold.Base.Algebra.Basic.Class (zero)
-import ZkFold.Base.Protocol.Plonkup.Prover.Secret (PlonkupProverSecret (..))
+import ZkFold.Protocol.Plonkup.Prover.Secret (PlonkupProverSecret (..))
 
 proofBytesFromJwt :: Text -> ByteString -> ZKProofBytes
-proofBytesFromJwt jwt keyHash = mkProof $ expModProofMock @ByteString zero (PlonkupProverSecret $ pure zero) (ExpModProofInput e n msg keyNat) 
-  where
-    (R.PublicKey{..}, R.PrivateKey{..}, _) = generateKeyPair (mkStdGen 42) 2048
+proofBytesFromJwt jwt keyHash = mkProof $ expModProofMock @ByteString zero (PlonkupProverSecret $ pure zero) (ExpModProofInput e n msg keyNat)
+ where
+  (R.PublicKey{..}, R.PrivateKey{..}, _) = generateKeyPair (mkStdGen 42) 2048
 
-    h = hash (encodeUtf8 jwt)
+  h = hash (encodeUtf8 jwt)
 
-    bsToNat :: ByteString -> Natural
-    bsToNat = foldr (\w a -> fromIntegral w + 2 * a) 0 . unpack
+  bsToNat :: ByteString -> Natural
+  bsToNat = foldr (\w a -> fromIntegral w + 2 * a) 0 . unpack
 
-    hNat :: Natural
-    hNat = bsToNat h 
+  hNat :: Natural
+  hNat = bsToNat h
 
-    prD, e, n :: Natural
-    prD = fromIntegral private_d
-    e = fromIntegral public_e
-    n = fromIntegral public_n
+  prD, e, n :: Natural
+  prD = fromIntegral private_d
+  e = fromIntegral public_e
+  n = fromIntegral public_n
 
-    msg = (hNat ^ prD) `mod` n
+  msg = (hNat ^ prD) `mod` n
 
-    keyNat :: Natural
-    keyNat = bsToNat keyHash
-
+  keyNat :: Natural
+  keyNat = bsToNat keyHash
 
 smartWalletTests :: Setup -> TestTree
 smartWalletTests setup =
@@ -62,7 +61,7 @@ smartWalletTests setup =
         let newKeyHash = newKey & getVerificationKey & verificationKeyHash
         info $ "Generated key: " <> show newKeyHash
         let jwt = "{testHeader:\"testData\"},{testPayload:\"payloadData\",email:\"" <> emailToText email <> "\"}"
-            proofBytes = proofBytesFromJwt jwt $ keyHashToRawBytes newKeyHash 
+            proofBytes = proofBytesFromJwt jwt $ keyHashToRawBytes newKeyHash
             cwi =
               ZKCreateWalletInfo
                 { zkcwiProofBytes = proofBytes
