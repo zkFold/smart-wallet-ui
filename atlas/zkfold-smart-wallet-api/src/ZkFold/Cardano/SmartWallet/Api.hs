@@ -32,7 +32,12 @@ registerAndDelegateWithdrawalScript zkiws@ZKInitializedWalletScripts{..} walletA
   pure $
     mustHaveRefInput (utxoRef authOut)
       <> mustBeSignedBy zkradiPaymentKeyHash
-      <> mustHaveCertificate (mkStakeAddressCombinedRegistrationAndDelegationCertificate stakeCred (GYDelegStakeVote zkradiStakePool zkradiDRep) (GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined zkiwsCheckSig) (redeemerFromPlutusData $ Signature 0 0)))
+      <> mustHaveCertificate
+        ( mkStakeAddressCombinedRegistrationAndDelegationCertificate
+            stakeCred
+            (GYDelegStakeVote zkradiStakePool zkradiDRep)
+            (GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined zkiwsCheckSig) (redeemerFromPlutusData $ Signature 0 0))
+        )
 
 -- | Send funds from a zk-wallet.
 sendFunds :: (ZKWalletQueryMonad m, Foldable f) => ZKSpendWalletInfo -> f BuildOut -> m (GYTxSkeleton 'PlutusV3)
@@ -92,7 +97,10 @@ sendFunds' zkiws@ZKInitializedWalletScripts{..} walletAddress ZKSpendWalletInfo{
         ( GYTxWdrl
             { gyTxWdrlStakeAddress = stakeAddr
             , gyTxWdrlAmount = gyStakeAddressInfoAvailableRewards si
-            , gyTxWdrlWitness = GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined zkiwsCheckSig) (redeemerFromPlutusData $ Signature 0 0)
+            , gyTxWdrlWitness =
+                GYTxBuildWitnessPlutusScript
+                  (GYBuildPlutusScriptInlined zkiwsCheckSig)
+                  (redeemerFromPlutusData $ Signature 0 0)
             }
         )
 

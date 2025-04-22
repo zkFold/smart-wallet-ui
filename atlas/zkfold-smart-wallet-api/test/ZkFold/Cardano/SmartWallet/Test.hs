@@ -45,7 +45,7 @@ proofBytesFromJwt jwt keyHash = zkpBytes
   expM _ 0 _ = 1
   expM b ex m =
     case ex `mod` 2 of
-      1 -> (b * (expM b (ex - 1) m)) `mod` m
+      1 -> (b * expM b (ex - 1) m) `mod` m
       _ ->
         let e2 = expM b (ex `div` 2) m
          in (e2 * e2) `mod` m
@@ -65,11 +65,13 @@ smartWalletTests setup =
     [ testCaseSteps "able to initialize and send funds from a zk based smart wallet" $ \info -> withSetup info setup $ \ctx -> do
         -- Obtain address of wallet.
         let email = emailFromText "zkfold@gmail.com" & either error id
+            fundUser = ctxUserF ctx
+            fundUserAddr = fundUser & userChangeAddress
         (zkiws, walletAddress) <- zkctxRunQuery ctx $ addressFromEmail email
         info $ "Wallet's address: " <> show walletAddress
         info $ "Initialized wallet scripts: " <> show zkiws
         -- Fund this address.
-        ctxRun ctx (ctxUserF ctx) $ do
+        ctxRun ctx fundUser $ do
           txBodyFund <- buildTxBody $ mustHaveOutput $ mkGYTxOutNoDatum walletAddress (valueFromLovelace 100_000_000)
           signAndSubmitConfirmed_ txBodyFund
         -- Initialize this wallet.
@@ -87,9 +89,9 @@ smartWalletTests setup =
                 , zkcwiEmail = email
                 }
         -- Find suitable UTxO as collateral.
-        utxos <- ctxRunQuery ctx $ utxosAtAddress (ctxUserF ctx & userChangeAddress) Nothing
+        utxos <- ctxRunQuery ctx $ utxosAtAddress fundUserAddr Nothing
         let collUtxo = utxosToList utxos & head
-        initWalletBody <- zkctxRunBuilder ctx (ctxUserF ctx & userChangeAddress) (utxoRef collUtxo) $ do
+        initWalletBody <- zkctxRunBuilder ctx fundUserAddr (utxoRef collUtxo) $ do
           createWallet' cwi zkiws >>= buildTxBody
         info $ "Wallet initialization tx body: " <> show initWalletBody
         -- We require signature from 'ctxUserF' since we used it's collateral.
@@ -97,7 +99,7 @@ smartWalletTests setup =
         info $ "Submitted tx: " <> show tidInit
 
         -- Register & delegate the withdrawal script.
-        regDelegBody <- zkctxRunBuilder ctx (ctxUserF ctx & userChangeAddress) (utxoRef collUtxo) $ do
+        regDelegBody <- zkctxRunBuilder ctx fundUserAddr (utxoRef collUtxo) $ do
           sps <- stakePools
           let sp = sps & Set.findMin & stakePoolIdFromApi
           registerAndDelegateWithdrawalScript
@@ -110,7 +112,7 @@ smartWalletTests setup =
               , zkradiEmail = email
               }
             >>= buildTxBody
-        regDelegTxId <- ctxRun ctx (ctxUserF ctx) $ submitTxBodyConfirmed regDelegBody [GYSomeSigningKey newKey, GYSomeSigningKey (ctxUserF ctx & userPaymentSKey)]
+        regDelegTxId <- ctxRun ctx fundUser $ submitTxBodyConfirmed regDelegBody [GYSomeSigningKey newKey, GYSomeSigningKey (ctxUserF ctx & userPaymentSKey)]
         info $ "Submitted withdrawal script's registration & delegation tx: " <> show regDelegTxId
 
         -- Spending funds from the zk based smart wallet.
@@ -131,6 +133,6 @@ smartWalletTests setup =
         spendWalletBody <- zkctxRunBuilder ctx walletAddress (utxoRef collUtxo) $ do
           sendFunds' zkiws walletAddress (ZKSpendWalletInfo{zkswiPaymentKeyHash = newKeyHash, zkswiEmail = email}) outs >>= buildTxBodyWithExtraConfiguration (extraBuildConfiguration zkiws)
         info $ "send funds tx body: " <> show spendWalletBody
-        tidSpend <- ctxRun ctx (ctxUserF ctx) $ submitTxBodyConfirmed spendWalletBody [GYSomeSigningKey newKey, GYSomeSigningKey (ctxUserF ctx & userPaymentSKey)]
+        tidSpend <- ctxRun ctx fundUser $ submitTxBodyConfirmed spendWalletBody [GYSomeSigningKey newKey, GYSomeSigningKey (ctxUserF ctx & userPaymentSKey)]
         info $ "Submitted spend tx: " <> show tidSpend
     ]
