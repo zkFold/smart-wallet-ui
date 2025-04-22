@@ -26,6 +26,7 @@ module ZkFold.Cardano.SmartWallet.Types (
   BuildOut (..),
   ZKSpendWalletInfo (..),
   ZKBatchWalletInfo (..),
+  ZKRegisterAndDelegateWithdrawalScriptInfo (..),
 ) where
 
 import Control.Exception (Exception)
@@ -260,6 +261,15 @@ instance Swagger.ToSchema BuildOut where
   declareNamedSchema =
     Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @BuildOutPrefix}
       & addSwaggerDescription "Output to be created. Note that our balancer may add additional lovelace to satisfy minimum lovelace requirement for this output."
+
+-- | Information required to register and delegate the withdrawal script.
+data ZKRegisterAndDelegateWithdrawalScriptInfo = ZKRegisterAndDelegateWithdrawalScriptInfo
+  { zkradiStakePool :: !GYStakePoolId
+  , zkradiDRep :: !GYDRep
+  , zkradiEmail :: !Email
+  , zkradiPaymentKeyHash :: !GYPaymentKeyHash
+  }
+  deriving stock (Show, Generic)
 
 -- | Information required to spend funds from user's wallet.
 data ZKSpendWalletInfo = ZKSpendWalletInfo

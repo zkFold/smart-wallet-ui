@@ -15,7 +15,7 @@ import System.Random (mkStdGen)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCaseSteps)
 import ZkFold.Algebra.Class (zero)
-import ZkFold.Cardano.SmartWallet.Api (addressFromEmail, createWallet', extraBuildConfiguration, sendFunds')
+import ZkFold.Cardano.SmartWallet.Api (addressFromEmail, createWallet', extraBuildConfiguration, registerAndDelegateWithdrawalScript, sendFunds')
 import ZkFold.Cardano.SmartWallet.Test.Utils
 import ZkFold.Cardano.SmartWallet.Types
 import ZkFold.Protocol.Plonkup.Prover.Secret (PlonkupProverSecret (..))
@@ -97,17 +97,22 @@ smartWalletTests setup =
         info $ "Submitted tx: " <> show tidInit
 
         -- Register & delegate the withdrawal script.
-        nid <- ctxRunQuery ctx networkId
-        let stakeCred = GYCredentialByScript $ scriptHash $ zkiwsCheckSig zkiws
-            stakeAddr = stakeAddressFromCredential nid stakeCred
-        info $ "Stake address (withdrawal script): " <> show stakeAddr
-        regTxId <- ctxRun ctx (ctxUserF ctx) $ do
+        regDelegBody <- zkctxRunBuilder ctx (ctxUserF ctx & userChangeAddress) (utxoRef collUtxo) $ do
           sps <- stakePools
           let sp = sps & Set.findMin & stakePoolIdFromApi
-          let skel = mustHaveCertificate @'PlutusV3 (mkStakeAddressCombinedRegistrationAndDelegationCertificate stakeCred (GYDelegStakeVote sp GYDRepAlwaysAbstain) (GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined $ zkiwsCheckSig zkiws) unitRedeemer))
-          body <- buildTxBody skel
-          signAndSubmitConfirmed body
-        info $ "Submitted withdrawal script's registration & delegation tx: " <> show regTxId
+          registerAndDelegateWithdrawalScript
+            zkiws
+            walletAddress
+            ZKRegisterAndDelegateWithdrawalScriptInfo
+              { zkradiPaymentKeyHash = newKeyHash
+              , zkradiStakePool = sp
+              , zkradiDRep = GYDRepAlwaysAbstain
+              , zkradiEmail = email
+              }
+            >>= buildTxBody
+        regDelegTxId <- ctxRun ctx (ctxUserF ctx) $ submitTxBodyConfirmed regDelegBody [GYSomeSigningKey newKey, GYSomeSigningKey (ctxUserF ctx & userPaymentSKey)]
+        info $ "Submitted withdrawal script's registration & delegation tx: " <> show regDelegTxId
+
         -- Spending funds from the zk based smart wallet.
         walletUtxos <- ctxRunQuery ctx $ utxosAtAddress walletAddress Nothing
         info $ "Wallet UTxOs: " <> show walletUtxos
@@ -127,5 +132,5 @@ smartWalletTests setup =
           sendFunds' zkiws walletAddress (ZKSpendWalletInfo{zkswiPaymentKeyHash = newKeyHash, zkswiEmail = email}) outs >>= buildTxBodyWithExtraConfiguration (extraBuildConfiguration zkiws)
         info $ "send funds tx body: " <> show spendWalletBody
         tidSpend <- ctxRun ctx (ctxUserF ctx) $ submitTxBodyConfirmed spendWalletBody [GYSomeSigningKey newKey, GYSomeSigningKey (ctxUserF ctx & userPaymentSKey)]
-        info $ "Submitted tx: " <> show tidSpend
+        info $ "Submitted spend tx: " <> show tidSpend
     ]
