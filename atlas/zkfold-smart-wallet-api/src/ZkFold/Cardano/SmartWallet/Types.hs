@@ -31,6 +31,7 @@ module ZkFold.Cardano.SmartWallet.Types (
 import Control.Exception (Exception)
 import Control.Monad.Reader (MonadReader)
 import Data.Aeson (withText)
+import Data.ByteString.Base16 qualified as BS16
 import Data.Swagger qualified as Swagger
 import Data.Text (Text)
 import Data.Text qualified as Text
@@ -205,7 +206,10 @@ proofToPlutus ZKProofBytes{..} =
     }
   where
     bsFromHexToPlutus :: ByteStringFromHex -> PlutusTx.BuiltinByteString
-    bsFromHexToPlutus (ByteStringFromHex bs) = PlutusTx.toBuiltin bs
+    bsFromHexToPlutus (ByteStringFromHex bs) = 
+        case BS16.decode bs of
+          Right b -> PlutusTx.toBuiltin b
+          Left e -> error e
 
 
 setupToPlutus :: ZKSetupBytes -> SetupBytes
