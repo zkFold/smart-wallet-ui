@@ -1,54 +1,94 @@
 module ZkFold.Cardano.SmartWallet.Api (
-  validatorSetupFromEmail,
   addressFromEmail,
-  addressFromValidatorSetup,
+  createWallet,
+  createWallet',
   sendFunds,
   sendFunds',
+  extraBuildConfiguration,
+  batchTxs,
 ) where
 
-import Control.Monad ((>=>))
-import Control.Monad.Reader (MonadReader (..))
-import GeniusYield.TxBuilder (GYTxQueryMonad (..), GYTxSkeleton, mustHaveOutput, mustHaveWithdrawal, throwAppError)
-import GeniusYield.Types (GYAddress, GYBuildPlutusScript (..), GYCredential (GYCredentialByScript), GYRedeemer, GYStakeAddressInfo (..), GYTxBuildWitness (..), GYTxWdrl (..), GYValue, PlutusVersion (..), mkGYTxOutNoDatum, scriptHash, stakeAddressFromCredential, unitRedeemer)
+import Data.Default (Default (..))
+import Data.Foldable (find)
+import GeniusYield.Transaction.Common
+import GeniusYield.TxBuilder
+import GeniusYield.Types
+import ZkFold.Cardano.SmartWallet.Api.Batch
+import ZkFold.Cardano.SmartWallet.Api.Create
 import ZkFold.Cardano.SmartWallet.Types
+import ZkFold.Cardano.UPLC.Wallet.Types
 
--- | A dummy redeemer. We would update this with actual redeemer later on.
-dummyRedeemer :: GYRedeemer
-dummyRedeemer = unitRedeemer
+-- | Send funds from a zk-wallet.
+sendFunds :: (ZKWalletQueryMonad m, Foldable f) => ZKSpendWalletInfo -> f BuildOut -> m (GYTxSkeleton 'PlutusV3)
+sendFunds zkswi@ZKSpendWalletInfo{..} outs = do
+  (zkiws, walletAddress) <- addressFromEmail zkswiEmail
+  sendFunds' zkiws walletAddress zkswi outs
 
--- TODO: To not require @SetupBytes@ and @WalletSetup@, but rather have this function receive `GYScript` directly?
-
-validatorSetupFromEmail :: (ZKWalletQueryMonad m) => Email -> m ValidatorSetup
-validatorSetupFromEmail email = undefined -- FIXME:
-
-addressFromEmail :: (ZKWalletQueryMonad m) => Email -> m GYAddress
-addressFromEmail = validatorSetupFromEmail >=> addressFromValidatorSetup
-
-addressFromValidatorSetup :: (ZKWalletQueryMonad m) => ValidatorSetup -> m GYAddress
-addressFromValidatorSetup (sb, ws) = undefined -- FIXME:
-
--- | Send funds from a zk-wallet to a given address.
-sendFunds :: (ZKWalletQueryMonad m) => Email -> GYAddress -> GYValue -> m (GYTxSkeleton 'PlutusV3)
-sendFunds email sendAddr sendVal = validatorSetupFromEmail email >>= \validatorSetup -> sendFunds' validatorSetup sendAddr sendVal
-
-sendFunds' :: (ZKWalletQueryMonad m) => ValidatorSetup -> GYAddress -> GYValue -> m (GYTxSkeleton 'PlutusV3)
-sendFunds' (sb, ws) sendAddr sendVal = do
+-- | Send funds from a zk-wallet.
+sendFunds' ::
+  (GYTxQueryMonad m, Foldable f) =>
+  ZKInitializedWalletScripts ->
+  -- | Address of the zk wallet.
+  GYAddress ->
+  ZKSpendWalletInfo ->
+  f BuildOut ->
+  m (GYTxSkeleton 'PlutusV3)
+sendFunds' ZKInitializedWalletScripts{..} walletAddress ZKSpendWalletInfo{..} outs = do
+  -- Find a UTxO at wallet's address that has a proof validity token. Require that token to be in output.
+  walletOuts <- utxosAtAddress walletAddress Nothing
+  let tn = tokenNameFromKeyHash zkswiPaymentKeyHash
+      ac = GYToken (mintingPolicyId zkiwsWeb2Auth) tn
+  authOut <- case find (\out -> valueAssetPresent (utxoValue out) ac) (utxosToList walletOuts) of
+    Nothing -> throwAppError (ZKWENoAuthToken zkswiEmail walletAddress tn)
+    Just out -> pure out
   nid <- networkId
-  zkwbi <- ask
-  let stakeAddr = stakeAddressFromCredential nid (GYCredentialByScript $ scriptHash $ zkwbiSmartWalletValidator zkwbi sb ws)
-  let mockStakeAddr = stakeAddressFromCredential nid (GYCredentialByScript $ scriptHash $ zkwbiMockStakeValidator zkwbi)
-  -- TODO: Perhaps stake address information is not required if we are sure that withdrawal amount would always be zero.
+  let stakeAddr = stakeAddressFromCredential nid (GYCredentialByScript $ scriptHash zkiwsCheckSig)
   si <-
     stakeAddressInfo stakeAddr >>= \case
       Just si -> pure si
       Nothing -> throwAppError $ ZKWEStakeAddressInfoNotFound stakeAddr
   pure $
-    mustHaveOutput (mkGYTxOutNoDatum sendAddr sendVal)
-      -- TODO: To make use of reference scripts?
+    mustHaveInput (GYTxIn{gyTxInTxOutRef = utxoRef authOut, gyTxInWitness = GYTxInWitnessScript (GYBuildPlutusScriptInlined zkiwsWallet) Nothing unitRedeemer})
+      <>
+      -- Marking the first output with token for easy redeemer computation of withdrawal script.
+      mustHaveOutput (mkGYTxOutNoDatum (utxoAddress authOut) (valueSingleton ac 1))
+      <> foldMap
+        ( \BuildOut{..} ->
+            mustHaveOutput $
+              GYTxOut
+                { gyTxOutValue = boValue
+                , gyTxOutRefS = Nothing
+                , gyTxOutDatum =
+                    fmap
+                      ( \(dat, toInline) ->
+                          ( dat
+                          , if toInline then GYTxOutUseInlineDatum else GYTxOutDontUseInlineDatum
+                          )
+                      )
+                      boDatum
+                , gyTxOutAddress = boAddress
+                }
+        )
+        outs
+      <> mustBeSignedBy zkswiPaymentKeyHash
       <> mustHaveWithdrawal
         ( GYTxWdrl
-            { gyTxWdrlStakeAddress = mockStakeAddr
+            { gyTxWdrlStakeAddress = stakeAddr
             , gyTxWdrlAmount = gyStakeAddressInfoAvailableRewards si
-            , gyTxWdrlWitness = GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined (zkwbiMockStakeValidator zkwbi)) dummyRedeemer
+            , gyTxWdrlWitness = GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined zkiwsCheckSig) (redeemerFromPlutusData $ Signature 0 0)
             }
         )
+
+-- | Extra build configuration to use when building transactions for zk wallet.
+extraBuildConfiguration :: ZKInitializedWalletScripts -> GYTxExtraConfiguration 'PlutusV3
+extraBuildConfiguration zkiws =
+  def
+    { gytxecUtxoInputMapper = \GYUTxO{..} ->
+        GYTxInDetailed
+          { gyTxInDet = GYTxIn utxoRef (GYTxInWitnessScript (GYBuildPlutusScriptInlined $ zkiwsWallet zkiws) Nothing unitRedeemer)
+          , gyTxInDetAddress = utxoAddress
+          , gyTxInDetValue = utxoValue
+          , gyTxInDetDatum = utxoOutDatum
+          , gyTxInDetScriptRef = utxoRefScript
+          }
+    }
