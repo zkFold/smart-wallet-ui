@@ -50,7 +50,7 @@ ezkWalletBuildInfo = do
   pure $
     ZKWalletBuildInfo
       { zkwbiWeb2AuthMintingPolicy = applyParam (applyParam web2Auth walletSetupBytes)
-      , zkwbiWalletValidator = applyParam wallet . scriptHashToPlutus
+      , zkwbiWalletValidator = \cs sh -> applyParam (applyParam wallet (mintingPolicyIdToCurrencySymbol cs)) (scriptHashToPlutus sh)
       , zkwbiCheckSigRewardValidator = applyParam checkSig . mintingPolicyIdToCurrencySymbol
       }
 

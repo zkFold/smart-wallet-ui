@@ -26,7 +26,7 @@ module ZkFold.Cardano.SmartWallet.Types (
   BuildOut (..),
   ZKSpendWalletInfo (..),
   ZKBatchWalletInfo (..),
-  ZKRegisterAndDelegateWithdrawalScriptInfo (..),
+  ZKRegisterWithdrawalScriptInfo (..),
 ) where
 
 import Control.Exception (Exception)
@@ -66,7 +66,7 @@ import ZkFold.Symbolic.Cardano.Contracts.SmartWallet (
 data ZKWalletBuildInfo = ZKWalletBuildInfo
   { zkwbiWeb2AuthMintingPolicy :: !(Web2Creds -> GYScript 'PlutusV3)
   -- ^ Web2 Auth minting policy.
-  , zkwbiWalletValidator :: !(GYScriptHash -> GYScript 'PlutusV3)
+  , zkwbiWalletValidator :: !(GYMintingPolicyId -> GYScriptHash -> GYScript 'PlutusV3)
   -- ^ Wallet spending validator.
   , zkwbiCheckSigRewardValidator :: !(GYMintingPolicyId -> GYScript 'PlutusV3)
   -- ^ Reward validator for wallet's spending validator parameterized by web 2 auth minting policy id.
@@ -263,10 +263,8 @@ instance Swagger.ToSchema BuildOut where
       & addSwaggerDescription "Output to be created. Note that our balancer may add additional lovelace to satisfy minimum lovelace requirement for this output."
 
 -- | Information required to register and delegate the withdrawal script.
-data ZKRegisterAndDelegateWithdrawalScriptInfo = ZKRegisterAndDelegateWithdrawalScriptInfo
-  { zkradiStakePool :: !GYStakePoolId
-  , zkradiDRep :: !GYDRep
-  , zkradiEmail :: !Email
+data ZKRegisterWithdrawalScriptInfo = ZKRegisterWithdrawalScriptInfo
+  { zkradiEmail :: !Email
   , zkradiPaymentKeyHash :: !GYPaymentKeyHash
   }
   deriving stock (Show, Generic)

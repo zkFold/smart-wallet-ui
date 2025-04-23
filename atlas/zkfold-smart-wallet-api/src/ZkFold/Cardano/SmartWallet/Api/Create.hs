@@ -9,7 +9,7 @@ module ZkFold.Cardano.SmartWallet.Api.Create (
 import Control.Monad.Reader (MonadReader (..))
 import Data.Maybe (fromJust)
 import Data.Text qualified as Text
-import GeniusYield.Imports (Text, (&), (>>>))
+import GeniusYield.Imports (Text, (>>>))
 import GeniusYield.TxBuilder
 import GeniusYield.Types
 import PlutusTx.Builtins qualified as PlutusTx
@@ -48,8 +48,9 @@ initializeWalletScripts :: (ZKWalletQueryMonad m) => Email -> m ZKInitializedWal
 initializeWalletScripts email = do
   ZKWalletBuildInfo{..} <- ask
   let web2AuthMP = zkwbiWeb2AuthMintingPolicy (web2CredsFromEmail email)
-      checkSigScript = mintingPolicyId web2AuthMP & zkwbiCheckSigRewardValidator
-      walletScript = checkSigScript & scriptHash & zkwbiWalletValidator
+      web2AuthMPId = mintingPolicyId web2AuthMP
+      checkSigScript = zkwbiCheckSigRewardValidator web2AuthMPId
+      walletScript = zkwbiWalletValidator web2AuthMPId $ scriptHash checkSigScript
   pure $
     ZKInitializedWalletScripts
       { zkiwsCheckSig = checkSigScript
@@ -74,14 +75,13 @@ tokenNameFromKeyHash = keyHashToRawBytes >>> tokenNameFromBS >>> fromJust -- 'fr
 -- | Initialize a zk-wallet.
 createWallet :: (ZKWalletQueryMonad m) => ZKCreateWalletInfo -> m (GYTxSkeleton 'PlutusV3)
 createWallet zkcwi@ZKCreateWalletInfo{..} = do
-  zkiws <- initializeWalletScripts zkcwiEmail
-  createWallet' zkcwi zkiws
+  (zkiws, zkWalletAddr) <- addressFromEmail zkcwiEmail
+  createWallet' zkcwi zkiws zkWalletAddr
 
 -- | Initialize a zk-wallet.
-createWallet' :: (GYTxQueryMonad m) => ZKCreateWalletInfo -> ZKInitializedWalletScripts -> m (GYTxSkeleton 'PlutusV3)
-createWallet' ZKCreateWalletInfo{..} ZKInitializedWalletScripts{..} = do
+createWallet' :: (GYTxQueryMonad m) => ZKCreateWalletInfo -> ZKInitializedWalletScripts -> GYAddress -> m (GYTxSkeleton 'PlutusV3)
+createWallet' ZKCreateWalletInfo{..} ZKInitializedWalletScripts{..} zkWalletAddr = do
   jwtParts <- jwtPartsFromJWT zkcwiEmail zkcwiJWT
-  zkWalletAddr <- addressFromScriptM zkiwsWallet
   let
     tn = tokenNameFromKeyHash zkcwiPaymentKeyHash
     red = Web2Auth jwtParts (proofToPlutus zkcwiProofBytes) (tokenNameToPlutus tn)
@@ -93,3 +93,4 @@ createWallet' ZKCreateWalletInfo{..} ZKInitializedWalletScripts{..} = do
       1
       -- Not strictly required, but we prefer for token to be at zk wallet's address.
       <> mustHaveOutput (mkGYTxOutNoDatum zkWalletAddr (valueSingleton (GYToken (mintingPolicyId zkiwsWeb2Auth) tn) 1))
+      <> mustBeSignedBy zkcwiPaymentKeyHash

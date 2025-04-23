@@ -4,7 +4,6 @@ import Codec.Crypto.RSA (generateKeyPair)
 import Codec.Crypto.RSA qualified as R
 import Crypto.Hash.SHA256 (hash)
 import Data.ByteString (ByteString, unpack)
-import Data.Set qualified as Set
 import Data.Text.Encoding (encodeUtf8)
 import GeniusYield.Imports (Text, (&))
 import GeniusYield.Test.Privnet.Ctx
@@ -15,7 +14,7 @@ import System.Random (mkStdGen)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCaseSteps)
 import ZkFold.Algebra.Class (zero)
-import ZkFold.Cardano.SmartWallet.Api (addressFromEmail, createWallet', extraBuildConfiguration, registerAndDelegateWithdrawalScript, sendFunds')
+import ZkFold.Cardano.SmartWallet.Api (addressFromEmail, createWallet', extraBuildConfiguration, registerWithdrawalScript, sendFunds')
 import ZkFold.Cardano.SmartWallet.Test.Utils
 import ZkFold.Cardano.SmartWallet.Types
 import ZkFold.Protocol.Plonkup.Prover.Secret (PlonkupProverSecret (..))
@@ -74,6 +73,8 @@ smartWalletTests setup =
         ctxRun ctx fundUser $ do
           txBodyFund <- buildTxBody $ mustHaveOutput $ mkGYTxOutNoDatum walletAddress (valueFromLovelace 100_000_000)
           signAndSubmitConfirmed_ txBodyFund
+        info "Funded wallet"
+
         -- Initialize this wallet.
         -- Generate signing key.
         newKey :: GYSigningKey 'GYKeyRolePayment <- generateSigningKey
@@ -92,28 +93,24 @@ smartWalletTests setup =
         utxos <- ctxRunQuery ctx $ utxosAtAddress fundUserAddr Nothing
         let collUtxo = utxosToList utxos & head
         initWalletBody <- zkctxRunBuilder ctx fundUserAddr (utxoRef collUtxo) $ do
-          createWallet' cwi zkiws >>= buildTxBody
+          createWallet' cwi zkiws walletAddress >>= buildTxBody
         info $ "Wallet initialization tx body: " <> show initWalletBody
-        -- We require signature from 'ctxUserF' since we used it's collateral.
-        tidInit <- ctxRun ctx (ctxUserF ctx) $ signAndSubmitConfirmed initWalletBody
+        -- We require signature from 'fundUser' since we used it's collateral.
+        tidInit <- ctxRun ctx fundUser $ submitTxBodyConfirmed initWalletBody [GYSomeSigningKey newKey, GYSomeSigningKey (fundUser & userPaymentSKey)]
         info $ "Submitted tx: " <> show tidInit
 
-        -- Register & delegate the withdrawal script.
-        regDelegBody <- zkctxRunBuilder ctx fundUserAddr (utxoRef collUtxo) $ do
-          sps <- stakePools
-          let sp = sps & Set.findMin & stakePoolIdFromApi
-          registerAndDelegateWithdrawalScript
+        -- Register the withdrawal script.
+        regBody <- zkctxRunBuilder ctx fundUserAddr (utxoRef collUtxo) $ do
+          registerWithdrawalScript
             zkiws
             walletAddress
-            ZKRegisterAndDelegateWithdrawalScriptInfo
+            ZKRegisterWithdrawalScriptInfo
               { zkradiPaymentKeyHash = newKeyHash
-              , zkradiStakePool = sp
-              , zkradiDRep = GYDRepAlwaysAbstain
               , zkradiEmail = email
               }
             >>= buildTxBody
-        regDelegTxId <- ctxRun ctx fundUser $ submitTxBodyConfirmed regDelegBody [GYSomeSigningKey newKey, GYSomeSigningKey (ctxUserF ctx & userPaymentSKey)]
-        info $ "Submitted withdrawal script's registration & delegation tx: " <> show regDelegTxId
+        regTxId <- ctxRun ctx fundUser $ submitTxBodyConfirmed regBody [GYSomeSigningKey newKey, GYSomeSigningKey (fundUser & userPaymentSKey)]
+        info $ "Submitted withdrawal script's registration tx: " <> show regTxId
 
         -- Spending funds from the zk based smart wallet.
         walletUtxos <- ctxRunQuery ctx $ utxosAtAddress walletAddress Nothing
@@ -131,8 +128,8 @@ smartWalletTests setup =
                   }
               ]
         spendWalletBody <- zkctxRunBuilder ctx walletAddress (utxoRef collUtxo) $ do
-          sendFunds' zkiws walletAddress (ZKSpendWalletInfo{zkswiPaymentKeyHash = newKeyHash, zkswiEmail = email}) outs >>= buildTxBodyWithExtraConfiguration (extraBuildConfiguration zkiws)
+          sendFunds' zkiws walletAddress (ZKSpendWalletInfo{zkswiPaymentKeyHash = newKeyHash, zkswiEmail = email}) outs >>= buildTxBodyWithExtraConfiguration (extraBuildConfiguration zkiws False)
         info $ "send funds tx body: " <> show spendWalletBody
-        tidSpend <- ctxRun ctx fundUser $ submitTxBodyConfirmed spendWalletBody [GYSomeSigningKey newKey, GYSomeSigningKey (ctxUserF ctx & userPaymentSKey)]
+        tidSpend <- ctxRun ctx fundUser $ submitTxBodyConfirmed spendWalletBody [GYSomeSigningKey newKey, GYSomeSigningKey (fundUser & userPaymentSKey)]
         info $ "Submitted spend tx: " <> show tidSpend
     ]
