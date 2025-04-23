@@ -135,11 +135,6 @@ sendFunds' zkiws@ZKInitializedWalletScripts{..} walletAddress ZKSpendWalletInfo{
         )
         outs
       <> mustBeSignedBy zkswiPaymentKeyHash
-      <> mustHaveCertificate
-        ( mkStakeAddressRegistrationCertificate
-            stakeCred
-            (GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined zkiwsCheckSig) (redeemerFromPlutusData $ Signature 0 0))
-        )
       <> mustHaveWithdrawal
         ( GYTxWdrl
             { gyTxWdrlStakeAddress = stakeAddr

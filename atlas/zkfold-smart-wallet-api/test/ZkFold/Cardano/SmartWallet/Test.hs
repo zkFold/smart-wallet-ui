@@ -14,7 +14,7 @@ import System.Random (mkStdGen)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCaseSteps)
 import ZkFold.Algebra.Class (zero)
-import ZkFold.Cardano.SmartWallet.Api (addressFromEmail, createWallet', extraBuildConfiguration, registerWithdrawalScript, sendFunds')
+import ZkFold.Cardano.SmartWallet.Api (addressFromEmail, extraBuildConfiguration, sendFunds', sendFundsWithRegistration')
 import ZkFold.Cardano.SmartWallet.Test.Utils
 import ZkFold.Cardano.SmartWallet.Types
 import ZkFold.Protocol.Plonkup.Prover.Secret (PlonkupProverSecret (..))
@@ -92,27 +92,14 @@ smartWalletTests setup =
         -- Find suitable UTxO as collateral.
         utxos <- ctxRunQuery ctx $ utxosAtAddress fundUserAddr Nothing
         let collUtxo = utxosToList utxos & head
-        initWalletBody <- zkctxRunBuilder ctx fundUserAddr (utxoRef collUtxo) $ do
-          createWallet' cwi zkiws walletAddress >>= buildTxBody
+        initWalletBody <- zkctxRunBuilder ctx walletAddress (utxoRef collUtxo) $ do
+          sendFundsWithRegistration' zkiws walletAddress cwi [] >>= buildTxBodyWithExtraConfiguration (extraBuildConfiguration zkiws True)
         info $ "Wallet initialization tx body: " <> show initWalletBody
         -- We require signature from 'fundUser' since we used it's collateral.
         tidInit <- ctxRun ctx fundUser $ submitTxBodyConfirmed initWalletBody [GYSomeSigningKey newKey, GYSomeSigningKey (fundUser & userPaymentSKey)]
         info $ "Submitted tx: " <> show tidInit
 
-        -- Register the withdrawal script.
-        regBody <- zkctxRunBuilder ctx fundUserAddr (utxoRef collUtxo) $ do
-          registerWithdrawalScript
-            zkiws
-            walletAddress
-            ZKRegisterWithdrawalScriptInfo
-              { zkradiPaymentKeyHash = newKeyHash
-              , zkradiEmail = email
-              }
-            >>= buildTxBody
-        regTxId <- ctxRun ctx fundUser $ submitTxBodyConfirmed regBody [GYSomeSigningKey newKey, GYSomeSigningKey (fundUser & userPaymentSKey)]
-        info $ "Submitted withdrawal script's registration tx: " <> show regTxId
-
-        -- Spending funds from the zk based smart wallet.
+        -- Spending funds from the zk based smart wallet by exercising stake script.
         walletUtxos <- ctxRunQuery ctx $ utxosAtAddress walletAddress Nothing
         info $ "Wallet UTxOs: " <> show walletUtxos
         let outs =
