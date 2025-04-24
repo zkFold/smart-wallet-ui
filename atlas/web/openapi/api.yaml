@@ -136,10 +136,24 @@ components:
       maxLength: 56
       minLength: 56
       type: string
+    GYMintingPolicyId:
+      description: This is the hash of a minting policy script.
+      example: ff80aaaf03a273b8f5c558168dc0e2377eea810badbae6eceefc14ef
+      format: hex
+      maxLength: 56
+      minLength: 56
+      type: string
     GYNatural:
       description: A natural number which is a non-negative integer. Minimum value
         is 0.
       example: '123456789123456789123456789123456789123456789'
+      type: string
+    GYTokenName:
+      description: This is the name of a token.
+      example: 476f6c64
+      format: hex
+      maxLength: 64
+      pattern: '[0-9a-fA-F]+'
       type: string
     GYTx:
       description: Transaction cbor hex string
@@ -164,6 +178,27 @@ components:
       example:
         ff80aaaf03a273b8f5c558168dc0e2377eea810badbae6eceefc14ef.474f4c44: 101
         lovelace: 22
+      type: object
+    IsInitializedParameters:
+      description: Is initialized parameters.
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+      required:
+      - email
+      type: object
+    IsInitializedResponse:
+      description: Is initialized response.
+      properties:
+        is_initialized:
+          items:
+          - $ref: '#/components/schemas/GYMintingPolicyId'
+          - items:
+              $ref: '#/components/schemas/GYTokenName'
+            type: array
+          maxItems: 2
+          minItems: 2
+          type: array
       type: object
     JWT:
       description: JSON web token
@@ -591,6 +626,34 @@ paths:
       security:
       - api-key: []
       summary: Create and send funds.
+      tags:
+      - Wallet
+  /v0/wallet/is-initialized:
+    post:
+      requestBody:
+        content:
+          application/json;charset=utf-8:
+            schema:
+              $ref: '#/components/schemas/IsInitializedParameters'
+      responses:
+        '200':
+          content:
+            application/json;charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/IsInitializedResponse'
+          description: ''
+        '400':
+          description: Invalid `body`
+        '401':
+          description: Unauthorized access - API key missing
+        '403':
+          description: Forbidden - The API key does not have permission to perform
+            the request
+        '500':
+          description: Internal server error
+      security:
+      - api-key: []
+      summary: Know if wallet is initialized.
       tags:
       - Wallet
   /v0/wallet/send-funds:

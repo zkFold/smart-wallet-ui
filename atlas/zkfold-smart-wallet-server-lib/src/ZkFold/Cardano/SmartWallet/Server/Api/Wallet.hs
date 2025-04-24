@@ -167,6 +167,34 @@ instance Swagger.ToSchema CreateAndSendFundsResponse where
     Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @CreateAndSendFundsResponsePrefix}
       & addSwaggerDescription "Create and send funds response."
 
+type IsInitializedPrefix :: Symbol
+type IsInitializedPrefix = "iip"
+
+newtype IsInitializedParameters = IsInitializedParameters
+  { iipEmail :: Email
+  }
+  deriving stock (Show, Generic)
+  deriving (FromJSON, ToJSON) via CustomJSON '[FieldLabelModifier '[StripPrefix IsInitializedPrefix, CamelToSnake]] IsInitializedParameters
+
+instance Swagger.ToSchema IsInitializedParameters where
+  declareNamedSchema =
+    Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @IsInitializedPrefix}
+      & addSwaggerDescription "Is initialized parameters."
+
+type IsInitializedResponsePrefix :: Symbol
+type IsInitializedResponsePrefix = "iir"
+
+newtype IsInitializedResponse = IsInitializedResponse
+  { iirIsInitialized :: Maybe (GYMintingPolicyId, [GYTokenName])
+  }
+  deriving stock (Generic)
+  deriving (FromJSON, ToJSON) via CustomJSON '[FieldLabelModifier '[StripPrefix IsInitializedResponsePrefix, CamelToSnake]] IsInitializedResponse
+
+instance Swagger.ToSchema IsInitializedResponse where
+  declareNamedSchema =
+    Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @IsInitializedResponsePrefix}
+      & addSwaggerDescription "Is initialized response."
+
 type WalletAPI =
   Summary "Obtain address."
     :> Description "Obtain address of the wallet initialized with the given mail."
@@ -188,6 +216,10 @@ type WalletAPI =
       :> "create-and-send-funds"
       :> ReqBody '[JSON] CreateAndSendFundsParameters
       :> Post '[JSON] CreateAndSendFundsResponse
+    :<|> Summary "Know if wallet is initialized."
+      :> "is-initialized"
+      :> ReqBody '[JSON] IsInitializedParameters
+      :> Post '[JSON] IsInitializedResponse
 
 handleWalletApi :: Ctx -> ServerT WalletAPI IO
 handleWalletApi ctx =
@@ -195,6 +227,7 @@ handleWalletApi ctx =
     :<|> handleCreateWallet ctx
     :<|> handleSendFunds ctx
     :<|> handleCreateAndSendFunds ctx
+    :<|> handleIsInitialized ctx
 
 handleObtainAddress :: Ctx -> ObtainAddressParameters -> IO ObtainAddressResponse
 handleObtainAddress ctx oap@ObtainAddressParameters{..} = do
@@ -278,4 +311,18 @@ handleCreateAndSendFunds ctx@Ctx{..} casfp@CreateAndSendFundsParameters{..} = do
       , casfrTransaction = signedTx
       , casfrTransactionId = txBodyTxId txBody
       , casfrTransactionFee = fromIntegral $ txBodyFee txBody
+      }
+
+handleIsInitialized :: Ctx -> IsInitializedParameters -> IO IsInitializedResponse
+handleIsInitialized ctx iip@IsInitializedParameters{..} = do
+  logInfo ctx $ "Is initialized requested. Parameters: " +|| iip ||+ ""
+  (zkiws, walletAddress) <- runQuery ctx $ addressFromEmail iipEmail
+  logInfo ctx $ "Wallet address: " +|| addressToBech32 walletAddress ||+ ""
+  (mp, authTNs) <- runQuery ctx $ findMintedAuthTokens zkiws walletAddress
+  pure $
+    IsInitializedResponse
+      { iirIsInitialized =
+          case authTNs of
+            [] -> Nothing
+            tns -> Just (mp, tns)
       }

@@ -4,6 +4,7 @@ module ZkFold.Cardano.SmartWallet.Api (
   createWallet',
   sendFundsWithCreation,
   sendFundsWithCreation',
+  findMintedAuthTokens,
   sendFunds,
   sendFunds',
   batchTxs,

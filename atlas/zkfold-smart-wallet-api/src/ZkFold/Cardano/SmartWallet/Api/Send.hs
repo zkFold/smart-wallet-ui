@@ -2,11 +2,15 @@ module ZkFold.Cardano.SmartWallet.Api.Send (
   sendFundsWithCreation,
   sendFundsWithCreation',
   findMintedAuthToken,
+  findMintedAuthTokens,
   sendFunds,
   sendFunds',
 ) where
 
-import Data.Foldable (find)
+import Data.Foldable (Foldable (foldl'), find)
+import Data.Set qualified as Set
+import GHC.IsList (toList)
+import GeniusYield.Imports (mapMaybe, (&))
 import GeniusYield.TxBuilder
 import GeniusYield.Types
 import ZkFold.Cardano.SmartWallet.Api.Create
@@ -53,6 +57,29 @@ findMintedAuthToken ZKInitializedWalletScripts{..} walletAddress email pkh = do
   case find (\out -> valueAssetPresent (utxoValue out) ac) (utxosToList walletOuts) of
     Nothing -> throwAppError (ZKWENoAuthToken email walletAddress tn)
     Just out -> pure (out, ac)
+
+-- | Find all minted auth tokens at the given wallet address.
+findMintedAuthTokens :: (GYTxQueryMonad m) => ZKInitializedWalletScripts -> GYAddress -> m (GYMintingPolicyId, [GYTokenName])
+findMintedAuthTokens ZKInitializedWalletScripts{..} walletAddress = do
+  walletOuts <- utxosAtAddress walletAddress Nothing
+  let walletOutsL = utxosToList walletOuts
+      web2AuthMP = mintingPolicyId zkiwsWeb2Auth
+      web2AuthTNs =
+        foldl'
+          ( \acc out ->
+              let assets = valueAssets (utxoValue out) & toList
+                  mps =
+                    assets
+                      & mapMaybe
+                        ( \case
+                            GYLovelace -> Nothing
+                            GYToken mp tn -> if mp == web2AuthMP then Just tn else Nothing
+                        )
+               in acc <> Set.fromList mps
+          )
+          mempty
+          walletOutsL
+  pure (web2AuthMP, Set.toList web2AuthTNs)
 
 -- | Send funds from a zk-wallet.
 sendFunds :: (ZKWalletQueryMonad m, Foldable f) => ZKSpendWalletInfo -> f BuildOut -> m (GYTxSkeleton 'PlutusV3)
