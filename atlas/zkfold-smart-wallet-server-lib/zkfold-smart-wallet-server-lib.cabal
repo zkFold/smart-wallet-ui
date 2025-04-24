@@ -42,6 +42,7 @@ library
     ZkFold.Cardano.SmartWallet.Server.Api
     ZkFold.Cardano.SmartWallet.Server.Api.Settings
     ZkFold.Cardano.SmartWallet.Server.Api.Tx
+    ZkFold.Cardano.SmartWallet.Server.Api.Utxo
     ZkFold.Cardano.SmartWallet.Server.Api.Wallet
     ZkFold.Cardano.SmartWallet.Server.Auth
     ZkFold.Cardano.SmartWallet.Server.Config

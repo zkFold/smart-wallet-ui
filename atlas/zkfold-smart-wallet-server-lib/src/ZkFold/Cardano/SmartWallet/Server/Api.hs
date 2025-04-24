@@ -18,6 +18,7 @@ import Servant
 import Servant.OpenApi
 import ZkFold.Cardano.SmartWallet.Server.Api.Settings
 import ZkFold.Cardano.SmartWallet.Server.Api.Tx (TxAPI, handleTxApi)
+import ZkFold.Cardano.SmartWallet.Server.Api.Utxo (UtxoAPI, handleUtxoApi)
 import ZkFold.Cardano.SmartWallet.Server.Api.Wallet (WalletAPI, handleWalletApi)
 import ZkFold.Cardano.SmartWallet.Server.Auth (APIKeyAuthProtect, V0)
 import ZkFold.Cardano.SmartWallet.Server.Ctx
@@ -31,6 +32,7 @@ type V0API =
   "settings" :> SettingsAPI
     :<|> "wallet" :> WalletAPI
     :<|> "tx" :> TxAPI
+    :<|> "utxo" :> UtxoAPI
 
 type ZkFoldSmartWalletAPI = APIKeyAuthProtect :> V0 :> V0API
 
@@ -70,6 +72,7 @@ zkFoldSmartWalletAPIOpenApi =
       & applyTagsFor (subOperations (Proxy :: Proxy ("settings" +> SettingsAPI)) (Proxy :: Proxy ZkFoldSmartWalletAPI)) ["Settings" & OpenApi.description ?~ "Endpoint to get server settings such as network and version"]
       & applyTagsFor (subOperations (Proxy :: Proxy ("wallet" +> WalletAPI)) (Proxy :: Proxy ZkFoldSmartWalletAPI)) ["Wallet" & OpenApi.description ?~ "Endpoint to interact with zk-wallet"]
       & applyTagsFor (subOperations (Proxy :: Proxy ("tx" +> TxAPI)) (Proxy :: Proxy ZkFoldSmartWalletAPI)) ["Tx" & OpenApi.description ?~ "Endpoint to interact with built transactions"]
+      & applyTagsFor (subOperations (Proxy :: Proxy ("utxo" +> UtxoAPI)) (Proxy :: Proxy ZkFoldSmartWalletAPI)) ["Utxo" & OpenApi.description ?~ "Endpoint to know for utxos"]
 
 zkFoldSmartWalletServer :: Ctx -> ServerT ZkFoldSmartWalletAPI IO
 zkFoldSmartWalletServer ctx =
@@ -77,6 +80,7 @@ zkFoldSmartWalletServer ctx =
     handleSettings ctx
       :<|> handleWalletApi ctx
       :<|> handleTxApi ctx
+      :<|> handleUtxoApi ctx
  where
   ignoredAuthResult f _authResult = f
 

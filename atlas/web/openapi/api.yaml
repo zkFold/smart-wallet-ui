@@ -192,6 +192,20 @@ components:
       - collateral
       - collateral_address
       type: object
+    UtxoResponse:
+      description: UTXO information.
+      properties:
+        address:
+          $ref: '#/components/schemas/GYAddressBech32'
+        ref:
+          $ref: '#/components/schemas/GYTxOutRef'
+        value:
+          $ref: '#/components/schemas/GYValue'
+      required:
+      - ref
+      - address
+      - value
+      type: object
     ZKBatchWalletInfo:
       description: Information required to batch a particular transaction.
       properties:
@@ -421,6 +435,38 @@ paths:
       summary: Submit a transaction
       tags:
       - Tx
+  /v0/utxo/addresses:
+    post:
+      requestBody:
+        content:
+          application/json;charset=utf-8:
+            schema:
+              items:
+                $ref: '#/components/schemas/GYAddressBech32'
+              type: array
+      responses:
+        '200':
+          content:
+            application/json;charset=utf-8:
+              schema:
+                items:
+                  $ref: '#/components/schemas/UtxoResponse'
+                type: array
+          description: ''
+        '400':
+          description: Invalid `body`
+        '401':
+          description: Unauthorized access - API key missing
+        '403':
+          description: Forbidden - The API key does not have permission to perform
+            the request
+        '500':
+          description: Internal server error
+      security:
+      - api-key: []
+      summary: Get utxos belonging to a list of addresses
+      tags:
+      - Utxo
   /v0/wallet/address:
     post:
       description: Obtain address of the wallet initialized with the given mail.
@@ -515,3 +561,5 @@ tags:
   name: Wallet
 - description: Endpoint to interact with built transactions
   name: Tx
+- description: Endpoint to know for utxos
+  name: Utxo
