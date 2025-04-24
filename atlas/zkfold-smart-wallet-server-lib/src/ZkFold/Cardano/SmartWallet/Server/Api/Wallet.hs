@@ -13,6 +13,7 @@ import GeniusYield.Types
 import GeniusYield.Types.OpenApi ()
 import Servant
 import ZkFold.Cardano.SmartWallet.Api
+import ZkFold.Cardano.SmartWallet.Constants (extraBuildConfiguration)
 import ZkFold.Cardano.SmartWallet.Server.Api.Tx (handleTxSignCollateral)
 import ZkFold.Cardano.SmartWallet.Server.Ctx
 import ZkFold.Cardano.SmartWallet.Server.Orphans ()

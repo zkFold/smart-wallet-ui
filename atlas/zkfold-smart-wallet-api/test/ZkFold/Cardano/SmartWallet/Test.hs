@@ -14,7 +14,8 @@ import System.Random (mkStdGen)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCaseSteps)
 import ZkFold.Algebra.Class (zero)
-import ZkFold.Cardano.SmartWallet.Api (addressFromEmail, extraBuildConfiguration, sendFunds', sendFundsWithRegistration')
+import ZkFold.Cardano.SmartWallet.Api (addressFromEmail, sendFunds', sendFundsWithRegistration')
+import ZkFold.Cardano.SmartWallet.Constants (extraBuildConfiguration)
 import ZkFold.Cardano.SmartWallet.Test.Utils
 import ZkFold.Cardano.SmartWallet.Types
 import ZkFold.Protocol.Plonkup.Prover.Secret (PlonkupProverSecret (..))

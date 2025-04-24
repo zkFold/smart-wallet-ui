@@ -1,6 +1,7 @@
 module ZkFold.Cardano.SmartWallet.Constants (
   ezkWalletBuildInfo,
   zkWalletBuildInfo,
+  extraBuildConfiguration,
 )
 where
 
@@ -8,13 +9,16 @@ import Data.Aeson qualified as Aeson
 import Data.ByteString (ByteString)
 import Data.ByteString.Base16 qualified as BS16
 import Data.ByteString.Short qualified as SBS
+import Data.Default (Default (..))
 import Data.Foldable (find)
 import Data.Text (unpack)
 import GeniusYield.Imports (Text, encodeUtf8, (&), (<&>))
+import GeniusYield.Transaction.Common (GYTxExtraConfiguration (..), GYTxInDetailed (..))
 import GeniusYield.Types
 import ZkFold.Algebra.Field (toZp)
 import ZkFold.Cardano.OnChain.Plonkup.Data (SetupBytes)
 import ZkFold.Cardano.SmartWallet.Types (ZKWalletBuildInfo (..), expModSetupMock, mkSetup, setupToPlutus)
+import ZkFold.Cardano.SmartWallet.Types.Script (ZKInitializedWalletScripts (..))
 import ZkFold.Cardano.UPLC.Wallet.CompiledScript
 
 -- FIXME: replace zero with an appropriate secret
@@ -56,3 +60,28 @@ ezkWalletBuildInfo = do
 
 zkWalletBuildInfo :: ZKWalletBuildInfo
 zkWalletBuildInfo = either error id ezkWalletBuildInfo
+
+-- | Extra build configuration to use when building transactions for zk wallet.
+extraBuildConfiguration ::
+  ZKInitializedWalletScripts ->
+  -- | Whether to exercise minting script or stake script.
+  Bool ->
+  GYTxExtraConfiguration 'PlutusV3
+extraBuildConfiguration zkiws bool =
+  def
+    { gytxecUtxoInputMapper = \GYUTxO{..} ->
+        GYTxInDetailed
+          { gyTxInDet =
+              GYTxIn
+                utxoRef
+                ( GYTxInWitnessScript
+                    (GYBuildPlutusScriptInlined $ zkiwsWallet zkiws)
+                    Nothing
+                    (if bool then redeemerFromPlutusData (0 :: Integer) else redeemerFromPlutusData (1 :: Integer))
+                )
+          , gyTxInDetAddress = utxoAddress
+          , gyTxInDetValue = utxoValue
+          , gyTxInDetDatum = utxoOutDatum
+          , gyTxInDetScriptRef = utxoRefScript
+          }
+    }
