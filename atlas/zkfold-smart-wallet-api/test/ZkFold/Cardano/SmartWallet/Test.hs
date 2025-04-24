@@ -14,7 +14,7 @@ import System.Random (mkStdGen)
 import Test.Tasty (TestTree, testGroup)
 import Test.Tasty.HUnit (testCaseSteps)
 import ZkFold.Algebra.Class (zero)
-import ZkFold.Cardano.SmartWallet.Api (addressFromEmail, sendFunds', sendFundsWithRegistration')
+import ZkFold.Cardano.SmartWallet.Api (addressFromEmail, sendFunds', sendFundsWithCreation')
 import ZkFold.Cardano.SmartWallet.Constants (extraBuildConfiguration)
 import ZkFold.Cardano.SmartWallet.Test.Utils
 import ZkFold.Cardano.SmartWallet.Types
@@ -94,7 +94,7 @@ smartWalletTests setup =
         utxos <- ctxRunQuery ctx $ utxosAtAddress fundUserAddr Nothing
         let collUtxo = utxosToList utxos & head
         initWalletBody <- zkctxRunBuilder ctx walletAddress (utxoRef collUtxo) $ do
-          sendFundsWithRegistration' zkiws walletAddress cwi [] >>= buildTxBodyWithExtraConfiguration (extraBuildConfiguration zkiws True)
+          sendFundsWithCreation' zkiws walletAddress cwi [] >>= buildTxBodyWithExtraConfiguration (extraBuildConfiguration zkiws True)
         info $ "Wallet initialization tx body: " <> show initWalletBody
         -- We require signature from 'fundUser' since we used it's collateral.
         tidInit <- ctxRun ctx fundUser $ submitTxBodyConfirmed initWalletBody [GYSomeSigningKey newKey, GYSomeSigningKey (fundUser & userPaymentSKey)]

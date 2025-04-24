@@ -1,6 +1,6 @@
 module ZkFold.Cardano.SmartWallet.Api.Send (
-  sendFundsWithRegistration,
-  sendFundsWithRegistration',
+  sendFundsWithCreation,
+  sendFundsWithCreation',
   findMintedAuthToken,
   sendFunds,
   sendFunds',
@@ -13,17 +13,16 @@ import ZkFold.Cardano.SmartWallet.Api.Create
 import ZkFold.Cardano.SmartWallet.Types
 import ZkFold.Cardano.UPLC.Wallet.Types
 
--- | See 'sendFundsWithRegistration''.
-sendFundsWithRegistration :: (ZKWalletQueryMonad m, Foldable f) => ZKCreateWalletInfo -> f BuildOut -> m (GYTxSkeleton 'PlutusV3)
-sendFundsWithRegistration zkcwi@ZKCreateWalletInfo{..} outs = do
+-- | See 'sendFundsWithCreation''.
+sendFundsWithCreation :: (ZKWalletQueryMonad m, Foldable f) => ZKCreateWalletInfo -> f BuildOut -> m (GYTxSkeleton 'PlutusV3)
+sendFundsWithCreation zkcwi@ZKCreateWalletInfo{..} outs = do
   (zkiws, walletAddress) <- addressFromEmail zkcwiEmail
-  sendFundsWithRegistration' zkiws walletAddress zkcwi outs
+  sendFundsWithCreation' zkiws walletAddress zkcwi outs
 
 -- | Send funds from a zk-wallet along with registering the stake validator so that future spends can utilize stake validator instead of minting policy. Note that we cannot withdraw from a credential before it is registered.
-sendFundsWithRegistration' :: (GYTxQueryMonad m, Foldable f) => ZKInitializedWalletScripts -> GYAddress -> ZKCreateWalletInfo -> f BuildOut -> m (GYTxSkeleton 'PlutusV3)
-sendFundsWithRegistration' zkiws@ZKInitializedWalletScripts{..} walletAddress zkcwi outs = do
+sendFundsWithCreation' :: (GYTxQueryMonad m, Foldable f) => ZKInitializedWalletScripts -> GYAddress -> ZKCreateWalletInfo -> f BuildOut -> m (GYTxSkeleton 'PlutusV3)
+sendFundsWithCreation' zkiws walletAddress zkcwi outs = do
   createWalletSkel <- createWallet' zkcwi zkiws walletAddress
-  let stakeCred = GYCredentialByScript $ scriptHash zkiwsCheckSig
   pure $
     createWalletSkel
       <> foldMap
@@ -44,11 +43,6 @@ sendFundsWithRegistration' zkiws@ZKInitializedWalletScripts{..} walletAddress zk
                 }
         )
         outs
-      <> mustHaveCertificate
-        ( mkStakeAddressRegistrationCertificate
-            stakeCred
-            (GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined zkiwsCheckSig) (redeemerFromPlutusData $ Signature 0 0))
-        )
 
 -- | Find a UTxO at wallet's address that has a proof validity token. Require that token to be in output.
 findMintedAuthToken :: (GYTxQueryMonad m) => ZKInitializedWalletScripts -> GYAddress -> Email -> GYPaymentKeyHash -> m (GYUTxO, GYAssetClass)
