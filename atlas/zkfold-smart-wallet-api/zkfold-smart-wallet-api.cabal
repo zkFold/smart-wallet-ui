@@ -45,6 +45,14 @@ library
     ZkFold.Cardano.SmartWallet.Constants
     ZkFold.Cardano.SmartWallet.Orphans
     ZkFold.Cardano.SmartWallet.Types
+    ZkFold.Cardano.SmartWallet.Types.Batch
+    ZkFold.Cardano.SmartWallet.Types.Common
+    ZkFold.Cardano.SmartWallet.Types.Create
+    ZkFold.Cardano.SmartWallet.Types.Errors
+    ZkFold.Cardano.SmartWallet.Types.Monad
+    ZkFold.Cardano.SmartWallet.Types.Register
+    ZkFold.Cardano.SmartWallet.Types.Script
+    ZkFold.Cardano.SmartWallet.Types.Send
 
   -- other-modules:
   -- other-extensions:
