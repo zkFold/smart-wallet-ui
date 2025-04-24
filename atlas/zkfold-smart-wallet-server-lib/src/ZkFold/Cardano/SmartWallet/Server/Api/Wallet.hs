@@ -13,9 +13,9 @@ import GeniusYield.Types
 import GeniusYield.Types.OpenApi ()
 import Servant
 import ZkFold.Cardano.SmartWallet.Api
+import ZkFold.Cardano.SmartWallet.Server.Api.Tx (handleTxSignCollateral)
 import ZkFold.Cardano.SmartWallet.Server.Ctx
 import ZkFold.Cardano.SmartWallet.Server.Orphans ()
-import ZkFold.Cardano.SmartWallet.Server.Tx (handleTxSignCollateral)
 import ZkFold.Cardano.SmartWallet.Server.Utils
 import ZkFold.Cardano.SmartWallet.Types
 
@@ -183,6 +183,7 @@ handleCreateWallet ctx cwp@CreateWalletParameters{..} = do
             }
         )
         zkiws
+        (addressFromBech32 walletAddress)
   logInfo ctx $ "Tranasction body: " +|| body ||+ ""
   collSignedTx <- handleTxSignCollateral ctx (unsignedTx body)
   pure $
@@ -198,7 +199,7 @@ handleSendFunds ctx@Ctx{..} sfp@SendFundsParameters{..} = do
   logInfo ctx $ "Send funds requested. Parameters: " +|| sfp ||+ ""
   (zkiws, walletAddress) <- runQuery ctx $ addressFromEmail sfpEmail
   logInfo ctx $ "Wallet address: " +|| addressToBech32 walletAddress ||+ ""
-  let ec = extraBuildConfiguration zkiws
+  let ec = extraBuildConfiguration zkiws False
   txBody <- runSkeletonWithExtraConfigurationI ec ctx [walletAddress] walletAddress (Just ctxCollateral) $ do
     sendFunds' zkiws walletAddress (ZKSpendWalletInfo{zkswiPaymentKeyHash = sfpPaymentKeyHash, zkswiEmail = sfpEmail}) sfpOuts
   signedTx <- handleTxSignCollateral ctx $ unsignedTx txBody

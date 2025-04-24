@@ -17,11 +17,11 @@ import GeniusYield.Types.OpenApi ()
 import Servant
 import Servant.OpenApi
 import ZkFold.Cardano.SmartWallet.Server.Api.Settings
+import ZkFold.Cardano.SmartWallet.Server.Api.Tx (TxAPI, handleTxApi)
 import ZkFold.Cardano.SmartWallet.Server.Api.Wallet (WalletAPI, handleWalletApi)
 import ZkFold.Cardano.SmartWallet.Server.Auth (APIKeyAuthProtect, V0)
 import ZkFold.Cardano.SmartWallet.Server.Ctx
 import ZkFold.Cardano.SmartWallet.Server.Orphans ()
-import ZkFold.Cardano.SmartWallet.Server.Tx (TxAPI, handleTxApi)
 
 -------------------------------------------------------------------------------
 -- Server's API.
