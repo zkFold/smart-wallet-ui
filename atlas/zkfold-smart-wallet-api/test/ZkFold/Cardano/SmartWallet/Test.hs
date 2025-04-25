@@ -90,6 +90,7 @@ smartWalletTests setup =
                 , zkcwiJWT = jwtFromText jwt
                 , zkcwiEmail = email
                 }
+        info $ "proof bytes: " <> show proofBytes
         -- Find suitable UTxO as collateral.
         utxos <- ctxRunQuery ctx $ utxosAtAddress fundUserAddr Nothing
         let collUtxo = utxosToList utxos & head

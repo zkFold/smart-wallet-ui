@@ -17,7 +17,7 @@ type BuildOutPrefix = "bo"
 
 -- | An output to be created. Note that our balancer may add additional lovelace to satisfy minimum lovelace requirement for this output.
 data BuildOut = BuildOut
-  { boAddress :: GYAddress
+  { boAddress :: GYAddressBech32
   , boValue :: GYValue
   , boDatum :: Maybe (GYDatum, Bool)
   }

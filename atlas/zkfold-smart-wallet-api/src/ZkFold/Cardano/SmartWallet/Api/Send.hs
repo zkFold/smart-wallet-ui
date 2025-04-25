@@ -43,7 +43,7 @@ sendFundsWithCreation' zkiws walletAddress zkcwi outs = do
                           )
                       )
                       boDatum
-                , gyTxOutAddress = boAddress
+                , gyTxOutAddress = addressFromBech32 boAddress
                 }
         )
         outs
@@ -123,7 +123,7 @@ sendFunds' zkiws@ZKInitializedWalletScripts{..} walletAddress ZKSpendWalletInfo{
                           )
                       )
                       boDatum
-                , gyTxOutAddress = boAddress
+                , gyTxOutAddress = addressFromBech32 boAddress
                 }
         )
         outs
