@@ -1,6 +1,6 @@
 {
   "name": "zkfold-smart-wallet-api",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Smart wallet api",
   "main": "index.ts",
   "type": "module",
