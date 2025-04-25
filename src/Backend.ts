@@ -33,7 +33,7 @@ export interface ProofBytes {
 
 export interface Output {
     address: string,
-    datum: string[],
+    datum?: string[],
     value: Map<string, number>
 }
 
@@ -175,7 +175,7 @@ export class Backend {
         return data;
     }
 
-    async addressUtxo(address: CSL.Address): Promise<UTxO> {
+    async addressUtxo(address: CSL.Address): Promise<UTxO[]> {
         const { data } = await axios.post(`${this.url}/v0/utxo/addresses`, [address.to_bech32()], {
             headers: {
               'api-key': this.secret

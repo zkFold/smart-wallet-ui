@@ -1,7 +1,7 @@
 import CSL from '@emurgo/cardano-serialization-lib-nodejs';
 import * as bip39 from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
-import { Backend, UTxO, ProofBytes } from './Backend';
+import { Backend, UTxO, ProofBytes, Output } from './Backend';
 
 // TODO: Modifying global state is a big no-no, but how else can it be done?
 // JS has no idea how to serialise BigNum.
@@ -15,13 +15,13 @@ function harden(num: number): number {
 }
 
 export enum Method {
-    Mnemonic = 0;
-    Google = 1;
+    Mnemonic = 0,
+    Google = 1
 }
 
 export enum AddressType {
-    Bech32 = 0;
-    Gmail = 1;
+    Bech32 = 0,
+    Gmail = 1
 }
 
 export interface Initialiser {
@@ -32,9 +32,9 @@ export interface Initialiser {
 export class SmartTxRecipient {
     recipientType: AddressType;
     address: string;
-    amount: BigNum;
+    amount: CSL.BigNum;
 
-    constructor(recipientType: AddressType, address: string, amount: BigNum) {
+    constructor(recipientType: AddressType, address: string, amount: CSL.BigNum) {
         this.recipientType = recipientType;
         this.address = address;
         this.amount = amount;
@@ -42,12 +42,16 @@ export class SmartTxRecipient {
 }
 
 export class Wallet {
-    private rootKey: string;
-    private accountKey: string;
-    private utxoPubKey: string;
-    private stakeKey: string;
+    private rootKey: CSL.Bip32PrivateKey;
+    private accountKey: CSL.Bip32PrivateKey;
+    private utxoPubKey: CSL.Bip32PublicKey;
+    private stakeKey: CSL.Bip32PublicKey;
     private jwt: string;
     private userId: string;
+    private backend: Backend; 
+    private tokenSKey: CSL.Bip32PrivateKey;
+    private method: Method;
+    private network: string;
 
     constructor(backend: Backend, initialiser: Initialiser, password: string = '', network: string = 'mainnet') {
         this.backend = backend;
@@ -103,7 +107,7 @@ export class Wallet {
     }
 
     // Adapted from https://developers.cardano.org/docs/get-started/cardano-serialization-lib/generating-keys/
-    async getAddress(): CSL.Address {
+    async getAddress(): Promise<CSL.Address> {
         switch (this.method) {
             case Method.Mnemonic: {
                 const paymentCred = CSL.Credential.from_keyhash(this.utxoPubKey.to_raw_key().hash()); 
@@ -158,7 +162,7 @@ export class Wallet {
 
     async getUtxos(): Promise<UTxO[]> {
         const address = await this.getAddress();
-        var utxos;
+        var utxos: UTxO[] = [];
         try {
             utxos = await this.backend.addressUtxo(address); 
         } catch (err) {
@@ -167,19 +171,21 @@ export class Wallet {
         return utxos;
     }
 
-    async getUsedAddresses(): Primise<CSL.Address[]> {
+    async getUsedAddresses(): Promise<CSL.Address[]> {
         const utxos = await this.getUtxos();
-        if (utxos === []) {
+        const address = await this.getAddress();
+        if (utxos.length == 0) {
             return [];
         } else {
-            return [this.getAddress()];
+            return [address];
         }
     }
     
-    async getUnusedAddresses(): Primise<CSL.Address[]> {
+    async getUnusedAddresses(): Promise<CSL.Address[]> {
         const utxos = await this.getUtxos();
-        if (utxos === []) {
-            return [this.getAddress()];
+        const address = await this.getAddress();
+        if (utxos.length == 0) {
+            return [address];
         } else {
             return [];
         }
@@ -193,7 +199,7 @@ export class Wallet {
         return await this.getAddress();
     }
 
-    private async buildTx(senderAddress: CSL.Address, recipientAddress: CSL.Address, amountToSend: CSL.BigNum): CSL.TransactionBuilder {
+    private async buildTx(senderAddress: CSL.Address, recipientAddress: CSL.Address, amountToSend: CSL.BigNum): Promise<CSL.TransactionBuilder> {
         const utxos = await this.getUtxos();
         console.log(utxos);
 
@@ -228,8 +234,8 @@ export class Wallet {
         const txInputBuilder = CSL.TxInputsBuilder.new();
 
         utxos.forEach((utxo) => {
-            if (utxo.value['lovelace'] != null) {
-                const ada = utxo.value['lovelace'];
+            if (utxo.value.get('lovelace') != null) {
+                const ada = utxo.value.get('lovelace');
                 const hash = CSL.TransactionHash.from_bytes(Buffer.from(utxo.ref.transaction_id, "hex"))
                 const input = CSL.TransactionInput.new(hash, utxo.ref.output_index);
                 const value = CSL.Value.new(CSL.BigNum.from_str(ada.toString()));
@@ -286,13 +292,14 @@ export class Wallet {
             case Method.Google: {
                 // A transaction from a Web2-initialised wallet to any kind of address
                 const is_initialised = await this.backend.isWalletInitialised(this.userId);
+                console.log(`Is initialised: ${is_initialised}`);
                 var txHex;
 
-                const outs: Output[] = [{address: recipientAddress.to_bech32(), datum: [], value: { 'lovelace': amountToSend }}];
+                const outs: Output[] = [{address: recipientAddress.to_bech32(), value: { 'lovelace': amountToSend }}];
 
                 if (is_initialised) {
                     const resp = await this.backend.sendFunds(this.userId, outs, this.tokenSKey.to_public().to_raw_key().hash().to_hex());
-                    const txHex = resp.transaction;
+                    txHex = resp.transaction;
                 } else {
                     const prvKey = CSL.Bip32PrivateKey
                           .generate_ed25519_bip32()
@@ -303,9 +310,12 @@ export class Wallet {
                           .derive(0);
                     this.tokenSKey = prvKey;
                     const pubkeyHex = prvKey.to_public().to_raw_key().hash().to_hex();
-                    txHex = await this.backend.createAndSendFunds(this.userId, this.jwt, pubkeyHex, dummyProofBytes, outs);
+                    const parts = this.jwt.split(".");
+                    const header  = atob(parts[0].replace(/-/g, '+').replace(/_/g, '/'));
+                    const payload = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
+                    const resp = await this.backend.createAndSendFunds(this.userId, header + '.' + payload, pubkeyHex, dummyProofBytes, outs);
+                    txHex = resp.transaction;
                 }
-
                 const transaction = CSL.FixedTransaction.from_bytes(hexToBytes(txHex));
                 transaction.sign_and_add_vkey_signature(this.tokenSKey.to_raw_key());
                 const signedTxHex = Buffer.from(transaction.to_bytes()).toString('hex');
@@ -317,7 +327,7 @@ export class Wallet {
 
 }
 
-async function getMatchingKey(keyId: string) {
+async function getMatchingKey(keyId: string): Promise<string | null> {
     const { keys } = await fetch('https://www.googleapis.com/oauth2/v3/certs').then((res) => res.json());
     for (let k of keys) {
         if (k.kid == keyId) {
@@ -329,11 +339,11 @@ async function getMatchingKey(keyId: string) {
 
 // Convert a hex string to a byte array
 // https://stackoverflow.com/questions/14603205/how-to-convert-hex-string-into-a-bytes-array-and-a-bytes-array-in-the-hex-strin
-function hexToBytes(hex) {
+function hexToBytes(hex: string): Uint8Array {
     let bytes = [];
     for (let c = 0; c < hex.length; c += 2)
         bytes.push(parseInt(hex.substr(c, 2), 16));
-    return bytes;
+    return Uint8Array.from(bytes);
 }
 
 const dummyProofBytes: ProofBytes = {
