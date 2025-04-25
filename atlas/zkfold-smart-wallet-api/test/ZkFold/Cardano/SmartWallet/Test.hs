@@ -10,5 +10,5 @@ smartWalletTests setup =
   testGroup
     "privnet-smart-wallet-tests"
     [ smartWalletSingleTests setup
-    -- , smartWalletBatchTests setup
+    , smartWalletBatchTests setup
     ]
