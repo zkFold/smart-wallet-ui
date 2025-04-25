@@ -19,7 +19,7 @@ smartWalletBatchTests setup =
   testGroup
     "smart-wallet-batch-tests"
     [ testCaseSteps "able to batch funds expenditure transaction from multiple wallets" $ \info -> withSetup info setup $ \ctx -> do
-        let emails = ["zkfold1@gmail.com", "zkfold2@gmail.com"]
+        let emails = ["zkfold1@gmail.com", "zkfold2@gmail.com", "zkfold3@gmail.com", "zkfold4@gmail.com"]
             fundUser = ctxUserF ctx
         batchWalletInfos <- forM emails $ \emailT -> do
           (email, _fundUser, spendWalletBody, (newKey, newKeyHash)) <- smartWalletSingleRun ctx info emailT
