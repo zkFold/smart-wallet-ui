@@ -68,7 +68,8 @@ batchTxs bwis = do
           foldl'
             ( \(accBodyContent, pastOutsNum) (txBodyContent, walletScript, paymentKeyHashToApi -> pkh) ->
                 ( accBodyContent
-                    { CApi.txCertificates =
+                    { CApi.txMintValue = combineMintValue (CApi.txMintValue accBodyContent) (CApi.txMintValue txBodyContent)
+                    , CApi.txCertificates =
                         combineTxCertificates
                           (CApi.txCertificates accBodyContent)
                           (CApi.txCertificates txBodyContent)
@@ -279,6 +280,10 @@ batchTxs bwis = do
   combineTxCertificates' CApi.TxCertificatesNone b = b
   combineTxCertificates' (CApi.TxCertificates sbe a) (CApi.TxCertificates _sbe b) =
     CApi.TxCertificates sbe $ fromList (toList a <> toList b)
+
+  combineMintValue CApi.TxMintNone b = b
+  combineMintValue a CApi.TxMintNone = a
+  combineMintValue (CApi.TxMintValue sbe a) (CApi.TxMintValue _sbe b) = CApi.TxMintValue sbe (a <> b)
 
   headMaybe :: [a] -> Maybe a
   headMaybe [] = Nothing
