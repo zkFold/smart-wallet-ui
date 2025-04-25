@@ -1,8 +1,14 @@
 import CSL from '@emurgo/cardano-serialization-lib-nodejs';
 import * as bip39 from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
-import { Backend, UTxO } from './Backend';
-import axios from 'axios';
+import { Backend, UTxO, ProofBytes } from './Backend';
+
+// TODO: Modifying global state is a big no-no, but how else can it be done?
+// JS has no idea how to serialise BigNum.
+BigInt.prototype.toJSON = function () {
+  return JSON.rawJSON(this.toString()); 
+};
+
 
 function harden(num: number): number {
   return 0x80000000 + num;
@@ -62,6 +68,15 @@ export class Wallet {
             const parts = this.jwt.split(".");
             const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
             this.userId = payload.email;
+
+            const prvKey = CSL.Bip32PrivateKey
+                  .generate_ed25519_bip32()
+                  .derive(harden(1852)) // purpose
+                  .derive(harden(1815)) // coin type
+                  .derive(harden(0)) // account #0
+                  .derive(0)
+                  .derive(0);
+            this.tokenSKey = prvKey;
         }
     }
 
@@ -83,10 +98,9 @@ export class Wallet {
           .to_public();
     }
 
-    private async addressForGmail(gmail: string): Promise<CSL.Address> {
+    async addressForGmail(gmail: string): Promise<CSL.Address> {
         return await this.backend.walletAddress(gmail);
     }
-
 
     // Adapted from https://developers.cardano.org/docs/get-started/cardano-serialization-lib/generating-keys/
     async getAddress(): CSL.Address {
@@ -119,29 +133,23 @@ export class Wallet {
                 return baseAddr.to_address()
             };
             case Method.Google: {
-                return await addressForGmail(this.userId);  
+                return await this.addressForGmail(this.userId);  
             };
         }
     }
 
-    async getBalance(): Promise<Asset> {
+    async getBalance(): Promise<Map<string, number>> {
         const utxos = await this.getUtxos();
         var assets = {};
-        for (let utxo of utxos) {
-            for (let asset of utxo.amount) {
-                if (!(asset.unit in assets)) {
-                    assets[asset.unit] = 0;
+        for (let i=0; i < utxos.length; i++) {
+            for (const key in utxos[i].value) {
+                if (!(key in assets)) {
+                    assets[key] = 0;
                 }
-                var quantity: number = +asset.quantity;
-                assets[asset.unit] += quantity;
+                assets[key] += utxos[i].value[key];
             }
         };
-        var result = {};
-        for (let unit in assets) {
-            result[unit] = assets[unit];
-        };
-
-        return result;
+        return assets;
     }
 
     getExtensions(): string[] {
@@ -186,21 +194,22 @@ export class Wallet {
     }
 
     private async buildTx(senderAddress: CSL.Address, recipientAddress: CSL.Address, amountToSend: CSL.BigNum): CSL.TransactionBuilder {
-        const epochParameters = await this.provider.getLatestParams();
+        const utxos = await this.getUtxos();
+        console.log(utxos);
 
         const txBuilderCfg = 
             CSL.TransactionBuilderConfigBuilder.new()
             .fee_algo(
                 CSL.LinearFee.new(
-                CSL.BigNum.from_str(epochParameters.min_fee_a.toString()),
-                CSL.BigNum.from_str(epochParameters.min_fee_b.toString())
+                CSL.BigNum.from_str("44"),
+                CSL.BigNum.from_str("155381")
             )
             )
-            .coins_per_utxo_byte(CSL.BigNum.from_str(epochParameters.min_utxo))
-            .pool_deposit(CSL.BigNum.from_str(epochParameters.pool_deposit))
-            .key_deposit(CSL.BigNum.from_str(epochParameters.key_deposit))
+            .coins_per_utxo_byte(CSL.BigNum.from_str("4310"))
+            .pool_deposit(CSL.BigNum.from_str("500000000"))
+            .key_deposit(CSL.BigNum.from_str("2000000"))
             .max_value_size(5000)
-            .max_tx_size(epochParameters.max_tx_size)
+            .max_tx_size(16384)
             .prefer_pure_change(true)
             .ex_unit_prices(CSL.ExUnitPrices.new(
                CSL.UnitInterval.new(
@@ -218,22 +227,15 @@ export class Wallet {
 
         const txInputBuilder = CSL.TxInputsBuilder.new();
 
-        var witness = null; 
-
         utxos.forEach((utxo) => {
-            var ada = 0;
-            for (let asset of utxo.amount) {
-                if (asset.unit == 'lovelace') {
-                    var quantity: number = +asset.quantity;
-                    ada += quantity;
-                }
+            if (utxo.value['lovelace'] != null) {
+                const ada = utxo.value['lovelace'];
+                const hash = CSL.TransactionHash.from_bytes(Buffer.from(utxo.ref.transaction_id, "hex"))
+                const input = CSL.TransactionInput.new(hash, utxo.ref.output_index);
+                const value = CSL.Value.new(CSL.BigNum.from_str(ada.toString()));
+                const addr = utxo.address;
+                txInputBuilder.add_regular_input(addr, input, value);
             }
-
-            const hash = CSL.TransactionHash.from_bytes(Buffer.from(utxo.tx_hash, "hex"))
-            const input = CSL.TransactionInput.new(hash, utxo.tx_index);
-            const value = CSL.Value.new(CSL.BigNum.from_str(ada.toString()));
-            const addr = CSL.Address.from_bech32(utxo.address);
-            txInputBuilder.add_regular_input(addr, input, value);
         });
         txBuilder.set_inputs(txInputBuilder);
 
@@ -244,40 +246,28 @@ export class Wallet {
 
         txBuilder.add_output(output);
 
-        const costModels = epochParameters["cost_models_raw"];
-        for (var key in costModels) {
-            costModels[key] = costModels[key].map((x) => x.toString());
-        }
-        
-        txBuilder.calc_script_data_hash(
-          CSL.Costmdls.from_json(JSON.stringify(costModels)),
-        );
-
         txBuilder.add_change_if_needed(senderAddress);
         
         return txBuilder;
     }
 
-    async sendTo(rec: SmartTxRecipient): string {
+    async sendTo(rec: SmartTxRecipient): Promise<string> {
         console.log(this.method);
         console.log(rec.recipientType);
         console.log(rec.address);
         console.log(rec.amount);
 
 
-        const senderAddress = this.getAddress();
+        const senderAddress = await this.getAddress();
         var recipientAddress;
 
         if (rec.recipientType == AddressType.Gmail) {
-            recipientAddress = this.addressForGmail(rec.address);
+            recipientAddress = await this.addressForGmail(rec.address);
         } else {
-            recipientAddress =  CSL.Address.from_bech32(rec.address); 
+            recipientAddress = CSL.Address.from_bech32(rec.address); 
         }
 
         const amountToSend = rec.amount * 1000000;
-
-        const utxos = await this.getUtxos();
-        console.log(utxos);
 
         switch (this.method) {
             case Method.Mnemonic: {
@@ -290,72 +280,41 @@ export class Wallet {
                 transaction.sign_and_add_vkey_signature(this.accountKey.derive(0).derive(0).to_raw_key());
                 
                 const signedTxHex = Buffer.from(transaction.to_bytes()).toString('hex');
-                return await this.provider.submitTx(signedTxHex);
+                return await this.backend.submitTx(signedTxHex);
             };
 
             case Method.Google: {
                 // A transaction from a Web2-initialised wallet to any kind of address
-                
-                const parts = this.jwt.split(".");
+                const is_initialised = await this.backend.isWalletInitialised(this.userId);
+                var txHex;
 
-                const header = JSON.parse(atob(parts[0].replace(/-/g, '+').replace(/_/g, '/')));
-                const keyId = header.kid;
-                const matchingKey = await getMatchingKey(keyId);
-                const certificate = {
-                    "kid": matchingKey.kid,
-                    "e": matchingKey.e,
-                    "n": matchingKey.n
+                const outs: Output[] = [{address: recipientAddress.to_bech32(), datum: [], value: { 'lovelace': amountToSend }}];
+
+                if (is_initialised) {
+                    const resp = await this.backend.sendFunds(this.userId, outs, this.tokenSKey.to_public().to_raw_key().hash().to_hex());
+                    const txHex = resp.transaction;
+                } else {
+                    const prvKey = CSL.Bip32PrivateKey
+                          .generate_ed25519_bip32()
+                          .derive(harden(1852)) // purpose
+                          .derive(harden(1815)) // coin type
+                          .derive(harden(0)) // account #0
+                          .derive(0)
+                          .derive(0);
+                    this.tokenSKey = prvKey;
+                    const pubkeyHex = prvKey.to_public().to_raw_key().hash().to_hex();
+                    txHex = await this.backend.createAndSendFunds(this.userId, this.jwt, pubkeyHex, dummyProofBytes, outs);
                 }
 
-                const proofData = { 
-                    header: parts[0],
-                    payload: parts[1], 
-                    signature: parts[2],
-                    certificate: toB64(JSON.stringify(certificate)),
-                    amount: amountToSend,
-                    recipient: recipientAddress.to_bech32(),
-                    input: "pi",
-                    userId: this.userId,
-                    pubkey: "pubkey"
-                };
+                const transaction = CSL.FixedTransaction.from_bytes(hexToBytes(txHex));
+                transaction.sign_and_add_vkey_signature(this.tokenSKey.to_raw_key());
+                const signedTxHex = Buffer.from(transaction.to_bytes()).toString('hex');
 
-                const redeemerData = createRedeemer(proofData); 
-                
-                const redeemer = CSL.Redeemer.new(
-                    CSL.RedeemerTag.new_spend(), 
-                    CSL.BigNum.from_str("0"),
-                    redeemerData,
-                    // TODO: The actual values for a script with zkp should be 1000000 mem and 5000000000 steps
-                    CSL.ExUnits.new(CSL.BigNum.from_str("1000000"), CSL.BigNum.from_str("1000000000")) 
-                );
-
-                const txBuilder = await this.buildTx(senderAddress, recipientAddress, amountToSend, utxos, collateral, redeemer);
-
-                const tx = txBuilder.build_tx(); 
-                const fixedTx = CSL.FixedTransaction.new(tx.body().to_bytes(), tx.witness_set().to_bytes(), tx.is_valid());
-                fixedTx.sign_and_add_vkey_signature(this.collateral_pool.getSkey());
-
-                const txHex = Buffer.from(fixedTx.to_bytes()).toString('hex');
-                return await this.provider.submitTx(txHex);
+                return await this.backend.submitTx(signedTxHex);
             };
         };
     }
 
-}
-
-// Taken from https://forum.cardano.org/t/building-transaction-using-cardano-serialization-lib/126082
-function getCardanoSlot() {
-    const nowUnixTimestamp = Math.floor(new Date().getTime() / 1000); 
-    const startShelleyUnixTimestamp = nowUnixTimestamp - 1596491091;
-    console.log(nowUnixTimestamp);
-    console.log(startShelleyUnixTimestamp);
-    return startShelleyUnixTimestamp + 4492800;
-}
-
-function toB64(data: string) {
-    const utf8Arr = new TextEncoder().encode(data);
-    const encoded = btoa(utf8Arr).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    return encoded
 }
 
 async function getMatchingKey(keyId: string) {
@@ -367,3 +326,41 @@ async function getMatchingKey(keyId: string) {
     }
     return null;
 }
+
+// Convert a hex string to a byte array
+// https://stackoverflow.com/questions/14603205/how-to-convert-hex-string-into-a-bytes-array-and-a-bytes-array-in-the-hex-strin
+function hexToBytes(hex) {
+    let bytes = [];
+    for (let c = 0; c < hex.length; c += 2)
+        bytes.push(parseInt(hex.substr(c, 2), 16));
+    return bytes;
+}
+
+const dummyProofBytes: ProofBytes = {
+    "cmA_bytes": "393766316433613733313937643739343236393536333863346661396163306663333638386334663937373462393035613134653361336631373162616335383663353565383366663937613161656666623361663030616462323263366262",
+    "cmB_bytes": "393766316433613733313937643739343236393536333863346661396163306663333638386334663937373462393035613134653361336631373162616335383663353565383366663937613161656666623361663030616462323263366262",
+    "cmC_bytes": "623132333661356332663866323965333635663338343538666239353634653265613666383530343165666163663837303739613734353664383631333261643233313232313262636463613364373830656430393537396532383537343135",
+    "cmF_bytes": "633030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030",
+    "cmH1_bytes": "633030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030",
+    "cmH2_bytes": "633030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030",
+    "cmZ1_bytes": "613935316661346136366334386264623634366438376337313738336635646362386633616138313231393536346564383336393633333863336266633135366635353031643466323636613763393235386565343563303233313862646537",
+    "cmZ2_bytes": "393766316433613733313937643739343236393536333863346661396163306663333638386334663937373462393035613134653361336631373162616335383663353565383366663937613161656666623361663030616462323263366262",
+    "cmQlow_bytes": "623033346330653239383838636436383633333834356266633037376565636163326238636164623539663535303436303630393664306637643331383837323734373737643632303234363538343737303538626562373735366662656236",
+    "cmQmid_bytes": "623462313730313934386435643265333665313838393533346365373534346133636331623736303461323465386464633636316233653936623161616239303638373466393461303436343761633563633232386561376563363638356136",
+    "cmQhigh_bytes": "633030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030",
+    "proof1_bytes": "623330386335373739363436313936383535306632386432333833396166373237323361333130383332363332613139653961623531326134613565636234633863383935306164653032353737323439353032323231333736396133663464",
+    "proof2_bytes": "623365343262343835303035643963326261346136366466626234646566323433336439326137623166643734376566346165643462356635653934343037396264653739616431646135383035333539376234626538313934373233666331",
+    "a_xi_int": 1n,
+    "b_xi_int": 1n,
+    "c_xi_int": 48380510586722627616411267202495116783057255243693228940120047704204371350546n,
+    "s1_xi_int": 10368790864104277489349149849901642613910605061180645600781012523028298814297n,
+    "s2_xi_int": 29133202091870269236732546656522855889661645594339077247007036693772071783753n,
+    "f_xi_int": 0n,
+    "t_xi_int": 0n,
+    "t_xi'_int": 0n,
+    "z1_xi'_int": 40497370593942275679614638124878515092846558874156949013549943373738078556493n,
+    "z2_xi'_int": 1n,
+    "h1_xi'_int": 0n,
+    "h2_xi_int": 0n,
+    "l1_xi": 37713268627753681891487380051493928725054683102581668523304176199511429320989n
+};

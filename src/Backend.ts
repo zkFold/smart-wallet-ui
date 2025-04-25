@@ -82,6 +82,18 @@ export class Backend {
         return CSL.Address.from_bech32(data.address);
     }
 
+    async isWalletInitialised(email: string): Promise<boolean> {
+        const { data } = await axios.post(`${this.url}/v0/wallet/is-initialized`, {
+            'email': email
+          }, {
+            headers: {
+              'api-key': this.secret
+            }
+          }
+        );
+        return data.is_initialised != null; 
+    }
+
     async createWallet(email: string, jwt: string, payment_key_hash: string, proof_bytes: ProofBytes, fund_address?: CSL.Address): Promise<CreateWalletResponse> {
         const { data } = await axios.post(`${this.url}/v0/wallet/create`, {
             'email': email,
@@ -89,6 +101,30 @@ export class Backend {
             'payment_key_hash': payment_key_hash,
             'proof_bytes': proof_bytes,
             'fund_address': fund_address
+          }, {
+            headers: {
+              'api-key': this.secret
+            }
+          }
+        );
+
+        const response: CreateWalletResponse = { 
+            address: CSL.Address.from_bech32(data.address),
+            transaction: data.transaction,
+            transaction_fee: data.transaction_fee,
+            transaction_id: data.transaction_id
+        };
+
+        return response;
+    }
+
+    async createAndSendFunds(email: string, jwt: String, payment_key_hash: string, proof_bytes: ProofBytes, outs: Output[]): Promise<CreateWalletResponse> {
+        const { data } = await axios.post(`${this.url}/v0/wallet/create-and-send-funds`, {
+            'email': email,
+            'jwt': jwt,
+            'payment_key_hash': payment_key_hash,
+            'proof_bytes': proof_bytes,
+            'outs': outs,
           }, {
             headers: {
               'api-key': this.secret
@@ -127,10 +163,11 @@ export class Backend {
         return response;
     }
 
-    async sumbitTx(tx: string): Promise<string> {
+    async submitTx(tx: string): Promise<string> {
         const { data } = await axios.post(`${this.url}/v0/tx/submit`, tx, {
             headers: {
-              'api-key': this.secret
+              'api-key': this.secret,
+              "Content-Type": "application/json"
             }
           }
         );
