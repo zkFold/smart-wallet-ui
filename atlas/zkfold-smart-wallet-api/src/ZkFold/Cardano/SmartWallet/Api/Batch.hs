@@ -13,6 +13,7 @@ import Data.Map.Strict qualified as Map
 import Data.Maybe (fromJust, isNothing)
 import Data.Ratio ((%))
 import Data.Set qualified as Set
+import GHC.IsList (IsList (fromList), toList)
 import GeniusYield.Imports hiding (toList)
 import GeniusYield.TxBuilder
 import GeniusYield.Types
@@ -67,11 +68,21 @@ batchTxs bwis = do
           foldl'
             ( \(accBodyContent, pastOutsNum) (txBodyContent, walletScript, paymentKeyHashToApi -> pkh) ->
                 ( accBodyContent
-                    { CApi.txWithdrawals =
+                    { CApi.txMintValue = combineMintValue (CApi.txMintValue accBodyContent) (CApi.txMintValue txBodyContent)
+                    , CApi.txCertificates =
+                        combineTxCertificates
+                          (CApi.txCertificates accBodyContent)
+                          (CApi.txCertificates txBodyContent)
+                          ( updateCertRedeemer
+                              (GYCredentialByScript (scriptHash (zkiwsCheckSig walletScript)) & stakeCredentialToApi)
+                              pastOutsNum
+                              (findSignatoryIndex oreqSigs pkh)
+                          )
+                    , CApi.txWithdrawals =
                         combineTxWithdrawals
                           (CApi.txWithdrawals accBodyContent)
                           (CApi.txWithdrawals txBodyContent)
-                          ( updateRedeemer
+                          ( updateWdrlRedeemer
                               (stakeAddressFromCredential nid (GYCredentialByScript $ scriptHash (zkiwsCheckSig walletScript)) & stakeAddressToApi)
                               pastOutsNum
                               (findSignatoryIndex oreqSigs pkh)
@@ -88,7 +99,8 @@ batchTxs bwis = do
                 )
             )
             ( let (fstTxBodyContent, fstWalletScript, paymentKeyHashToApi -> pkh) = NE.head bwisResolved
-                  stakeAddr = stakeAddressFromCredential nid (GYCredentialByScript $ scriptHash (zkiwsCheckSig fstWalletScript))
+                  stakeCred = GYCredentialByScript $ scriptHash (zkiwsCheckSig fstWalletScript)
+                  stakeAddr = stakeAddressFromCredential nid stakeCred
                in ( fstTxBodyContent
                       { CApi.txExtraKeyWits = CApi.TxExtraKeyWitnesses CApi.AlonzoEraOnwardsConway oreqSigs
                       , CApi.txReturnCollateral = CApi.TxReturnCollateralNone -- Updated later.
@@ -99,8 +111,21 @@ batchTxs bwis = do
                             CApi.TxWithdrawals
                               sbe
                               ( map
-                                  ( updateRedeemer
+                                  ( updateWdrlRedeemer
                                       (stakeAddressToApi stakeAddr)
+                                      0
+                                      (findSignatoryIndex oreqSigs pkh)
+                                  )
+                                  ls
+                              )
+                      , CApi.txCertificates = case CApi.txCertificates fstTxBodyContent of
+                          CApi.TxCertificatesNone -> CApi.TxCertificatesNone
+                          CApi.TxCertificates sbe ls ->
+                            CApi.TxCertificates
+                              sbe
+                              ( (fmap . fmap)
+                                  ( updateCertRedeemer
+                                      (stakeCredentialToApi stakeCred)
                                       0
                                       (findSignatoryIndex oreqSigs pkh)
                                   )
@@ -161,13 +186,39 @@ batchTxs bwis = do
   combinedTxBody <- either (throwError . GYBuildTxException . GYBuildTxBodyErrorAutoBalance) pure ecombinedTxBody
   pure $ unsignedTx $ txBodyFromApi combinedTxBody
  where
-  updateRedeemer ::
+  updateWitRedeemer outIx sigIx swi sw =
+    CApi.ScriptWitness swi $
+      case sw of
+        CApi.SimpleScriptWitness _ _ -> sw
+        CApi.PlutusScriptWitness slie psv psori sd _sr eu ->
+          CApi.PlutusScriptWitness slie psv psori sd (Signature outIx sigIx & redeemerFromPlutusData & redeemerToApi) eu
+  updateCertRedeemer ::
+    CApi.StakeCredential ->
+    Integer ->
+    Integer ->
+    Maybe (CApi.StakeCredential, CApi.Witness CApi.WitCtxStake ApiEra) ->
+    Maybe (CApi.StakeCredential, CApi.Witness CApi.WitCtxStake ApiEra)
+  updateCertRedeemer reqStakeCred outIx sigIx msw =
+    case msw of
+      Nothing -> Nothing
+      Just (sc, wit) ->
+        if sc == reqStakeCred
+          then case wit of
+            CApi.KeyWitness _ -> Just (sc, wit)
+            CApi.ScriptWitness swi sw ->
+              Just
+                ( sc
+                , updateWitRedeemer outIx sigIx swi sw
+                )
+          else Just (sc, wit)
+
+  updateWdrlRedeemer ::
     CApi.StakeAddress ->
     Integer ->
     Integer ->
     (CApi.StakeAddress, Ledger.Coin, CApi.BuildTxWith CApi.BuildTx (CApi.Witness CApi.WitCtxStake ApiEra)) ->
     (CApi.StakeAddress, Ledger.Coin, CApi.BuildTxWith CApi.BuildTx (CApi.Witness CApi.WitCtxStake ApiEra))
-  updateRedeemer reqStakeAddr outIx sigIx (stakeAddr, coin, CApi.BuildTxWith wit) =
+  updateWdrlRedeemer reqStakeAddr outIx sigIx (stakeAddr, coin, CApi.BuildTxWith wit) =
     if stakeAddr == reqStakeAddr
       then case wit of
         CApi.KeyWitness _ -> (stakeAddr, coin, CApi.BuildTxWith wit)
@@ -175,11 +226,7 @@ batchTxs bwis = do
           ( stakeAddr
           , coin
           , CApi.BuildTxWith $
-              CApi.ScriptWitness swi $
-                case sw of
-                  CApi.SimpleScriptWitness _ _ -> sw
-                  CApi.PlutusScriptWitness slie psv psori sd _sr eu ->
-                    CApi.PlutusScriptWitness slie psv psori sd (Signature outIx sigIx & redeemerFromPlutusData & redeemerToApi) eu
+              updateWitRedeemer outIx sigIx swi sw
           )
       else (stakeAddr, coin, CApi.BuildTxWith wit)
 
@@ -216,12 +263,27 @@ batchTxs bwis = do
             updateF
             ls
         )
+
   combineTxWithdrawals' a CApi.TxWithdrawalsNone = a
   combineTxWithdrawals' CApi.TxWithdrawalsNone b = b
   combineTxWithdrawals' (CApi.TxWithdrawals sbe a) (CApi.TxWithdrawals _sbe b) =
     CApi.TxWithdrawals
       sbe
       (a <> b)
+
+  combineTxCertificates a b updateF = combineTxCertificates' a $ case b of
+    CApi.TxCertificatesNone -> CApi.TxCertificatesNone
+    CApi.TxCertificates sbe ls ->
+      CApi.TxCertificates sbe $ fmap (fmap updateF) ls
+
+  combineTxCertificates' a CApi.TxCertificatesNone = a
+  combineTxCertificates' CApi.TxCertificatesNone b = b
+  combineTxCertificates' (CApi.TxCertificates sbe a) (CApi.TxCertificates _sbe b) =
+    CApi.TxCertificates sbe $ fromList (toList a <> toList b)
+
+  combineMintValue CApi.TxMintNone b = b
+  combineMintValue a CApi.TxMintNone = a
+  combineMintValue (CApi.TxMintValue sbe a) (CApi.TxMintValue _sbe b) = CApi.TxMintValue sbe (a <> b)
 
   headMaybe :: [a] -> Maybe a
   headMaybe [] = Nothing

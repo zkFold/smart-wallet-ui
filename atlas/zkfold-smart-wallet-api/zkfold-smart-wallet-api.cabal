@@ -88,6 +88,8 @@ test-suite zkfold-smart-contract-wallet-server-test
   main-is: Main.hs
   other-modules:
     ZkFold.Cardano.SmartWallet.Test
+    ZkFold.Cardano.SmartWallet.Test.Batch
+    ZkFold.Cardano.SmartWallet.Test.Single
     ZkFold.Cardano.SmartWallet.Test.Utils
 
   build-depends:

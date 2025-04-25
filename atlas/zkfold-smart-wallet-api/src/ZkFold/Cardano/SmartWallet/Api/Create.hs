@@ -82,10 +82,13 @@ createWallet zkcwi@ZKCreateWalletInfo{..} = do
 createWallet' :: (GYTxQueryMonad m) => ZKCreateWalletInfo -> ZKInitializedWalletScripts -> GYAddress -> m (GYTxSkeleton 'PlutusV3)
 createWallet' ZKCreateWalletInfo{..} ZKInitializedWalletScripts{..} zkWalletAddr = do
   jwtParts <- jwtPartsFromJWT zkcwiEmail zkcwiJWT
+  nid <- networkId
   let
     tn = tokenNameFromKeyHash zkcwiPaymentKeyHash
     red = Web2Auth jwtParts (proofToPlutus zkcwiProofBytes) (tokenNameToPlutus tn)
     stakeCred = GYCredentialByScript $ scriptHash zkiwsCheckSig
+    stakeAddr = stakeAddressFromCredential nid stakeCred
+  msi <- stakeAddressInfo stakeAddr
   pure $
     mustMint
       (GYBuildPlutusScript $ GYBuildPlutusScriptInlined zkiwsWeb2Auth)
@@ -95,8 +98,12 @@ createWallet' ZKCreateWalletInfo{..} ZKInitializedWalletScripts{..} zkWalletAddr
       -- Not strictly required, but we prefer for token to be at zk wallet's address.
       <> mustHaveOutput (mkGYTxOutNoDatum zkWalletAddr (valueSingleton (GYToken (mintingPolicyId zkiwsWeb2Auth) tn) 1))
       <> mustBeSignedBy zkcwiPaymentKeyHash
-      <> mustHaveCertificate
-        ( mkStakeAddressRegistrationCertificate
-            stakeCred
-            (GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined zkiwsCheckSig) (redeemerFromPlutusData $ Signature 0 0))
-        )
+      <> ( case msi of
+            Nothing ->
+              mustHaveCertificate
+                ( mkStakeAddressRegistrationCertificate
+                    stakeCred
+                    (GYTxBuildWitnessPlutusScript (GYBuildPlutusScriptInlined zkiwsCheckSig) (redeemerFromPlutusData $ Signature 0 0))
+                )
+            Just _ -> mempty
+         )
