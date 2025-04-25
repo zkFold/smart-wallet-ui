@@ -14,43 +14,46 @@ function harden(num: number): number {
   return 0x80000000 + num;
 }
 
-export enum Method {
+export enum WalletType {
     Mnemonic = 0,
     Google = 1
 }
 
-export enum AddressType {
-    Bech32 = 0,
-    Gmail = 1
-}
-
 export interface Initialiser {
-    method: Method;
+    method: WalletType;
     data: string;
+    rootKey?: CSL.Bip32PrivateKey;
 }
 
 export class SmartTxRecipient {
-    recipientType: AddressType;
+    recipientType: WalletType;
     address: string;
     amount: CSL.BigNum;
 
-    constructor(recipientType: AddressType, address: string, amount: CSL.BigNum) {
+    constructor(recipientType: WalletType, address: string, amount: CSL.BigNum) {
         this.recipientType = recipientType;
         this.address = address;
         this.amount = amount;
     }
 }
 
+export interface Asset {
+    [key: string]: number;
+}
+
 export class Wallet {
-    private rootKey: CSL.Bip32PrivateKey;
-    private accountKey: CSL.Bip32PrivateKey;
-    private utxoPubKey: CSL.Bip32PublicKey;
-    private stakeKey: CSL.Bip32PublicKey;
-    private jwt: string;
-    private userId: string;
+    private rootKey!: CSL.Bip32PrivateKey;    // Only for Mnemonic
+    private accountKey!: CSL.Bip32PrivateKey; // Only for Mnemonic
+    private utxoPubKey!: CSL.Bip32PublicKey;  // Only for Mnemonic
+    private stakeKey!: CSL.Bip32PublicKey;    // Only for Mnemonic
+    private tokenSKey!: CSL.Bip32PrivateKey;  // Only for Google 
+
+    private jwt!: string;        // Only for Google 
+    private userId!: string;     // Only for Google 
+    private freshKey: boolean = false;
+
     private backend: Backend; 
-    private tokenSKey: CSL.Bip32PrivateKey;
-    private method: Method;
+    private method: WalletType;
     private network: string;
 
     constructor(backend: Backend, initialiser: Initialiser, password: string = '', network: string = 'mainnet') {
@@ -58,7 +61,7 @@ export class Wallet {
         this.network = network;
         this.method = initialiser.method;
         
-        if (this.method == Method.Mnemonic) {
+        if (this.method == WalletType.Mnemonic) {
             const entropy = bip39.mnemonicToEntropy(initialiser.data, wordlist);
             this.rootKey = CSL.Bip32PrivateKey.from_bip39_entropy(
                   Buffer.from(entropy, 'hex'),
@@ -73,14 +76,19 @@ export class Wallet {
             const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
             this.userId = payload.email;
 
-            const prvKey = CSL.Bip32PrivateKey
-                  .generate_ed25519_bip32()
-                  .derive(harden(1852)) // purpose
-                  .derive(harden(1815)) // coin type
-                  .derive(harden(0)) // account #0
-                  .derive(0)
-                  .derive(0);
-            this.tokenSKey = prvKey;
+            if (initialiser.rootKey == null) {
+                const prvKey = CSL.Bip32PrivateKey
+                      .generate_ed25519_bip32()
+                      .derive(harden(1852)) // purpose
+                      .derive(harden(1815)) // coin type
+                      .derive(harden(0)) // account #0
+                      .derive(0)
+                      .derive(0);
+                this.tokenSKey = prvKey;
+                this.freshKey = true;
+            } else {
+                this.tokenSKey = initialiser.rootKey;
+            }
         }
     }
 
@@ -109,9 +117,9 @@ export class Wallet {
     // Adapted from https://developers.cardano.org/docs/get-started/cardano-serialization-lib/generating-keys/
     async getAddress(): Promise<CSL.Address> {
         switch (this.method) {
-            case Method.Mnemonic: {
+            case WalletType.Mnemonic: {
                 const paymentCred = CSL.Credential.from_keyhash(this.utxoPubKey.to_raw_key().hash()); 
-                var netId;
+                var netId: number = 0;
                 switch (this.network) {
                     case "mainnet": {
                         netId = CSL.NetworkInfo.mainnet().network_id();
@@ -136,15 +144,15 @@ export class Wallet {
                 
                 return baseAddr.to_address()
             };
-            case Method.Google: {
+            case WalletType.Google: {
                 return await this.addressForGmail(this.userId);  
             };
         }
     }
 
-    async getBalance(): Promise<Map<string, number>> {
+    async getBalance(): Promise<Asset> {
         const utxos = await this.getUtxos();
-        var assets = {};
+        var assets: Asset = {};
         for (let i=0; i < utxos.length; i++) {
             for (const key in utxos[i].value) {
                 if (!(key in assets)) {
@@ -234,8 +242,8 @@ export class Wallet {
         const txInputBuilder = CSL.TxInputsBuilder.new();
 
         utxos.forEach((utxo) => {
-            if (utxo.value.get('lovelace') != null) {
-                const ada = utxo.value.get('lovelace');
+            if (utxo.value['lovelace'] != null) {
+                const ada = utxo.value['lovelace'];
                 const hash = CSL.TransactionHash.from_bytes(Buffer.from(utxo.ref.transaction_id, "hex"))
                 const input = CSL.TransactionInput.new(hash, utxo.ref.output_index);
                 const value = CSL.Value.new(CSL.BigNum.from_str(ada.toString()));
@@ -247,7 +255,7 @@ export class Wallet {
 
         const output = CSL.TransactionOutput.new(
                 recipientAddress,
-                CSL.Value.new(CSL.BigNum.from_str(amountToSend.toString())),
+                CSL.Value.new(amountToSend),
         );
 
         txBuilder.add_output(output);
@@ -267,16 +275,16 @@ export class Wallet {
         const senderAddress = await this.getAddress();
         var recipientAddress;
 
-        if (rec.recipientType == AddressType.Gmail) {
+        if (rec.recipientType == WalletType.Google) {
             recipientAddress = await this.addressForGmail(rec.address);
         } else {
             recipientAddress = CSL.Address.from_bech32(rec.address); 
         }
 
-        const amountToSend = rec.amount * 1000000;
+        const amountToSend = CSL.BigNum.from_str(rec.amount.toString());
 
         switch (this.method) {
-            case Method.Mnemonic: {
+            case WalletType.Mnemonic: {
                 // A classical transaction from an address behind a private key to another address or a smart contract
                 const txBuilder = await this.buildTx(senderAddress, recipientAddress, amountToSend);
 
@@ -289,7 +297,7 @@ export class Wallet {
                 return await this.backend.submitTx(signedTxHex);
             };
 
-            case Method.Google: {
+            case WalletType.Google: {
                 // A transaction from a Web2-initialised wallet to any kind of address
                 const is_initialised = await this.backend.isWalletInitialised(this.userId);
                 console.log(`Is initialised: ${is_initialised}`);
@@ -297,7 +305,7 @@ export class Wallet {
 
                 const outs: Output[] = [{address: recipientAddress.to_bech32(), value: { 'lovelace': amountToSend }}];
 
-                if (is_initialised) {
+                if (is_initialised && !this.freshKey) {
                     const resp = await this.backend.sendFunds(this.userId, outs, this.tokenSKey.to_public().to_raw_key().hash().to_hex());
                     txHex = resp.transaction;
                 } else {

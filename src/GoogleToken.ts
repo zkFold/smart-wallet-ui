@@ -27,7 +27,7 @@ const scopes = [
   'openid',
 ];
 
-export function getAuthUrl(state) {
+export function getAuthUrl(state: string): Promise<string> {
     const authorizationUrl = oauth2Client.generateAuthUrl({
       // 'online' (default) or 'offline' (gets refresh_token)
       access_type: 'offline',
@@ -42,7 +42,7 @@ export function getAuthUrl(state) {
     return authorizationUrl;
 };
 
-export async function getJWT(code) {
+export async function getJWT(code: string): Promise<string | undefined> {
     try {
         const { tokens } = await oauth2Client.getToken(code);
         console.info('Tokens acquired.');

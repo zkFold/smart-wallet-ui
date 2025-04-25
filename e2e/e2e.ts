@@ -12,8 +12,8 @@ import fs from 'fs-extra';
 import * as dotenv from 'dotenv';
 import * as url from 'url';
 
-import { Wallet, Initialiser, Method, SmartTxRecipient, AddressType } from '../src/Wallet';
-import { BlockFrostProvider } from '../src/Blockfrost';
+import { Wallet, Initialiser, WalletType, SmartTxRecipient } from '../src/Wallet';
+import { Backend } from '../src/Backend'
 import { sendMessage } from '../src/GMail'
 import { getJWT, getAuthUrl } from '../src/GoogleToken'
 
@@ -42,16 +42,16 @@ function loggedIn(req, res, next) {
 }
 
 function restoreWallet(req) {
-    const provider = new BlockFrostProvider(req.session.network.toLowerCase());
+    const backend = new Backend('http://localhost:8082', '123');
     const initialiser = req.session.initialiser;
-    const wallet = new Wallet(provider, initialiser, '', req.session.network.toLowerCase());
+    const wallet = new Wallet(backend, initialiser, '', req.session.network.toLowerCase());
     return wallet;
 }
 
 async function mkTransaction(req, res) {
     const wallet = restoreWallet(req);
     const balance = await wallet.getBalance();
-    const address = wallet.getAddress().to_bech32();
+    const address = await wallet.getAddress().then((x) => x.to_bech32());
     console.log(balance);
     console.log(balance.lovelace);
     var ada = 0;
@@ -77,9 +77,9 @@ app.get('/tx_status', async (req, res) => {
     if (q.txId && q.recipient) {
         const txId = q.txId;
         const recipient = q.recipient;
-        const provider = new BlockFrostProvider(req.session.network.toLowerCase());
+        const backend = new Backend('http://localhost:8082', '123');
         try {
-            const utxos = await provider.getUtxos(recipient);
+            const utxos = await backend.addressUtxo(recipient);
             for (var i = 0; i < utxos.length; i++) {
                 const utxo = utxos[i];
                 if (utxo.tx_hash == txId) {
@@ -99,21 +99,22 @@ app.get('/tx_status', async (req, res) => {
 });
 
 app.post('/send', async (req, res) => {
-    try {
+//    try {
         console.log(`Sending ${req.body.zkfold_amount} ADA to ${req.body.zkfold_address} using ${req.body.recipient}`);
         var recipient;
         switch (req.body.recipient) {
             case "Bech32": {
-                recipient = new SmartTxRecipient(AddressType.Bech32, req.body.zkfold_address, req.body.zkfold_amount);
+                recipient = new SmartTxRecipient(WalletType.Mnemonic, req.body.zkfold_address, req.body.zkfold_amount * 1000000);
                 break;
             };
             case "Gmail": {
-                recipient = new SmartTxRecipient(AddressType.Gmail, req.body.zkfold_address, req.body.zkfold_amount);
+                recipient = new SmartTxRecipient(WalletType.Google, req.body.zkfold_address, req.body.zkfold_amount * 1000000);
                 break;
             };
         }
         const wallet = restoreWallet(req);
         const txId = await wallet.sendTo(recipient);
+        console.log(`tx id: ${txId}`);
 
         if (req.body.recipient == "Gmail") {
                 const template = fs.readFileSync('./email.html', 'utf-8');
@@ -126,11 +127,12 @@ app.post('/send', async (req, res) => {
         }
 
         const template = fs.readFileSync('./success.html', 'utf-8');
-        res.send(template.replaceAll('{ txId }', txId).replaceAll("{ recipient }", wallet.addressForGmail(req.body.zkfold_address).to_bech32()));
-    } catch (error) {
-        const template = fs.readFileSync('./failedTx.html', 'utf-8');
-        res.send(template.replaceAll('{ reason }', `${error}`));
-    }
+        const addr = await wallet.addressForGmail(req.body.zkfold_address).then((x) => x.to_bech32()); 
+        res.send(template.replaceAll('{ txId }', txId).replaceAll("{ recipient }", addr));
+//    } catch (error) {
+//        const template = fs.readFileSync('./failedTx.html', 'utf-8');
+//        res.send(template.replaceAll('{ reason }', `${error}`));
+//    }
 });
 
 app.post('/init', async (req, res) => {
@@ -157,10 +159,10 @@ app.get('/oauth2callback', async (req, res) => {
     try {
         var initialiser;
         let q = url.parse(req.url, true).query;
-        const provider = new BlockFrostProvider(req.session.network.toLowerCase());
+        const backend = new Backend('http://localhost:8082', '123');
 
         if (req.session.mnemonic) {
-            initialiser = { method: Method.Mnemonic, data: req.session.mnemonic };
+            initialiser = { method: WalletType.Mnemonic, data: req.session.mnemonic };
             req.session.mnemonic = null;
         } else if (q.error) { // An error response e.g. error=access_denied
             console.log('Error:' + q.error);
@@ -168,14 +170,15 @@ app.get('/oauth2callback', async (req, res) => {
             console.log('State mismatch. Possible CSRF attack');
         } else { 
             const jwt = await getJWT(q.code);
-            initialiser = { method: Method.Google, data: jwt };
+            initialiser = { method: WalletType.Google, data: jwt };
         }
 
         req.session.initialiser = initialiser;
-        const wallet = new Wallet(provider, initialiser, '', req.session.network.toLowerCase());
+        const wallet = new Wallet(backend, initialiser, '', req.session.network.toLowerCase());
         const balance = await wallet.getBalance();
+        const addr = await wallet.getAddress().then((x) => x.to_bech32());
         console.log(balance);
-        console.log(`Initialised a ${req.session.network} wallet with address ${wallet.getAddress().to_bech32()}`);
+        console.log(`Initialised a ${req.session.network} wallet with address ${addr}`);
         res.redirect('/wallet');
     } catch (e) {
         console.log(e);

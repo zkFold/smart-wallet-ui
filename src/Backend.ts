@@ -34,7 +34,9 @@ export interface ProofBytes {
 export interface Output {
     address: string,
     datum?: string[],
-    value: Map<string, number>
+    value: {
+        [key: string]: CSL.BigNum;
+    }
 }
 
 export interface Reference {
@@ -45,7 +47,9 @@ export interface Reference {
 export interface UTxO {
     ref: Reference,
     address: CSL.Address,
-    value: Map<string, number>
+    value: {
+        [key: string]: number;
+    }
 }
 
 export interface CreateWalletResponse {
@@ -91,7 +95,7 @@ export class Backend {
             }
           }
         );
-        return data.is_initialised != null; 
+        return data.is_initialized != null; 
     }
 
     async createWallet(email: string, jwt: string, payment_key_hash: string, proof_bytes: ProofBytes, fund_address?: CSL.Address): Promise<CreateWalletResponse> {
