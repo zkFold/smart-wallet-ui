@@ -1,11 +1,54 @@
 import CSL from '@emurgo/cardano-serialization-lib-nodejs';
-import { createRequire } from "module";
 import axios from 'axios';
 
+export class BigIntWrap {
+    private int!: bigint; 
+
+    constructor(num: string | number | bigint | CSL.BigNum) {
+        if (typeof num == "string") {
+            this.int = BigInt(num);
+        } else if (typeof num == "number") {
+            this.int = BigInt(num);
+        } else if (typeof num == "bigint") {
+            this.int = BigInt(num);
+        } else {
+            this.int = BigInt(num.toString());
+        }
+    }
+
+    add(other: BigIntWrap): BigIntWrap {
+        return new BigIntWrap(this.int + other.int);
+    }
+
+    increase(other: BigIntWrap): void {
+        this.int += other.int; 
+    }
+
+    toString(): string {
+        return this.int.toString();
+    }
+
+    toNumber(): number {
+        return Number(this.int);
+    }
+
+    toBigInt(): bigint {
+        return this.int;
+    }
+
+    toBigNum(): CSL.BigNum {
+        return CSL.BigNum.from_str(this.int.toString());
+    }
+
+    toJSON(): JSON {
+        return JSON.rawJSON(this.int.toString()); 
+    }
+}
+
 export interface ProofBytes {
-    "a_xi_int": BigInt, 
-    "b_xi_int": BigInt,
-    "c_xi_int": BigInt,
+    "a_xi_int": BigIntWrap, 
+    "b_xi_int": BigIntWrap,
+    "c_xi_int": BigIntWrap,
     "cmA_bytes": string,
     "cmB_bytes": string,
     "cmC_bytes": string,
@@ -17,25 +60,25 @@ export interface ProofBytes {
     "cmQmid_bytes": string,
     "cmZ1_bytes": string,
     "cmZ2_bytes": string,
-    "f_xi_int": BigInt,
-    "h1_xi'_int": BigInt,
-    "h2_xi_int": BigInt,
-    "l1_xi": BigInt,
+    "f_xi_int": BigIntWrap,
+    "h1_xi'_int": BigIntWrap,
+    "h2_xi_int": BigIntWrap,
+    "l1_xi": BigIntWrap,
     "proof1_bytes": string,
     "proof2_bytes": string,
-    "s1_xi_int": BigInt,
-    "s2_xi_int": BigInt,
-    "t_xi'_int": BigInt,
-    "t_xi_int": BigInt,
-    "z1_xi'_int": BigInt,
-    "z2_xi'_int": BigInt
+    "s1_xi_int": BigIntWrap,
+    "s2_xi_int": BigIntWrap,
+    "t_xi'_int": BigIntWrap,
+    "t_xi_int": BigIntWrap,
+    "z1_xi'_int": BigIntWrap,
+    "z2_xi'_int": BigIntWrap
 }
 
 export interface Output {
     address: string,
     datum?: string[],
     value: {
-        [key: string]: CSL.BigNum;
+        [key: string]: BigIntWrap;
     }
 }
 
@@ -48,7 +91,7 @@ export interface UTxO {
     ref: Reference,
     address: CSL.Address,
     value: {
-        [key: string]: number;
+        [key: string]: BigIntWrap;
     }
 }
 
@@ -86,7 +129,7 @@ export class Backend {
         return CSL.Address.from_bech32(data.address);
     }
 
-    async isWalletInitialised(email: string): Promise<boolean> {
+    async isWalletInitialised(email: string, pubKeyHash: string): Promise<boolean> {
         const { data } = await axios.post(`${this.url}/v0/wallet/is-initialized`, {
             'email': email
           }, {
@@ -95,7 +138,19 @@ export class Backend {
             }
           }
         );
-        return data.is_initialized != null; 
+        console.log("isWalletInitialised");
+        console.log(pubKeyHash);
+        console.log(data);
+        if (!data.is_initialized) {
+            return false;
+        }
+        const tokenNames = data.is_initialized[1];
+        for (let i=0; i<tokenNames.length; i++) {
+            if (tokenNames[i] == pubKeyHash) {
+                return true;
+            }
+        }
+        return false;
     }
 
     async createWallet(email: string, jwt: string, payment_key_hash: string, proof_bytes: ProofBytes, fund_address?: CSL.Address): Promise<CreateWalletResponse> {
@@ -122,7 +177,7 @@ export class Backend {
         return response;
     }
 
-    async createAndSendFunds(email: string, jwt: String, payment_key_hash: string, proof_bytes: ProofBytes, outs: Output[]): Promise<CreateWalletResponse> {
+    async createAndSendFunds(email: string, jwt: string, payment_key_hash: string, proof_bytes: ProofBytes, outs: Output[]): Promise<CreateWalletResponse> {
         const { data } = await axios.post(`${this.url}/v0/wallet/create-and-send-funds`, {
             'email': email,
             'jwt': jwt,
@@ -187,7 +242,7 @@ export class Backend {
           }
         );
         
-        let result: UTxO[] = [];
+        const result: UTxO[] = [];
 
         for (let i=0; i<data.length; i++) {
             const ref = data[i].ref;
@@ -196,10 +251,17 @@ export class Backend {
                 transaction_id: parts[0],
                 output_index: Number(parts[1])
             }
+
+            const values: { [key: string]: BigIntWrap } = {}
+            
+            for (const key in data[i].value) {
+                values[key] = new BigIntWrap(data[i].value[key]);
+            }
+
             const utxo: UTxO = {
                 ref: reference,
                 address: CSL.Address.from_bech32(data[i].address),
-                value: data[i].value
+                value: values 
             }
             result.push(utxo);
         }

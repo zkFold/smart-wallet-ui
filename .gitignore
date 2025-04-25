@@ -24,4 +24,5 @@ cabal.project.local~
 stack.yaml*
 .DS_Store
 node_modules
-e2e/public/css/
+e2e-test/e2e/public/css/
+*.js

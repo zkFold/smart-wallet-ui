@@ -1,14 +1,7 @@
 import CSL from '@emurgo/cardano-serialization-lib-nodejs';
 import * as bip39 from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english';
-import { Backend, UTxO, ProofBytes, Output } from './Backend';
-
-// TODO: Modifying global state is a big no-no, but how else can it be done?
-// JS has no idea how to serialise BigNum.
-BigInt.prototype.toJSON = function () {
-  return JSON.rawJSON(this.toString()); 
-};
-
+import { Backend, UTxO, ProofBytes, Output, BigIntWrap } from './Backend';
 
 function harden(num: number): number {
   return 0x80000000 + num;
@@ -22,15 +15,15 @@ export enum WalletType {
 export interface Initialiser {
     method: WalletType;
     data: string;
-    rootKey?: CSL.Bip32PrivateKey;
+    rootKey?: string; 
 }
 
 export class SmartTxRecipient {
     recipientType: WalletType;
     address: string;
-    amount: CSL.BigNum;
+    amount: BigIntWrap;
 
-    constructor(recipientType: WalletType, address: string, amount: CSL.BigNum) {
+    constructor(recipientType: WalletType, address: string, amount: BigIntWrap) {
         this.recipientType = recipientType;
         this.address = address;
         this.amount = amount;
@@ -38,7 +31,7 @@ export class SmartTxRecipient {
 }
 
 export interface Asset {
-    [key: string]: number;
+    [key: string]: BigIntWrap;
 }
 
 export class Wallet {
@@ -46,8 +39,8 @@ export class Wallet {
     private accountKey!: CSL.Bip32PrivateKey; // Only for Mnemonic
     private utxoPubKey!: CSL.Bip32PublicKey;  // Only for Mnemonic
     private stakeKey!: CSL.Bip32PublicKey;    // Only for Mnemonic
-    private tokenSKey!: CSL.Bip32PrivateKey;  // Only for Google 
 
+    private tokenSKey!: CSL.Bip32PrivateKey;  // Only for Google 
     private jwt!: string;        // Only for Google 
     private userId!: string;     // Only for Google 
     private freshKey: boolean = false;
@@ -76,7 +69,7 @@ export class Wallet {
             const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
             this.userId = payload.email;
 
-            if (initialiser.rootKey == null) {
+            if (!initialiser.rootKey) {
                 const prvKey = CSL.Bip32PrivateKey
                       .generate_ed25519_bip32()
                       .derive(harden(1852)) // purpose
@@ -87,7 +80,7 @@ export class Wallet {
                 this.tokenSKey = prvKey;
                 this.freshKey = true;
             } else {
-                this.tokenSKey = initialiser.rootKey;
+                this.tokenSKey = CSL.Bip32PrivateKey.from_hex(initialiser.rootKey);
             }
         }
     }
@@ -119,7 +112,7 @@ export class Wallet {
         switch (this.method) {
             case WalletType.Mnemonic: {
                 const paymentCred = CSL.Credential.from_keyhash(this.utxoPubKey.to_raw_key().hash()); 
-                var netId: number = 0;
+                let netId: number = 0;
                 switch (this.network) {
                     case "mainnet": {
                         netId = CSL.NetworkInfo.mainnet().network_id();
@@ -152,13 +145,13 @@ export class Wallet {
 
     async getBalance(): Promise<Asset> {
         const utxos = await this.getUtxos();
-        var assets: Asset = {};
+        const assets: Asset = {};
         for (let i=0; i < utxos.length; i++) {
             for (const key in utxos[i].value) {
                 if (!(key in assets)) {
-                    assets[key] = 0;
+                    assets[key] = new BigIntWrap(0);
                 }
-                assets[key] += utxos[i].value[key];
+                assets[key].increase(utxos[i].value[key]);
             }
         };
         return assets;
@@ -170,10 +163,12 @@ export class Wallet {
 
     async getUtxos(): Promise<UTxO[]> {
         const address = await this.getAddress();
-        var utxos: UTxO[] = [];
+        let utxos: UTxO[] = [];
         try {
             utxos = await this.backend.addressUtxo(address); 
         } catch (err) {
+            console.log("getUtxos()");
+            console.log(err);
             utxos = [];
         }
         return utxos;
@@ -246,7 +241,7 @@ export class Wallet {
                 const ada = utxo.value['lovelace'];
                 const hash = CSL.TransactionHash.from_bytes(Buffer.from(utxo.ref.transaction_id, "hex"))
                 const input = CSL.TransactionInput.new(hash, utxo.ref.output_index);
-                const value = CSL.Value.new(CSL.BigNum.from_str(ada.toString()));
+                const value = CSL.Value.new(ada.toBigNum());
                 const addr = utxo.address;
                 txInputBuilder.add_regular_input(addr, input, value);
             }
@@ -273,7 +268,7 @@ export class Wallet {
 
 
         const senderAddress = await this.getAddress();
-        var recipientAddress;
+        let recipientAddress;
 
         if (rec.recipientType == WalletType.Google) {
             recipientAddress = await this.addressForGmail(rec.address);
@@ -281,12 +276,12 @@ export class Wallet {
             recipientAddress = CSL.Address.from_bech32(rec.address); 
         }
 
-        const amountToSend = CSL.BigNum.from_str(rec.amount.toString());
+        const amountToSend = rec.amount;
 
         switch (this.method) {
             case WalletType.Mnemonic: {
                 // A classical transaction from an address behind a private key to another address or a smart contract
-                const txBuilder = await this.buildTx(senderAddress, recipientAddress, amountToSend);
+                const txBuilder = await this.buildTx(senderAddress, recipientAddress, amountToSend.toBigNum());
 
                 const txBody = txBuilder.build(); 
 
@@ -299,9 +294,9 @@ export class Wallet {
 
             case WalletType.Google: {
                 // A transaction from a Web2-initialised wallet to any kind of address
-                const is_initialised = await this.backend.isWalletInitialised(this.userId);
+                const is_initialised = await this.backend.isWalletInitialised(this.userId, this.tokenSKey.to_public().to_raw_key().hash().to_hex());
                 console.log(`Is initialised: ${is_initialised}`);
-                var txHex;
+                let txHex;
 
                 const outs: Output[] = [{address: recipientAddress.to_bech32(), value: { 'lovelace': amountToSend }}];
 
@@ -309,15 +304,7 @@ export class Wallet {
                     const resp = await this.backend.sendFunds(this.userId, outs, this.tokenSKey.to_public().to_raw_key().hash().to_hex());
                     txHex = resp.transaction;
                 } else {
-                    const prvKey = CSL.Bip32PrivateKey
-                          .generate_ed25519_bip32()
-                          .derive(harden(1852)) // purpose
-                          .derive(harden(1815)) // coin type
-                          .derive(harden(0)) // account #0
-                          .derive(0)
-                          .derive(0);
-                    this.tokenSKey = prvKey;
-                    const pubkeyHex = prvKey.to_public().to_raw_key().hash().to_hex();
+                    const pubkeyHex = this.tokenSKey.to_public().to_raw_key().hash().to_hex();
                     const parts = this.jwt.split(".");
                     const header  = atob(parts[0].replace(/-/g, '+').replace(/_/g, '/'));
                     const payload = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
@@ -335,20 +322,10 @@ export class Wallet {
 
 }
 
-async function getMatchingKey(keyId: string): Promise<string | null> {
-    const { keys } = await fetch('https://www.googleapis.com/oauth2/v3/certs').then((res) => res.json());
-    for (let k of keys) {
-        if (k.kid == keyId) {
-                return k;
-        }
-    }
-    return null;
-}
-
 // Convert a hex string to a byte array
 // https://stackoverflow.com/questions/14603205/how-to-convert-hex-string-into-a-bytes-array-and-a-bytes-array-in-the-hex-strin
 function hexToBytes(hex: string): Uint8Array {
-    let bytes = [];
+    const bytes = [];
     for (let c = 0; c < hex.length; c += 2)
         bytes.push(parseInt(hex.substr(c, 2), 16));
     return Uint8Array.from(bytes);
@@ -368,17 +345,17 @@ const dummyProofBytes: ProofBytes = {
     "cmQhigh_bytes": "633030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030303030",
     "proof1_bytes": "623330386335373739363436313936383535306632386432333833396166373237323361333130383332363332613139653961623531326134613565636234633863383935306164653032353737323439353032323231333736396133663464",
     "proof2_bytes": "623365343262343835303035643963326261346136366466626234646566323433336439326137623166643734376566346165643462356635653934343037396264653739616431646135383035333539376234626538313934373233666331",
-    "a_xi_int": 1n,
-    "b_xi_int": 1n,
-    "c_xi_int": 48380510586722627616411267202495116783057255243693228940120047704204371350546n,
-    "s1_xi_int": 10368790864104277489349149849901642613910605061180645600781012523028298814297n,
-    "s2_xi_int": 29133202091870269236732546656522855889661645594339077247007036693772071783753n,
-    "f_xi_int": 0n,
-    "t_xi_int": 0n,
-    "t_xi'_int": 0n,
-    "z1_xi'_int": 40497370593942275679614638124878515092846558874156949013549943373738078556493n,
-    "z2_xi'_int": 1n,
-    "h1_xi'_int": 0n,
-    "h2_xi_int": 0n,
-    "l1_xi": 37713268627753681891487380051493928725054683102581668523304176199511429320989n
+    "a_xi_int":  new BigIntWrap(1n),
+    "b_xi_int":  new BigIntWrap(1n),
+    "c_xi_int":  new BigIntWrap(48380510586722627616411267202495116783057255243693228940120047704204371350546n),
+    "s1_xi_int": new BigIntWrap(10368790864104277489349149849901642613910605061180645600781012523028298814297n),
+    "s2_xi_int": new BigIntWrap(29133202091870269236732546656522855889661645594339077247007036693772071783753n),
+    "f_xi_int":  new BigIntWrap(0n),
+    "t_xi_int":  new BigIntWrap(0n),
+    "t_xi'_int": new BigIntWrap(0n),
+    "z1_xi'_int": new BigIntWrap(40497370593942275679614638124878515092846558874156949013549943373738078556493n),
+    "z2_xi'_int": new BigIntWrap(1n),
+    "h1_xi'_int": new BigIntWrap(0n),
+    "h2_xi_int":  new BigIntWrap(0n),
+    "l1_xi": new BigIntWrap(37713268627753681891487380051493928725054683102581668523304176199511429320989n)
 };

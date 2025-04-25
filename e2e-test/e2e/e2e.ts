@@ -1,7 +1,6 @@
 import express from 'express';
 import session from 'express-session';
 import favicon from 'serve-favicon';
-import axios from 'axios';
 import * as crypto from 'crypto';
 import * as https from 'https';
 import * as http from 'http';
@@ -11,15 +10,19 @@ import unzip from 'unzip-stream';
 import fs from 'fs-extra';
 import * as dotenv from 'dotenv';
 import * as url from 'url';
+import CSL from '@emurgo/cardano-serialization-lib-nodejs';
 
-import { Wallet, Initialiser, WalletType, SmartTxRecipient } from '../src/Wallet';
-import { Backend } from '../src/Backend'
-import { sendMessage } from '../src/GMail'
-import { getJWT, getAuthUrl } from '../src/GoogleToken'
+import { Wallet, Initialiser, WalletType, SmartTxRecipient } from 'zkfold-smart-wallet-api';
+import { Backend, BigIntWrap } from 'zkfold-smart-wallet-api'
+import { Notifier } from 'zkfold-smart-wallet-api'
+import { GoogleApi } from 'zkfold-smart-wallet-api'
 
 dotenv.config()
 
 const app = express();
+
+const notifier = new Notifier(process.env.EMAIL_USER, process.env.EMAIL_KEY);
+const gapi = new GoogleApi(process.env.CLIENT_ID, process.env.CLIENT_SECRET, process.env.REDIRECT_URL);
 
 fs.createReadStream('./public/css.zip').pipe(unzip.Extract({ path: './public/' }));
 
@@ -99,16 +102,16 @@ app.get('/tx_status', async (req, res) => {
 });
 
 app.post('/send', async (req, res) => {
-//    try {
+    try {
         console.log(`Sending ${req.body.zkfold_amount} ADA to ${req.body.zkfold_address} using ${req.body.recipient}`);
         var recipient;
         switch (req.body.recipient) {
             case "Bech32": {
-                recipient = new SmartTxRecipient(WalletType.Mnemonic, req.body.zkfold_address, req.body.zkfold_amount * 1000000);
+                recipient = new SmartTxRecipient(WalletType.Mnemonic, req.body.zkfold_address, new BigIntWrap(req.body.zkfold_amount * 1000000));
                 break;
             };
             case "Gmail": {
-                recipient = new SmartTxRecipient(WalletType.Google, req.body.zkfold_address, req.body.zkfold_amount * 1000000);
+                recipient = new SmartTxRecipient(WalletType.Google, req.body.zkfold_address, new BigIntWrap(req.body.zkfold_amount * 1000000));
                 break;
             };
         }
@@ -123,16 +126,16 @@ app.post('/send', async (req, res) => {
                                 .replaceAll('{{ protocol }}', process.env.PROTOCOL)
                                 .replaceAll('{{ host }}', process.env.HOST)
                                 .replaceAll('{{ port }}', process.env.PORT);
-                await sendMessage(req.body.zkfold_address, "You've received funds", htmlText);
+                await notifier.sendMessage(req.body.zkfold_address, "You've received funds", htmlText);
         }
 
         const template = fs.readFileSync('./success.html', 'utf-8');
         const addr = await wallet.addressForGmail(req.body.zkfold_address).then((x) => x.to_bech32()); 
         res.send(template.replaceAll('{ txId }', txId).replaceAll("{ recipient }", addr));
-//    } catch (error) {
-//        const template = fs.readFileSync('./failedTx.html', 'utf-8');
-//        res.send(template.replaceAll('{ reason }', `${error}`));
-//    }
+    } catch (error) {
+        const template = fs.readFileSync('./failedTx.html', 'utf-8');
+        res.send(template.replaceAll('{ reason }', `${error}`));
+    }
 });
 
 app.post('/init', async (req, res) => {
@@ -148,7 +151,7 @@ app.post('/init', async (req, res) => {
             break;
         };
         case "Google Oauth": {
-            const authUrl = getAuthUrl(state); 
+            const authUrl = gapi.getAuthUrl(state); 
             res.redirect(authUrl);
             break;
         };
@@ -169,8 +172,15 @@ app.get('/oauth2callback', async (req, res) => {
         } else if (q.state !== req.session.state) { //check state value
             console.log('State mismatch. Possible CSRF attack');
         } else { 
-            const jwt = await getJWT(q.code);
-            initialiser = { method: WalletType.Google, data: jwt };
+            const prvKey = CSL.Bip32PrivateKey
+                  .generate_ed25519_bip32()
+                  .derive(harden(1852)) // purpose
+                  .derive(harden(1815)) // coin type
+                  .derive(harden(0)) // account #0
+                  .derive(0)
+                  .derive(0);
+            const jwt = await gapi.getJWT(q.code);
+            initialiser = { method: WalletType.Google, data: jwt, rootKey: prvKey.to_hex() };
         }
 
         req.session.initialiser = initialiser;
@@ -211,3 +221,6 @@ if (process.env.PROTOCOL == "http") {
     });
 }
 
+function harden(num: number): number {
+  return 0x80000000 + num;
+}

@@ -1,7 +1,7 @@
 {
-  "name": "smart-contract-wallet-api",
+  "name": "e2e-test",
   "version": "1.0.0",
-  "description": "Smart wallet backend",
+  "description": "Smart wallet test",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -42,6 +42,7 @@
     "nodemailer": "^6.10.0",
     "passport": "^0.7.0",
     "serve-favicon": "^2.5.0",
-    "unzip-stream": "^0.3.4"
+    "unzip-stream": "^0.3.4",
+    "zkfold-smart-wallet-api": "file:../typescript"
   }
 }
