@@ -3,7 +3,6 @@ module ZkFold.Cardano.SmartWallet.Server.Api.Wallet (
   handleWalletApi,
 ) where
 
-import Data.Maybe (fromMaybe)
 import Data.Swagger qualified as Swagger
 import Deriving.Aeson
 import Fmt
@@ -13,9 +12,10 @@ import GeniusYield.Types
 import GeniusYield.Types.OpenApi ()
 import Servant
 import ZkFold.Cardano.SmartWallet.Api
+import ZkFold.Cardano.SmartWallet.Constants (extraBuildConfiguration)
+import ZkFold.Cardano.SmartWallet.Server.Api.Tx (handleTxSignCollateral)
 import ZkFold.Cardano.SmartWallet.Server.Ctx
 import ZkFold.Cardano.SmartWallet.Server.Orphans ()
-import ZkFold.Cardano.SmartWallet.Server.Tx (handleTxSignCollateral)
 import ZkFold.Cardano.SmartWallet.Server.Utils
 import ZkFold.Cardano.SmartWallet.Types
 
@@ -132,6 +132,69 @@ instance Swagger.ToSchema SendFundsResponse where
     Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @SendFundsResponsePrefix}
       & addSwaggerDescription "Send funds response."
 
+type CreateAndSendFundsPrefix :: Symbol
+type CreateAndSendFundsPrefix = "casfp"
+
+data CreateAndSendFundsParameters = CreateAndSendFundsParameters
+  { casfpEmail :: !Email
+  , casfpJWT :: !JWT
+  , casfpPaymentKeyHash :: !GYPaymentKeyHash
+  , casfpProofBytes :: !ZKProofBytes
+  , casfpOuts :: ![BuildOut]
+  }
+  deriving stock (Show, Generic)
+  deriving (FromJSON, ToJSON) via CustomJSON '[FieldLabelModifier '[StripPrefix CreateAndSendFundsPrefix, CamelToSnake]] CreateAndSendFundsParameters
+
+instance Swagger.ToSchema CreateAndSendFundsParameters where
+  declareNamedSchema =
+    Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @CreateAndSendFundsPrefix}
+      & addSwaggerDescription "Create and send funds parameters."
+
+type CreateAndSendFundsResponsePrefix :: Symbol
+type CreateAndSendFundsResponsePrefix = "casfr"
+
+data CreateAndSendFundsResponse = CreateAndSendFundsResponse
+  { casfrAddress :: !GYAddressBech32
+  , casfrTransaction :: !GYTx
+  , casfrTransactionId :: !GYTxId
+  , casfrTransactionFee :: !GYNatural
+  }
+  deriving stock (Generic)
+  deriving (FromJSON, ToJSON) via CustomJSON '[FieldLabelModifier '[StripPrefix CreateAndSendFundsResponsePrefix, CamelToSnake]] CreateAndSendFundsResponse
+
+instance Swagger.ToSchema CreateAndSendFundsResponse where
+  declareNamedSchema =
+    Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @CreateAndSendFundsResponsePrefix}
+      & addSwaggerDescription "Create and send funds response."
+
+type IsInitializedPrefix :: Symbol
+type IsInitializedPrefix = "iip"
+
+newtype IsInitializedParameters = IsInitializedParameters
+  { iipEmail :: Email
+  }
+  deriving stock (Show, Generic)
+  deriving (FromJSON, ToJSON) via CustomJSON '[FieldLabelModifier '[StripPrefix IsInitializedPrefix, CamelToSnake]] IsInitializedParameters
+
+instance Swagger.ToSchema IsInitializedParameters where
+  declareNamedSchema =
+    Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @IsInitializedPrefix}
+      & addSwaggerDescription "Is initialized parameters."
+
+type IsInitializedResponsePrefix :: Symbol
+type IsInitializedResponsePrefix = "iir"
+
+newtype IsInitializedResponse = IsInitializedResponse
+  { iirIsInitialized :: Maybe (GYMintingPolicyId, [GYTokenName])
+  }
+  deriving stock (Generic)
+  deriving (FromJSON, ToJSON) via CustomJSON '[FieldLabelModifier '[StripPrefix IsInitializedResponsePrefix, CamelToSnake]] IsInitializedResponse
+
+instance Swagger.ToSchema IsInitializedResponse where
+  declareNamedSchema =
+    Swagger.genericDeclareNamedSchema Swagger.defaultSchemaOptions{Swagger.fieldLabelModifier = dropSymbolAndCamelToSnake @IsInitializedResponsePrefix}
+      & addSwaggerDescription "Is initialized response."
+
 type WalletAPI =
   Summary "Obtain address."
     :> Description "Obtain address of the wallet initialized with the given mail."
@@ -144,16 +207,27 @@ type WalletAPI =
       :> ReqBody '[JSON] CreateWalletParameters
       :> Post '[JSON] CreateWalletResponse
     :<|> Summary "Send funds."
-      :> Description "Send funds from a zk based wallet to a given address."
+      :> Description "Send funds from a zk based wallet."
       :> "send-funds"
       :> ReqBody '[JSON] SendFundsParameters
       :> Post '[JSON] SendFundsResponse
+    :<|> Summary "Create and send funds."
+      :> Description "Create (initialize) zk-wallet and send funds from it."
+      :> "create-and-send-funds"
+      :> ReqBody '[JSON] CreateAndSendFundsParameters
+      :> Post '[JSON] CreateAndSendFundsResponse
+    :<|> Summary "Know if wallet is initialized."
+      :> "is-initialized"
+      :> ReqBody '[JSON] IsInitializedParameters
+      :> Post '[JSON] IsInitializedResponse
 
 handleWalletApi :: Ctx -> ServerT WalletAPI IO
 handleWalletApi ctx =
   handleObtainAddress ctx
     :<|> handleCreateWallet ctx
     :<|> handleSendFunds ctx
+    :<|> handleCreateAndSendFunds ctx
+    :<|> handleIsInitialized ctx
 
 handleObtainAddress :: Ctx -> ObtainAddressParameters -> IO ObtainAddressResponse
 handleObtainAddress ctx oap@ObtainAddressParameters{..} = do
@@ -168,13 +242,15 @@ handleObtainAddress ctx oap@ObtainAddressParameters{..} = do
 handleCreateWallet :: Ctx -> CreateWalletParameters -> IO CreateWalletResponse
 handleCreateWallet ctx cwp@CreateWalletParameters{..} = do
   logInfo ctx $ "Creating user's wallet. Parameters: " +|| cwp ||+ ""
-  (zkiws, addressToBech32 -> walletAddress) <- runQuery ctx $ addressFromEmail cwpEmail
-  let fundWallet = fromMaybe walletAddress cwpFundAddress
-      fundWallet' = addressFromBech32 fundWallet
-  logInfo ctx $ "Fund wallet address: " +|| fundWallet ||+ ""
+  (zkiws, walletAddress) <- runQuery ctx $ addressFromEmail cwpEmail
   body <-
-    runSkeletonI ctx [fundWallet'] fundWallet' (Just $ ctxCollateral ctx) $
-      createWallet'
+    ( case cwpFundAddress of
+        Just (addressFromBech32 -> cwpFundAddress') ->
+          runSkeletonI ctx [cwpFundAddress'] cwpFundAddress' (Just $ ctxCollateral ctx)
+        Nothing ->
+          runSkeletonWithExtraConfigurationI (extraBuildConfiguration zkiws True) ctx [walletAddress] walletAddress (Just $ ctxCollateral ctx)
+      )
+      $ createWallet'
         ( ZKCreateWalletInfo
             { zkcwiProofBytes = cwpProofBytes
             , zkcwiPaymentKeyHash = cwpPaymentKeyHash
@@ -183,11 +259,12 @@ handleCreateWallet ctx cwp@CreateWalletParameters{..} = do
             }
         )
         zkiws
+        walletAddress
   logInfo ctx $ "Tranasction body: " +|| body ||+ ""
   collSignedTx <- handleTxSignCollateral ctx (unsignedTx body)
   pure $
     CreateWalletResponse
-      { cwrAddress = walletAddress
+      { cwrAddress = addressToBech32 walletAddress
       , cwrTransaction = collSignedTx
       , cwrTransactionId = txBodyTxId body
       , cwrTransactionFee = txBodyFee body & fromIntegral
@@ -198,7 +275,7 @@ handleSendFunds ctx@Ctx{..} sfp@SendFundsParameters{..} = do
   logInfo ctx $ "Send funds requested. Parameters: " +|| sfp ||+ ""
   (zkiws, walletAddress) <- runQuery ctx $ addressFromEmail sfpEmail
   logInfo ctx $ "Wallet address: " +|| addressToBech32 walletAddress ||+ ""
-  let ec = extraBuildConfiguration zkiws
+  let ec = extraBuildConfiguration zkiws False
   txBody <- runSkeletonWithExtraConfigurationI ec ctx [walletAddress] walletAddress (Just ctxCollateral) $ do
     sendFunds' zkiws walletAddress (ZKSpendWalletInfo{zkswiPaymentKeyHash = sfpPaymentKeyHash, zkswiEmail = sfpEmail}) sfpOuts
   signedTx <- handleTxSignCollateral ctx $ unsignedTx txBody
@@ -207,4 +284,45 @@ handleSendFunds ctx@Ctx{..} sfp@SendFundsParameters{..} = do
       { sfrTransaction = signedTx
       , sfrTransactionId = txBodyTxId txBody
       , sfrTransactionFee = fromIntegral $ txBodyFee txBody
+      }
+
+handleCreateAndSendFunds :: Ctx -> CreateAndSendFundsParameters -> IO CreateAndSendFundsResponse
+handleCreateAndSendFunds ctx@Ctx{..} casfp@CreateAndSendFundsParameters{..} = do
+  logInfo ctx $ "Create and send funds requested. Parameters: " +|| casfp ||+ ""
+  (zkiws, walletAddress) <- runQuery ctx $ addressFromEmail casfpEmail
+  logInfo ctx $ "Wallet address: " +|| addressToBech32 walletAddress ||+ ""
+  let ec = extraBuildConfiguration zkiws True
+  txBody <- runSkeletonWithExtraConfigurationI ec ctx [walletAddress] walletAddress (Just ctxCollateral) $ do
+    sendFundsWithCreation'
+      zkiws
+      walletAddress
+      ( ZKCreateWalletInfo
+          { zkcwiPaymentKeyHash = casfpPaymentKeyHash
+          , zkcwiProofBytes = casfpProofBytes
+          , zkcwiEmail = casfpEmail
+          , zkcwiJWT = casfpJWT
+          }
+      )
+      casfpOuts
+  signedTx <- handleTxSignCollateral ctx $ unsignedTx txBody
+  pure $
+    CreateAndSendFundsResponse
+      { casfrAddress = addressToBech32 walletAddress
+      , casfrTransaction = signedTx
+      , casfrTransactionId = txBodyTxId txBody
+      , casfrTransactionFee = fromIntegral $ txBodyFee txBody
+      }
+
+handleIsInitialized :: Ctx -> IsInitializedParameters -> IO IsInitializedResponse
+handleIsInitialized ctx iip@IsInitializedParameters{..} = do
+  logInfo ctx $ "Is initialized requested. Parameters: " +|| iip ||+ ""
+  (zkiws, walletAddress) <- runQuery ctx $ addressFromEmail iipEmail
+  logInfo ctx $ "Wallet address: " +|| addressToBech32 walletAddress ||+ ""
+  (mp, authTNs) <- runQuery ctx $ findMintedAuthTokens zkiws walletAddress
+  pure $
+    IsInitializedResponse
+      { iirIsInitialized =
+          case authTNs of
+            [] -> Nothing
+            tns -> Just (mp, tns)
       }

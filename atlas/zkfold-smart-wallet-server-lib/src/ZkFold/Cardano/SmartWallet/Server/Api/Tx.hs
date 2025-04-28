@@ -1,4 +1,4 @@
-module ZkFold.Cardano.SmartWallet.Server.Tx (
+module ZkFold.Cardano.SmartWallet.Server.Api.Tx (
   TxAPI,
   handleTxApi,
   handleTxSignCollateral,

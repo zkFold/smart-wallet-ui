@@ -16,7 +16,7 @@ components:
         lovelace to satisfy minimum lovelace requirement for this output.
       properties:
         address:
-          $ref: '#/components/schemas/GYAddress'
+          $ref: '#/components/schemas/GYAddressBech32'
         datum:
           items:
           - $ref: '#/components/schemas/GYDatum'
@@ -34,6 +34,45 @@ components:
       description: Bytes encoded in hex.
       format: hex
       type: string
+    CreateAndSendFundsParameters:
+      description: Create and send funds parameters.
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        jwt:
+          $ref: '#/components/schemas/JWT'
+        outs:
+          items:
+            $ref: '#/components/schemas/BuildOut'
+          type: array
+        payment_key_hash:
+          $ref: '#/components/schemas/GYKeyHash'
+        proof_bytes:
+          $ref: '#/components/schemas/ZKProofBytes'
+      required:
+      - email
+      - jwt
+      - payment_key_hash
+      - proof_bytes
+      - outs
+      type: object
+    CreateAndSendFundsResponse:
+      description: Create and send funds response.
+      properties:
+        address:
+          $ref: '#/components/schemas/GYAddressBech32'
+        transaction:
+          $ref: '#/components/schemas/GYTx'
+        transaction_fee:
+          $ref: '#/components/schemas/GYNatural'
+        transaction_id:
+          $ref: '#/components/schemas/GYTxId'
+      required:
+      - address
+      - transaction
+      - transaction_id
+      - transaction_fee
+      type: object
     CreateWalletParameters:
       description: Initialize zk smart wallet. If "fund_address" is not provided,
         we use address of the wallet (which is to be initialized here). Collateral
@@ -76,13 +115,6 @@ components:
       description: User's email address.
       example: zkfold@gmail.com
       type: string
-    GYAddress:
-      description: An address, serialised as CBOR.
-      example: 00e1cbb80db89e292269aeb93ec15eb963dda5176b66949fe1c2a6a38d1b930e9f7add78a174a21000e989ff551366dcd127028cb2aa39f616
-      format: cbor hex
-      maxLength: 114
-      minLength: 114
-      type: string
     GYAddressBech32:
       description: An address, serialised as Bech32.
       example: addr_test1qrsuhwqdhz0zjgnf46unas27h93amfghddnff8lpc2n28rgmjv8f77ka0zshfgssqr5cnl64zdnde5f8q2xt923e7ctqu49mg5
@@ -97,10 +129,24 @@ components:
       maxLength: 56
       minLength: 56
       type: string
+    GYMintingPolicyId:
+      description: This is the hash of a minting policy script.
+      example: ff80aaaf03a273b8f5c558168dc0e2377eea810badbae6eceefc14ef
+      format: hex
+      maxLength: 56
+      minLength: 56
+      type: string
     GYNatural:
       description: A natural number which is a non-negative integer. Minimum value
         is 0.
       example: '123456789123456789123456789123456789123456789'
+      type: string
+    GYTokenName:
+      description: This is the name of a token.
+      example: 476f6c64
+      format: hex
+      maxLength: 64
+      pattern: '[0-9a-fA-F]+'
       type: string
     GYTx:
       description: Transaction cbor hex string
@@ -125,6 +171,27 @@ components:
       example:
         ff80aaaf03a273b8f5c558168dc0e2377eea810badbae6eceefc14ef.474f4c44: 101
         lovelace: 22
+      type: object
+    IsInitializedParameters:
+      description: Is initialized parameters.
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+      required:
+      - email
+      type: object
+    IsInitializedResponse:
+      description: Is initialized response.
+      properties:
+        is_initialized:
+          items:
+          - $ref: '#/components/schemas/GYMintingPolicyId'
+          - items:
+              $ref: '#/components/schemas/GYTokenName'
+            type: array
+          maxItems: 2
+          minItems: 2
+          type: array
       type: object
     JWT:
       description: JSON web token
@@ -191,6 +258,20 @@ components:
       - version
       - collateral
       - collateral_address
+      type: object
+    UtxoResponse:
+      description: UTXO information.
+      properties:
+        address:
+          $ref: '#/components/schemas/GYAddressBech32'
+        ref:
+          $ref: '#/components/schemas/GYTxOutRef'
+        value:
+          $ref: '#/components/schemas/GYValue'
+      required:
+      - ref
+      - address
+      - value
       type: object
     ZKBatchWalletInfo:
       description: Information required to batch a particular transaction.
@@ -421,6 +502,38 @@ paths:
       summary: Submit a transaction
       tags:
       - Tx
+  /v0/utxo/addresses:
+    post:
+      requestBody:
+        content:
+          application/json;charset=utf-8:
+            schema:
+              items:
+                $ref: '#/components/schemas/GYAddressBech32'
+              type: array
+      responses:
+        '200':
+          content:
+            application/json;charset=utf-8:
+              schema:
+                items:
+                  $ref: '#/components/schemas/UtxoResponse'
+                type: array
+          description: ''
+        '400':
+          description: Invalid `body`
+        '401':
+          description: Unauthorized access - API key missing
+        '403':
+          description: Forbidden - The API key does not have permission to perform
+            the request
+        '500':
+          description: Internal server error
+      security:
+      - api-key: []
+      summary: Get utxos belonging to a list of addresses
+      tags:
+      - Utxo
   /v0/wallet/address:
     post:
       description: Obtain address of the wallet initialized with the given mail.
@@ -479,9 +592,66 @@ paths:
       summary: Create wallet.
       tags:
       - Wallet
+  /v0/wallet/create-and-send-funds:
+    post:
+      description: Create (initialize) zk-wallet and send funds from it.
+      requestBody:
+        content:
+          application/json;charset=utf-8:
+            schema:
+              $ref: '#/components/schemas/CreateAndSendFundsParameters'
+      responses:
+        '200':
+          content:
+            application/json;charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/CreateAndSendFundsResponse'
+          description: ''
+        '400':
+          description: Invalid `body`
+        '401':
+          description: Unauthorized access - API key missing
+        '403':
+          description: Forbidden - The API key does not have permission to perform
+            the request
+        '500':
+          description: Internal server error
+      security:
+      - api-key: []
+      summary: Create and send funds.
+      tags:
+      - Wallet
+  /v0/wallet/is-initialized:
+    post:
+      requestBody:
+        content:
+          application/json;charset=utf-8:
+            schema:
+              $ref: '#/components/schemas/IsInitializedParameters'
+      responses:
+        '200':
+          content:
+            application/json;charset=utf-8:
+              schema:
+                $ref: '#/components/schemas/IsInitializedResponse'
+          description: ''
+        '400':
+          description: Invalid `body`
+        '401':
+          description: Unauthorized access - API key missing
+        '403':
+          description: Forbidden - The API key does not have permission to perform
+            the request
+        '500':
+          description: Internal server error
+      security:
+      - api-key: []
+      summary: Know if wallet is initialized.
+      tags:
+      - Wallet
   /v0/wallet/send-funds:
     post:
-      description: Send funds from a zk based wallet to a given address.
+      description: Send funds from a zk based wallet.
       requestBody:
         content:
           application/json;charset=utf-8:
@@ -515,3 +685,5 @@ tags:
   name: Wallet
 - description: Endpoint to interact with built transactions
   name: Tx
+- description: Endpoint to know for utxos
+  name: Utxo
