@@ -1,7 +1,7 @@
 {
-  "name": "smart-contract-wallet-api",
+  "name": "e2e-test",
   "version": "1.0.0",
-  "description": "Smart wallet backend",
+  "description": "Smart wallet test",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -22,15 +22,15 @@
   },
   "homepage": "https://github.com/zkFold/smart-contract-wallet-api#readme",
   "devDependencies": {
+    "@types/node": "^22.15.2",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2"
+    "typescript": "^5.8.3"
   },
   "dependencies": {
-    "@blockfrost/blockfrost-js": "^5.7.0",
     "@emurgo/cardano-serialization-lib-nodejs": "^13.2.0",
     "@google-cloud/local-auth": "^2.1.0",
     "@scure/bip39": "^1.5.0",
-    "@types/node": "^22.9.3",
+    "axios": "^1.8.4",
     "body-parser": "^1.20.3",
     "crypto": "^1.0.1",
     "dotenv": "^16.4.5",
@@ -41,6 +41,7 @@
     "nodemailer": "^6.10.0",
     "passport": "^0.7.0",
     "serve-favicon": "^2.5.0",
-    "unzip-stream": "^0.3.4"
+    "unzip-stream": "^0.3.4",
+    "zkfold-smart-wallet-api": "^1.1.0"
   }
 }
