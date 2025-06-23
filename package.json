@@ -1,7 +1,7 @@
 {
-  "name": "e2e-test",
+  "name": "smart-wallet-ui",
   "version": "1.0.0",
-  "description": "Smart wallet test",
+  "description": "Smart wallet UI",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/zkFold/smart-contract-wallet-api.git"
+    "url": "git+https://github.com/zkFold/smart-wallet-ui.git"
   },
   "keywords": [
     "cardano",
@@ -18,9 +18,9 @@
   "author": "Vladimir Morozov",
   "license": "BUSL-1.1",
   "bugs": {
-    "url": "https://github.com/zkFold/smart-contract-wallet-api/issues"
+    "url": "https://github.com/zkFold/smart-wallet-ui/issues"
   },
-  "homepage": "https://github.com/zkFold/smart-contract-wallet-api#readme",
+  "homepage": "https://github.com/zkFold/smart-wallet-ui#readme",
   "devDependencies": {
     "@types/node": "^22.15.2",
     "tsx": "^4.19.2",
