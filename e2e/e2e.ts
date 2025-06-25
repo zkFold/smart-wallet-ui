@@ -55,14 +55,17 @@ async function mkTransaction(req, res) {
     const wallet = restoreWallet(req);
     const balance = await wallet.getBalance();
     const address = await wallet.getAddress().then((x) => x.to_bech32());
-    console.log(balance);
+    console.log(`Balance: ${balance}`);
     console.log(balance.lovelace);
-    var ada = 0;
-    if (Object.keys(balance).length > 0) {
-        ada = Number(balance.lovelace);
+    var assets = "";
+    for (const [key, value] of Object.entries(balance)) {
+        assets += `<li><b>${value}</b> <i>${key}</i></li>`
+    }
+    if (assets === "") {
+        assets = "<li>No assets available</li>"
     }
     const template = fs.readFileSync('./transaction.html', 'utf-8');
-    res.send(template.replaceAll('{ balance }', ada / 1000000).replaceAll('{{ address }}', address));
+    res.send(template.replaceAll('{ balance }', assets).replaceAll('{{ address }}', address));
 }
 
 app.get('/', async (req, res) => {

@@ -14,7 +14,10 @@
       <br>
       <h1>Perform a transaction</h1>
       <label name="balance_label">
-          Wallet balance: { balance } Ada
+          Wallet balance: 
+          <ul>
+              { balance }
+          </ul>
       </label>
       <form action="/send" method="POST">
         <fieldset>
@@ -32,7 +35,7 @@
             />
           </label>
           <label id="asset_name" hidden>
-            Asset name ('lovelace' for ADA or '{PolicyID}.{AssenName}' for other assets) 
+            Asset name ('lovelace' for ADA or '{PolicyID}.{AssetName}' for other assets) 
             <input
               name="zkfold_asset" value='lovelace'
             />

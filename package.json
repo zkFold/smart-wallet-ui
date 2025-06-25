@@ -42,6 +42,6 @@
     "passport": "^0.7.0",
     "serve-favicon": "^2.5.0",
     "unzip-stream": "^0.3.4",
-    "zkfold-smart-wallet-api": "^1.1.0"
+    "zkfold-smart-wallet-api": "^1.1.2"
   }
 }
