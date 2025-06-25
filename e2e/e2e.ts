@@ -105,7 +105,7 @@ app.get('/tx_status', async (req, res) => {
 });
 
 app.post('/send', async (req, res) => {
-//    try {
+    try {
         console.log(`Sending ${req.body.zkfold_amount} ${req.body.zkfold_asset} to ${req.body.zkfold_address} using ${req.body.recipient}`);
         var recipient;
         const asset_dict = {};
@@ -137,10 +137,10 @@ app.post('/send', async (req, res) => {
         const template = fs.readFileSync('./success.html', 'utf-8');
         const addr = await wallet.addressForGmail(req.body.zkfold_address).then((x) => x.to_bech32()); 
         res.send(template.replaceAll('{ txId }', txId).replaceAll("{ recipient }", addr));
-//    } catch (error) {
-//        const template = fs.readFileSync('./failedTx.html', 'utf-8');
-//        res.send(template.replaceAll('{ reason }', `${error}`));
-//    }
+    } catch (error) {
+        const template = fs.readFileSync('./failedTx.html', 'utf-8');
+        res.send(template.replaceAll('{ reason }', `${error}`));
+    }
 });
 
 app.post('/init', async (req, res) => {
