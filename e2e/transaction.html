@@ -14,7 +14,10 @@
       <br>
       <h1>Perform a transaction</h1>
       <label name="balance_label">
-          Wallet balance: { balance } Ada
+          Wallet balance: 
+          <ul>
+              { balance }
+          </ul>
       </label>
       <form action="/send" method="POST">
         <fieldset>
@@ -29,6 +32,12 @@
             Recipient's address
             <input
               name="zkfold_address" id="address_input" placeholder="example@gmail.com"
+            />
+          </label>
+          <label id="asset_name" hidden>
+            Asset name ('lovelace' for ADA or '{PolicyID}.{AssetName}' for other assets) 
+            <input
+              name="zkfold_asset" value='lovelace'
             />
           </label>
           <label>
@@ -75,13 +84,16 @@ function manageSelector() {
     const label    = document.getElementById("address_type");
     const button   = document.getElementById("show_selector");
     const selector = document.getElementById("type_selector");
+    const asset_name = document.getElementById("asset_name");
     if (label.hidden) {
         label.hidden = false;
         button.innerHTML = "Hide address selector";
+        asset_name.hidden = false;
     } else {
         label.hidden = true;
         button.innerHTML = "Show all controls";
         selector.value = "Gmail";
+        asset_name.hidden = true;
         manageType();
     }
 }
