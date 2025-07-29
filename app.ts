@@ -26,6 +26,7 @@ const requiredEnvVars = {
     CLIENT_SECRET: process.env.CLIENT_SECRET,
     REDIRECT_URL: process.env.REDIRECT_URL,
     SESSION_SECRET: process.env.SESSION_SECRET,
+    BACKEND_API_KEY: process.env.BACKEND_API_KEY,
     PROTOCOL: process.env.PROTOCOL || 'http',
     HOST: process.env.HOST || 'localhost',
     PORT: process.env.PORT || '8080'
@@ -33,7 +34,7 @@ const requiredEnvVars = {
 
 // Check for missing required environment variables
 const missingVars = Object.entries(requiredEnvVars)
-    .filter(([key, value]) => !value && key !== 'PROTOCOL' && key !== 'HOST' && key !== 'PORT' && key !== 'SESSION_SECRET')
+    .filter(([key, value]) => !value && key !== 'PROTOCOL' && key !== 'HOST' && key !== 'PORT')
     .map(([key]) => key);
 
 if (missingVars.length > 0) {
@@ -52,7 +53,7 @@ app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(favicon('./public/favicon.ico'));
 app.use(session({
-    secret: requiredEnvVars.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
+    secret: requiredEnvVars.SESSION_SECRET!,
     resave: false,
     saveUninitialized: false,
     cookie: { secure: requiredEnvVars.PROTOCOL === "https" } // Set to true for HTTPS
@@ -67,7 +68,7 @@ function loggedIn(req, res, next) {
 }
 
 function restoreWallet(req) {
-    const backend = new Backend('http://localhost:8082', '123');
+    const backend = new Backend('http://localhost:8082', requiredEnvVars.BACKEND_API_KEY!);
     const initialiser = req.session.initialiser;
     const wallet = new Wallet(backend, initialiser, '', req.session.network.toLowerCase());
     return wallet;
@@ -105,7 +106,7 @@ app.get('/tx_status', async (req, res) => {
     if (q.txId && q.recipient && typeof q.txId === 'string' && typeof q.recipient === 'string') {
         const txId = q.txId;
         const recipient = q.recipient;
-        const backend = new Backend('http://localhost:8082', '123');
+        const backend = new Backend('http://localhost:8082', requiredEnvVars.BACKEND_API_KEY!);
         try {
             const utxos = await backend.addressUtxo(recipient as any); // Type assertion for now
             for (var i = 0; i < utxos.length; i++) {
@@ -189,7 +190,7 @@ app.get('/oauth2callback', async (req, res) => {
     try {
         var initialiser;
         let q = url.parse(req.url, true).query;
-        const backend = new Backend('http://localhost:8082', '123');
+        const backend = new Backend('http://localhost:8082', requiredEnvVars.BACKEND_API_KEY!);
 
         if (req.session.mnemonic) {
             initialiser = { method: WalletType.Mnemonic, data: req.session.mnemonic };
