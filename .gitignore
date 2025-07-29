@@ -25,3 +25,4 @@ stack.yaml*
 .DS_Store
 node_modules
 e2e/public/css/
+package-lock.json
