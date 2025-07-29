@@ -5,9 +5,8 @@ import * as crypto from 'crypto';
 import * as https from 'https';
 import * as http from 'http';
 import bodyParser from 'body-parser';
-import * as fs from 'fs';
-import unzip from 'unzip-stream';
 import fs from 'fs-extra';
+import unzip from 'unzip-stream';
 import * as dotenv from 'dotenv';
 import * as url from 'url';
 import CSL from '@emurgo/cardano-serialization-lib-nodejs';
@@ -19,10 +18,33 @@ import { GoogleApi } from 'zkfold-smart-wallet-api'
 
 dotenv.config()
 
+// Validate required environment variables
+const requiredEnvVars = {
+    EMAIL_USER: process.env.EMAIL_USER,
+    EMAIL_KEY: process.env.EMAIL_KEY,
+    CLIENT_ID: process.env.CLIENT_ID,
+    CLIENT_SECRET: process.env.CLIENT_SECRET,
+    REDIRECT_URL: process.env.REDIRECT_URL,
+    SESSION_SECRET: process.env.SESSION_SECRET,
+    PROTOCOL: process.env.PROTOCOL || 'http',
+    HOST: process.env.HOST || 'localhost',
+    PORT: process.env.PORT || '8080'
+};
+
+// Check for missing required environment variables
+const missingVars = Object.entries(requiredEnvVars)
+    .filter(([key, value]) => !value && key !== 'PROTOCOL' && key !== 'HOST' && key !== 'PORT' && key !== 'SESSION_SECRET')
+    .map(([key]) => key);
+
+if (missingVars.length > 0) {
+    console.error(`Missing required environment variables: ${missingVars.join(', ')}`);
+    process.exit(1);
+}
+
 const app = express();
 
-const notifier = new Notifier(process.env.EMAIL_USER, process.env.EMAIL_KEY);
-const gapi = new GoogleApi(process.env.CLIENT_ID, process.env.CLIENT_SECRET, process.env.REDIRECT_URL);
+const notifier = new Notifier(requiredEnvVars.EMAIL_USER!, requiredEnvVars.EMAIL_KEY!);
+const gapi = new GoogleApi(requiredEnvVars.CLIENT_ID!, requiredEnvVars.CLIENT_SECRET!, requiredEnvVars.REDIRECT_URL!);
 
 fs.createReadStream('./public/css.zip').pipe(unzip.Extract({ path: './public/' }));
 
@@ -30,18 +52,18 @@ app.use(express.static('public'));
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(favicon('./public/favicon.ico'));
 app.use(session({
-  secret: 'your_secure_secret_key', // Replace with a strong secret
-  resave: false,
-  saveUninitialized: false,
-  cookie: { secure: process.env.PROTOCOL == "https" } // Set to true for HTTPS
+    secret: requiredEnvVars.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: requiredEnvVars.PROTOCOL === "https" } // Set to true for HTTPS
 }));
 
 function loggedIn(req, res, next) {
-  if(!req.session.initialiser) {
-    res.redirect('/');
-  } else {
-    next();
-  }
+    if (!req.session.initialiser) {
+        res.redirect('/');
+    } else {
+        next();
+    }
 }
 
 function restoreWallet(req) {
@@ -72,7 +94,7 @@ app.get('/', async (req, res) => {
     res.sendFile('index.html', { root: '.' });
 });
 
-app.get('/wallet', loggedIn, mkTransaction); 
+app.get('/wallet', loggedIn, mkTransaction);
 
 app.get('/tx_status', async (req, res) => {
     let q = url.parse(req.url, true).query;
@@ -80,15 +102,15 @@ app.get('/tx_status', async (req, res) => {
         res.send({ outcome: "failure", reason: 'Wallet not initialised' });
         return;
     }
-    if (q.txId && q.recipient) {
+    if (q.txId && q.recipient && typeof q.txId === 'string' && typeof q.recipient === 'string') {
         const txId = q.txId;
         const recipient = q.recipient;
         const backend = new Backend('http://localhost:8082', '123');
         try {
-            const utxos = await backend.addressUtxo(recipient);
+            const utxos = await backend.addressUtxo(recipient as any); // Type assertion for now
             for (var i = 0; i < utxos.length; i++) {
                 const utxo = utxos[i];
-                if (utxo.tx_hash == txId) {
+                if ((utxo as any).tx_hash == txId) { // Type assertion for now
                     res.send({ outcome: "success", "data": utxo });
                     return;
                 }
@@ -125,17 +147,17 @@ app.post('/send', async (req, res) => {
         console.log(`tx id: ${txId}`);
 
         if (req.body.recipient == "Gmail") {
-                const template = fs.readFileSync('./email.html', 'utf-8');
-                const htmlText = template
-                                .replaceAll('{{ recipient }}', req.body.zkfold_address)
-                                .replaceAll('{{ protocol }}', process.env.PROTOCOL)
-                                .replaceAll('{{ host }}', process.env.HOST)
-                                .replaceAll('{{ port }}', process.env.PORT);
-                await notifier.sendMessage(req.body.zkfold_address, "You've received funds", htmlText);
+            const template = fs.readFileSync('./email.html', 'utf-8');
+            const htmlText = template
+                .replaceAll('{{ recipient }}', req.body.zkfold_address)
+                .replaceAll('{{ protocol }}', requiredEnvVars.PROTOCOL)
+                .replaceAll('{{ host }}', requiredEnvVars.HOST)
+                .replaceAll('{{ port }}', requiredEnvVars.PORT);
+            await notifier.sendMessage(req.body.zkfold_address, "You've received funds", htmlText);
         }
 
         const template = fs.readFileSync('./success.html', 'utf-8');
-        const addr = await wallet.addressForGmail(req.body.zkfold_address).then((x) => x.to_bech32()); 
+        const addr = await wallet.addressForGmail(req.body.zkfold_address).then((x) => x.to_bech32());
         res.send(template.replaceAll('{ txId }', txId).replaceAll("{ recipient }", addr));
     } catch (error) {
         const template = fs.readFileSync('./failedTx.html', 'utf-8');
@@ -156,7 +178,7 @@ app.post('/init', async (req, res) => {
             break;
         };
         case "Google Oauth": {
-            const authUrl = gapi.getAuthUrl(state); 
+            const authUrl = gapi.getAuthUrl(state);
             res.redirect(authUrl);
             break;
         };
@@ -176,18 +198,22 @@ app.get('/oauth2callback', async (req, res) => {
             console.log('Error:' + q.error);
         } else if (q.state !== req.session.state) { //check state value
             console.log('State mismatch. Possible CSRF attack');
-        } else { 
+        } else if (q.code && typeof q.code === 'string') {
             const prvKey = CSL.Bip32PrivateKey
-                  .generate_ed25519_bip32()
-                  .derive(harden(1852)) // purpose
-                  .derive(harden(1815)) // coin type
-                  .derive(harden(0)) // account #0
-                  .derive(0)
-                  .derive(0);
+                .generate_ed25519_bip32()
+                .derive(harden(1852)) // purpose
+                .derive(harden(1815)) // coin type
+                .derive(harden(0)) // account #0
+                .derive(0)
+                .derive(0);
             const jwt = await gapi.getJWT(q.code);
             console.log(jwt);
             console.log(`Root key: ${prvKey.to_raw_key().to_hex()}`);
             initialiser = { method: WalletType.Google, data: jwt, rootKey: prvKey.to_hex() };
+        } else {
+            console.log('Missing or invalid authorization code');
+            res.redirect('/');
+            return;
         }
 
         req.session.initialiser = initialiser;
@@ -204,9 +230,9 @@ app.get('/oauth2callback', async (req, res) => {
 });
 
 
-if (process.env.PROTOCOL == "https") {
+if (requiredEnvVars.PROTOCOL === "https") {
     // We need to create these files in order to run a https server
-    var key  = fs.readFileSync('./cert/selfsigned.key');
+    var key = fs.readFileSync('./cert/selfsigned.key');
     var cert = fs.readFileSync('./cert/selfsigned.crt');
     var options = {
         key: key,
@@ -214,20 +240,20 @@ if (process.env.PROTOCOL == "https") {
     };
 
     var httpsServer = https.createServer(options, app);
-    const port  = process.env.PORT;
+    const port = requiredEnvVars.PORT;
     httpsServer.listen(port, () => {
         console.log("HTTPS server starting on port : " + port)
     });
-};
+}
 
-if (process.env.PROTOCOL == "http") {
-    var httpServer  = http.createServer(app);
-    const port  = process.env.PORT;
+if (requiredEnvVars.PROTOCOL === "http") {
+    var httpServer = http.createServer(app);
+    const port = requiredEnvVars.PORT;
     httpServer.listen(port, () => {
         console.log("HTTP server starting on port : " + port)
     });
 }
 
 function harden(num: number): number {
-  return 0x80000000 + num;
+    return 0x80000000 + num;
 }
