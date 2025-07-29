@@ -26,3 +26,6 @@ stack.yaml*
 node_modules
 public/css/
 package-lock.json
+
+# Environment variables
+.env
