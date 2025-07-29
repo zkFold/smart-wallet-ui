@@ -33,9 +33,3 @@ npm run dev
 ```
 
 The server will start on port 8080 by default.
-
-## Security Notes
-
-- Never commit `.env` files to version control
-- Regenerate all secrets before production deployment
-- Use proper secrets management in production environments
