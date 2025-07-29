@@ -1,10 +1,26 @@
-# zkFold Smart Contract Wallet API 
+# zkFold Smart Contract Wallet UI 
 
-This package contains zkFold Wallet backend supporting Cardano [CIP-30 API](https://github.com/cardano-foundation/CIPs/tree/master/CIP-0030).
+This is a demo application for the zkFold Smart Contract Wallet that supports Cardano [CIP-30 API](https://github.com/cardano-foundation/CIPs/tree/master/CIP-0030).
 
-To run the example, do
+The application uses the `zkfold-smart-wallet-api` npm package to provide wallet functionality.
 
+## Setup
+
+1. Install dependencies:
+```bash
+npm install
 ```
-cd e2e
-npx tsx e2e.ts
+
+2. Configure environment variables in `.env` file (copy from `.env.example` if available)
+
+3. Run the application:
+```bash
+npm start
 ```
+
+Or for development with auto-reload:
+```bash
+npm run dev
+```
+
+The server will start on port 8080 by default.
