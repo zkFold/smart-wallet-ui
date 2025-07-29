@@ -34,7 +34,7 @@ const requiredEnvVars = {
 
 // Check for missing required environment variables
 const missingVars = Object.entries(requiredEnvVars)
-    .filter(([key, value]) => !value && key !== 'PROTOCOL' && key !== 'HOST' && key !== 'PORT')
+    .filter(([key, value]) => !value && key !== 'PROTOCOL' && key !== 'HOST' && key !== 'PORT' && key !== 'BACKEND_API_KEY')
     .map(([key]) => key);
 
 if (missingVars.length > 0) {
@@ -68,7 +68,10 @@ function loggedIn(req, res, next) {
 }
 
 function restoreWallet(req) {
-    const backend = new Backend('http://localhost:8082', requiredEnvVars.BACKEND_API_KEY!);
+    const backendUrl = 'http://localhost:8082';
+    const backend = requiredEnvVars.BACKEND_API_KEY 
+        ? new Backend(backendUrl, requiredEnvVars.BACKEND_API_KEY)
+        : new Backend(backendUrl);
     const initialiser = req.session.initialiser;
     const wallet = new Wallet(backend, initialiser, '', req.session.network.toLowerCase());
     return wallet;
@@ -106,7 +109,10 @@ app.get('/tx_status', async (req, res) => {
     if (q.txId && q.recipient && typeof q.txId === 'string' && typeof q.recipient === 'string') {
         const txId = q.txId;
         const recipient = q.recipient;
-        const backend = new Backend('http://localhost:8082', requiredEnvVars.BACKEND_API_KEY!);
+        const backendUrl = 'http://localhost:8082';
+        const backend = requiredEnvVars.BACKEND_API_KEY 
+            ? new Backend(backendUrl, requiredEnvVars.BACKEND_API_KEY)
+            : new Backend(backendUrl);
         try {
             const utxos = await backend.addressUtxo(recipient as any); // Type assertion for now
             for (var i = 0; i < utxos.length; i++) {
@@ -190,7 +196,10 @@ app.get('/oauth2callback', async (req, res) => {
     try {
         var initialiser;
         let q = url.parse(req.url, true).query;
-        const backend = new Backend('http://localhost:8082', requiredEnvVars.BACKEND_API_KEY!);
+        const backendUrl = 'http://localhost:8082';
+        const backend = requiredEnvVars.BACKEND_API_KEY 
+            ? new Backend(backendUrl, requiredEnvVars.BACKEND_API_KEY)
+            : new Backend(backendUrl);
 
         if (req.session.mnemonic) {
             initialiser = { method: WalletType.Mnemonic, data: req.session.mnemonic };
