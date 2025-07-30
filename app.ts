@@ -111,16 +111,16 @@ app.get('/tx_status', async (req, res) => {
     }
     if (q.txId && q.recipient && typeof q.txId === 'string' && typeof q.recipient === 'string') {
         const txId = q.txId;
-        const recipient = q.recipient;
+        const recipient: CSL.Address = CSL.Address.from_bech32(q.recipient);
         const backendUrl = requiredEnvVars.BACKEND_URL!;
         const backend = requiredEnvVars.BACKEND_API_KEY
             ? new Backend(backendUrl, requiredEnvVars.BACKEND_API_KEY)
             : new Backend(backendUrl);
         try {
-            const utxos = await backend.addressUtxo(recipient as any); // Type assertion for now
+            const utxos = await backend.addressUtxo(recipient); 
             for (var i = 0; i < utxos.length; i++) {
                 const utxo = utxos[i];
-                if ((utxo as any).tx_hash == txId) { // Type assertion for now
+                if ((utxo as any).ref.transaction_id == txId) { // Type assertion for now
                     res.send({ outcome: "success", "data": utxo });
                     return;
                 }
@@ -128,6 +128,7 @@ app.get('/tx_status', async (req, res) => {
             res.send({ outcome: "pending" });
             return;
         } catch (e) {
+            console.log(e);
             res.send({ outcome: "failure", reason: e });
             return;
         }
