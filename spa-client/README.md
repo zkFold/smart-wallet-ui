@@ -1,4 +1,20 @@
-# React + TypeScript + Vite
+# Smart Wallet SPA Client
+
+A secure client-side Single Page Application (SPA) for the zkFold Smart Wallet, built with React + TypeScript + Vite.
+
+## Development
+
+### CSS Files
+The Pico CSS files are auto-generated from `public/css.zip` and are not committed to the repository. They are automatically extracted when running dev or build commands.
+
+### Scripts
+- `npm run dev` - Start development server (auto-extracts CSS)
+- `npm run build` - Build for production (auto-extracts CSS)
+- `npm run extract-css` - Manually extract CSS files from zip
+- `npm run lint` - Run ESLint
+- `npm run preview` - Preview production build
+
+## React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

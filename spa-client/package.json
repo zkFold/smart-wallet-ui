@@ -4,8 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "extract-css": "node -e \"const fs = require('fs'); const unzip = require('unzip-stream'); fs.createReadStream('./public/css.zip').pipe(unzip.Extract({ path: './public/' }));\"",
+    "dev": "npm run extract-css && vite",
+    "build": "npm run extract-css && tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -32,6 +33,7 @@
     "globals": "^16.3.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.35.1",
+    "unzip-stream": "^0.3.4",
     "vite": "^7.0.4",
     "vite-plugin-top-level-await": "^1.6.0",
     "vite-plugin-wasm": "^3.5.0"
