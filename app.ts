@@ -2,7 +2,6 @@ import express from 'express';
 import session from 'express-session';
 import favicon from 'serve-favicon';
 import * as crypto from 'crypto';
-import * as https from 'https';
 import * as http from 'http';
 import bodyParser from 'body-parser';
 import fs from 'fs-extra';
@@ -11,7 +10,7 @@ import * as dotenv from 'dotenv';
 import * as url from 'url';
 import CSL from '@emurgo/cardano-serialization-lib-nodejs';
 
-import { Wallet, Initialiser, WalletType, SmartTxRecipient } from 'zkfold-smart-wallet-api';
+import { Wallet, WalletType, SmartTxRecipient } from 'zkfold-smart-wallet-api';
 import { Backend, BigIntWrap } from 'zkfold-smart-wallet-api'
 import { Notifier } from 'zkfold-smart-wallet-api'
 import { GoogleApi } from 'zkfold-smart-wallet-api'
@@ -24,17 +23,21 @@ const requiredEnvVars = {
     EMAIL_KEY: process.env.EMAIL_KEY,
     CLIENT_ID: process.env.CLIENT_ID,
     CLIENT_SECRET: process.env.CLIENT_SECRET,
-    REDIRECT_URL: process.env.REDIRECT_URL,
+    WEBSITE_URL: process.env.WEBSITE_URL,
+    BACKEND_URL: process.env.BACKEND_URL,
     SESSION_SECRET: process.env.SESSION_SECRET,
     BACKEND_API_KEY: process.env.BACKEND_API_KEY,
-    PROTOCOL: process.env.PROTOCOL || 'http',
-    HOST: process.env.HOST || 'localhost',
-    PORT: process.env.PORT || '8080'
+    PORT: process.env.PORT
 };
+
+// Parse the website URL to extract components
+const websiteUrl = new URL(requiredEnvVars.WEBSITE_URL!);
+const PORT = requiredEnvVars.PORT!;
+const REDIRECT_URL = `${requiredEnvVars.WEBSITE_URL}/oauth2callback/`;
 
 // Check for missing required environment variables
 const missingVars = Object.entries(requiredEnvVars)
-    .filter(([key, value]) => !value && key !== 'PROTOCOL' && key !== 'HOST' && key !== 'PORT' && key !== 'BACKEND_API_KEY')
+    .filter(([key, value]) => !value && key !== 'BACKEND_API_KEY')
     .map(([key]) => key);
 
 if (missingVars.length > 0) {
@@ -45,7 +48,7 @@ if (missingVars.length > 0) {
 const app = express();
 
 const notifier = new Notifier(requiredEnvVars.EMAIL_USER!, requiredEnvVars.EMAIL_KEY!);
-const gapi = new GoogleApi(requiredEnvVars.CLIENT_ID!, requiredEnvVars.CLIENT_SECRET!, requiredEnvVars.REDIRECT_URL!);
+const gapi = new GoogleApi(requiredEnvVars.CLIENT_ID!, requiredEnvVars.CLIENT_SECRET!, REDIRECT_URL);
 
 fs.createReadStream('./public/css.zip').pipe(unzip.Extract({ path: './public/' }));
 
@@ -56,7 +59,7 @@ app.use(session({
     secret: requiredEnvVars.SESSION_SECRET!,
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: requiredEnvVars.PROTOCOL === "https" } // Set to true for HTTPS
+    cookie: { secure: websiteUrl.protocol === 'https:' } // Set to true for HTTPS proxy
 }));
 
 function loggedIn(req, res, next) {
@@ -68,8 +71,8 @@ function loggedIn(req, res, next) {
 }
 
 function restoreWallet(req) {
-    const backendUrl = 'http://localhost:8082';
-    const backend = requiredEnvVars.BACKEND_API_KEY 
+    const backendUrl = requiredEnvVars.BACKEND_URL!;
+    const backend = requiredEnvVars.BACKEND_API_KEY
         ? new Backend(backendUrl, requiredEnvVars.BACKEND_API_KEY)
         : new Backend(backendUrl);
     const initialiser = req.session.initialiser;
@@ -109,8 +112,8 @@ app.get('/tx_status', async (req, res) => {
     if (q.txId && q.recipient && typeof q.txId === 'string' && typeof q.recipient === 'string') {
         const txId = q.txId;
         const recipient = q.recipient;
-        const backendUrl = 'http://localhost:8082';
-        const backend = requiredEnvVars.BACKEND_API_KEY 
+        const backendUrl = requiredEnvVars.BACKEND_URL!;
+        const backend = requiredEnvVars.BACKEND_API_KEY
             ? new Backend(backendUrl, requiredEnvVars.BACKEND_API_KEY)
             : new Backend(backendUrl);
         try {
@@ -157,9 +160,7 @@ app.post('/send', async (req, res) => {
             const template = fs.readFileSync('./email.html', 'utf-8');
             const htmlText = template
                 .replaceAll('{{ recipient }}', req.body.zkfold_address)
-                .replaceAll('{{ protocol }}', requiredEnvVars.PROTOCOL)
-                .replaceAll('{{ host }}', requiredEnvVars.HOST)
-                .replaceAll('{{ port }}', requiredEnvVars.PORT);
+                .replaceAll('{{ website_url }}', requiredEnvVars.WEBSITE_URL!);
             await notifier.sendMessage(req.body.zkfold_address, "You've received funds", htmlText);
         }
 
@@ -196,8 +197,8 @@ app.get('/oauth2callback', async (req, res) => {
     try {
         var initialiser;
         let q = url.parse(req.url, true).query;
-        const backendUrl = 'http://localhost:8082';
-        const backend = requiredEnvVars.BACKEND_API_KEY 
+        const backendUrl = requiredEnvVars.BACKEND_URL!;
+        const backend = requiredEnvVars.BACKEND_API_KEY
             ? new Backend(backendUrl, requiredEnvVars.BACKEND_API_KEY)
             : new Backend(backendUrl);
 
@@ -240,29 +241,11 @@ app.get('/oauth2callback', async (req, res) => {
 });
 
 
-if (requiredEnvVars.PROTOCOL === "https") {
-    // We need to create these files in order to run a https server
-    var key = fs.readFileSync('./cert/selfsigned.key');
-    var cert = fs.readFileSync('./cert/selfsigned.crt');
-    var options = {
-        key: key,
-        cert: cert
-    };
-
-    var httpsServer = https.createServer(options, app);
-    const port = requiredEnvVars.PORT;
-    httpsServer.listen(port, () => {
-        console.log("HTTPS server starting on port : " + port)
-    });
-}
-
-if (requiredEnvVars.PROTOCOL === "http") {
-    var httpServer = http.createServer(app);
-    const port = requiredEnvVars.PORT;
-    httpServer.listen(port, () => {
-        console.log("HTTP server starting on port : " + port)
-    });
-}
+// Start HTTP server (HTTPS handled by proxy)
+const httpServer = http.createServer(app);
+httpServer.listen(PORT, () => {
+    console.log(`HTTP server starting on port: ${PORT}`);
+});
 
 function harden(num: number): number {
     return 0x80000000 + num;

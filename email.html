@@ -1,12 +1,12 @@
 Hello,
 <br>
-You've received funds via ZkFold Smart Wallet. 
+You've received funds via ZkFold Smart Wallet.
 <br>
-<form action="https://demo.zkfold.io/init" method="POST">
+<form action="{{ website_url }}/init" method="POST">
   <input type="hidden" name="network" value="Preprod">
   <input type="hidden" name="method" value="Google Oauth">
   <input type="hidden" name="method_data" value="{{ recipient }}">
   <button type="submit" name="submit_param" value="submit_value">
-    Click here to access your funds 
+    Click here to access your funds
   </button>
 </form>
