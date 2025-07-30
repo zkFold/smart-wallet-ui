@@ -1,0 +1,9 @@
+/* Minimal additional styles for the wallet app */
+/* Most styling is handled by Pico CSS */
+
+/* Reset some default styles to work better with Pico CSS */
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}

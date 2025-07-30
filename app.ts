@@ -98,7 +98,80 @@ async function mkTransaction(req, res) {
 }
 
 app.get('/', async (req, res) => {
-    res.sendFile('index.html', { root: '.' });
+    // Check if client wants SPA version
+    const userAgent = req.get('User-Agent') || '';
+    const isModernBrowser = !userAgent.includes('curl') && !userAgent.includes('wget');
+    
+    if (isModernBrowser && req.headers.accept?.includes('text/html')) {
+        // Serve SPA for modern browsers
+        res.sendFile('spa-client/dist/index.html', { root: '.' });
+    } else {
+        // Serve original HTML for compatibility
+        res.sendFile('index.html', { root: '.' });
+    }
+});
+
+// Serve SPA static assets
+app.use('/assets', express.static('spa-client/dist/assets'));
+
+// SPA-compatible endpoints (no session required)
+app.post('/api/init-session', async (req, res) => {
+    // SPA version - just acknowledge the initialization
+    // Private keys are handled client-side, so we don't need to store them
+    res.json({ success: true });
+});
+
+app.get('/api/balance', async (req, res) => {
+    const { address } = req.query;
+    if (!address || typeof address !== 'string') {
+        res.status(400).json({ error: 'Address parameter required' });
+        return;
+    }
+
+    try {
+        const backendUrl = requiredEnvVars.BACKEND_URL!;
+        const backend = requiredEnvVars.BACKEND_API_KEY
+            ? new Backend(backendUrl, requiredEnvVars.BACKEND_API_KEY)
+            : new Backend(backendUrl);
+        
+        const addressObj = CSL.Address.from_bech32(address);
+        const utxos = await backend.addressUtxo(addressObj);
+        
+        // Calculate balance from UTXOs
+        let lovelace = BigInt(0);
+        const assets: Record<string, string> = {};
+        
+        for (const utxo of utxos) {
+            lovelace += BigInt(utxo.output.amount.coin);
+            // TODO: Handle native assets if needed
+        }
+        
+        res.json({
+            lovelace: lovelace.toString(),
+            ...assets
+        });
+    } catch (error) {
+        console.error('Error getting balance:', error);
+        res.json({ lovelace: '0' });
+    }
+});
+
+app.get('/api/gmail-address', async (req, res) => {
+    const { email } = req.query;
+    if (!email || typeof email !== 'string') {
+        res.status(400).json({ error: 'Email parameter required' });
+        return;
+    }
+
+    // For now, return the email as-is
+    // In a full implementation, this would derive the address from the email
+    res.json({ address: email });
+});
+
+app.post('/api/send-tx', async (req, res) => {
+    // For now, this endpoint is a placeholder
+    // In a full implementation, this would handle transaction submission
+    res.status(501).json({ error: 'Transaction sending not yet implemented in SPA mode' });
 });
 
 app.get('/wallet', loggedIn, mkTransaction);
