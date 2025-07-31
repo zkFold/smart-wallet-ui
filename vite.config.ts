@@ -9,7 +9,8 @@ export default defineConfig({
   ],
   build: {
     outDir: './dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    chunkSizeWarningLimit: 1500 // Increase from default 500kb to 1.5MB to suppress warning
   },
   server: {
     port: 8080,
