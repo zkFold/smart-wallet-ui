@@ -174,7 +174,7 @@ app.post('/init', async (req, res) => {
             break;
         };
         case "Google Oauth": {
-            const authUrl = gapi.getAuthUrl(state);
+            const authUrl = await gapi.getAuthUrl(state);
             res.redirect(authUrl);
             break;
         };
