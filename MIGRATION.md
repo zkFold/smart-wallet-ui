@@ -28,7 +28,7 @@ npm install
 ### Development
 ```bash
 # Start development server
-npm run dev  # Vite dev server on port 3000
+npm run dev  # Vite dev server on port 8080
 ```
 
 ### Production Build
@@ -45,7 +45,7 @@ Copy `.env.client.example` to `.env` and configure:
 VITE_CLIENT_ID=your_google_oauth_client_id_here
 
 # Website and Backend Configuration  
-VITE_WEBSITE_URL="http://localhost:3000"
+VITE_WEBSITE_URL="http://localhost:8080"
 VITE_BACKEND_URL="https://your-backend-url.com"
 
 # Backend API Configuration (optional)

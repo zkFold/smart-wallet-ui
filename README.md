@@ -17,7 +17,7 @@ cp .env.client.example .env
 ```
 Then edit `.env` with your actual values:
 - `VITE_CLIENT_ID`: Google OAuth client ID
-- `VITE_WEBSITE_URL`: Base URL for your website (default: http://localhost:3000)
+- `VITE_WEBSITE_URL`: Base URL for your website (default: http://localhost:8080)
 - `VITE_BACKEND_URL`: URL for the zkFold Smart Wallet backend API
 - `VITE_BACKEND_API_KEY`: API key for backend authentication (optional)
 
@@ -26,7 +26,7 @@ Then edit `.env` with your actual values:
 npm run dev
 ```
 
-The application runs on http://localhost:3000 with full client-side functionality, making direct cross-origin requests to the configured backend server.
+The application runs on http://localhost:8080 with full client-side functionality, making direct cross-origin requests to the configured backend server.
 
 ## 📁 Project Structure
 
