@@ -3,20 +3,13 @@ import wasm from 'vite-plugin-wasm'
 import topLevelAwait from 'vite-plugin-top-level-await'
 
 export default defineConfig({
-  root: './src',
-  publicDir: '../public',
   plugins: [
     wasm(),
     topLevelAwait()
   ],
   build: {
-    outDir: '../dist',
-    emptyOutDir: true,
-    rollupOptions: {
-      input: {
-        main: './src/index.html'
-      }
-    }
+    outDir: './dist',
+    emptyOutDir: true
   },
   server: {
     port: 3000,

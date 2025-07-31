@@ -14,23 +14,18 @@ export class App {
   private walletState: WalletState = { isInitialized: false }
 
   constructor() {
-    console.log('App constructor called')
     // Load configuration from environment or defaults
     this.config = this.loadConfig()
-    console.log('Config loaded:', this.config)
     this.storage = new StorageManager()
     this.backendService = new BackendService(this.config)
     this.walletManager = new WalletManager(this.config, this.storage)
     this.router = new Router(this.backendService)
-    
+
     // Set up event listeners
     this.setupEventListeners()
-    console.log('App constructor completed')
   }
 
   private loadConfig(): AppConfig {
-    // In a real application, these would come from environment variables
-    // For now, we'll use defaults that work with the existing setup
     return {
       clientId: import.meta.env.VITE_CLIENT_ID || '',
       websiteUrl: import.meta.env.VITE_WEBSITE_URL || window.location.origin,
@@ -69,7 +64,7 @@ export class App {
   private handleUrlChange(): void {
     const path = window.location.pathname
     const params = new URLSearchParams(window.location.search)
-    
+
     // Handle OAuth callback
     if (path === '/oauth2callback' || params.has('code')) {
       this.walletManager.handleOAuthCallback(window.location.search)
@@ -85,11 +80,9 @@ export class App {
   }
 
   public async init(): Promise<void> {
-    console.log('App.init() called')
     try {
       // Try to restore wallet state from storage
       const savedState = this.storage.getWalletState()
-      console.log('Saved state:', savedState)
       if (savedState && savedState.isInitialized) {
         this.walletState = savedState
         await this.walletManager.restoreWallet(savedState)
@@ -97,11 +90,9 @@ export class App {
 
       // Handle initial routing
       this.handleUrlChange()
-      
+
       // Initial render
-      console.log('About to render initial view')
       this.render()
-      console.log('Initial render completed')
     } catch (error) {
       console.error('Failed to initialize app:', error)
       this.router.navigate('init')
@@ -109,7 +100,6 @@ export class App {
   }
 
   private render(): void {
-    console.log('render() called, currentView:', this.currentView)
     const appElement = document.getElementById('app')
     if (!appElement) {
       console.error('App element not found')
@@ -123,28 +113,22 @@ export class App {
     let viewElement: HTMLElement
     switch (this.currentView) {
       case 'init':
-        console.log('Rendering init view')
         viewElement = this.router.renderInitView()
         break
       case 'wallet':
-        console.log('Rendering wallet view')
         viewElement = this.router.renderWalletView(this.walletState)
         break
       case 'success':
-        console.log('Rendering success view')
         viewElement = this.router.renderSuccessView(this.router.getViewData())
         break
       case 'failed':
-        console.log('Rendering failed view')
         viewElement = this.router.renderFailedView(this.router.getViewData())
         break
       default:
-        console.log('Rendering default init view')
         viewElement = this.router.renderInitView()
     }
 
     appElement.appendChild(viewElement)
-    console.log('View element appended to DOM')
 
     // Set up event handlers for the current view
     this.setupViewEventHandlers()
@@ -171,7 +155,7 @@ export class App {
         const method = formData.get('method') as string
         const network = formData.get('network') as string
         const data = formData.get('zkfold_method_data') as string
-        
+
         await this.walletManager.initializeWallet({
           method: method as any,
           network: network as any,
@@ -203,7 +187,7 @@ export class App {
       form.addEventListener('submit', async (e) => {
         e.preventDefault()
         const formData = new FormData(form)
-        
+
         await this.walletManager.sendTransaction({
           recipient: formData.get('zkfold_address') as string,
           recipientType: formData.get('recipient') as any,
@@ -243,7 +227,7 @@ export class App {
     const networkOpt = document.getElementById("network_option") as HTMLSelectElement
     const methodSel = document.getElementById("method_selector")
     const button = document.getElementById("show_controls")
-    
+
     if (header && networkSel && methodSel && button) {
       if (networkSel.hidden) {
         header.innerHTML = "Smart Wallet"
@@ -257,7 +241,7 @@ export class App {
         methodSel.hidden = true
         button.innerHTML = "Show advanced controls"
       }
-      
+
       const methodOpts = document.getElementById("method_options") as HTMLSelectElement
       if (methodOpts) {
         methodOpts.value = "Google Oauth"
@@ -270,7 +254,7 @@ export class App {
     const methodOpts = document.getElementById("method_options") as HTMLSelectElement
     const addressInput = document.getElementById("address_input") as HTMLInputElement
     const submit = document.getElementById("submit") as HTMLInputElement
-    
+
     if (methodOpts && addressInput && submit) {
       if (methodOpts.value === "Google Oauth") {
         addressInput.hidden = true
@@ -285,7 +269,7 @@ export class App {
   private updateTypeUI(): void {
     const addressInput = document.getElementById("address_input") as HTMLInputElement
     const selector = document.getElementById("type_selector") as HTMLSelectElement
-    
+
     if (addressInput && selector) {
       if (selector.value === "Gmail") {
         addressInput.placeholder = "example@gmail.com"
@@ -298,7 +282,7 @@ export class App {
   private toggleAddressDisplay(): void {
     const label = document.getElementById("faucet_label")
     const button = document.getElementById("show_address")
-    
+
     if (label && button) {
       if (label.hidden) {
         label.hidden = false
@@ -315,7 +299,7 @@ export class App {
     const button = document.getElementById("show_selector")
     const selector = document.getElementById("type_selector") as HTMLSelectElement
     const assetName = document.getElementById("asset_name")
-    
+
     if (label && button && assetName) {
       if (label.hidden) {
         label.hidden = false
