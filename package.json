@@ -2,14 +2,12 @@
   "name": "smart-wallet-ui",
   "version": "1.0.0",
   "description": "Smart wallet UI",
-  "main": "app.js",
+  "main": "src/main.ts",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "legacy:start": "node --experimental-wasm-modules --import tsx/esm app.ts",
-    "legacy:dev": "node --experimental-wasm-modules --import tsx/esm --watch app.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

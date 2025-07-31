@@ -64,9 +64,15 @@ export class App {
   private handleUrlChange(): void {
     const path = window.location.pathname
     const params = new URLSearchParams(window.location.search)
+    const fragment = window.location.hash
 
-    // Handle OAuth callback
-    if (path === '/oauth2callback' || params.has('code')) {
+    // Handle OAuth callback - check for implicit flow (hash) or authorization code (search params)
+    if (fragment && fragment.includes('access_token')) {
+      // Implicit flow - tokens in URL fragment
+      this.walletManager.handleOAuthCallback(fragment)
+      return
+    } else if (params.has('code')) {
+      // Authorization code flow - code in search params (legacy support)
       this.walletManager.handleOAuthCallback(window.location.search)
       return
     }
