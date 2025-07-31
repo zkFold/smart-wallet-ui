@@ -1,0 +1,330 @@
+import { AppConfig, AppView, WalletState } from './types'
+import { WalletManager } from './wallet/WalletManager'
+import { Router } from './ui/router'
+import { StorageManager } from './utils/storage'
+
+export class App {
+  private config: AppConfig
+  private walletManager: WalletManager
+  private router: Router
+  private storage: StorageManager
+  private currentView: AppView = 'init'
+  private walletState: WalletState = { isInitialized: false }
+
+  constructor() {
+    console.log('App constructor called')
+    // Load configuration from environment or defaults
+    this.config = this.loadConfig()
+    console.log('Config loaded:', this.config)
+    this.storage = new StorageManager()
+    this.walletManager = new WalletManager(this.config, this.storage)
+    this.router = new Router()
+    
+    // Set up event listeners
+    this.setupEventListeners()
+    console.log('App constructor completed')
+  }
+
+  private loadConfig(): AppConfig {
+    // In a real application, these would come from environment variables
+    // For now, we'll use defaults that work with the existing setup
+    return {
+      clientId: import.meta.env.VITE_CLIENT_ID || '',
+      websiteUrl: import.meta.env.VITE_WEBSITE_URL || window.location.origin,
+      backendUrl: import.meta.env.VITE_BACKEND_URL || '',
+      backendApiKey: import.meta.env.VITE_BACKEND_API_KEY
+    }
+  }
+
+  private setupEventListeners(): void {
+    // Listen for wallet state changes
+    this.walletManager.on('walletInitialized', (event: any) => {
+      this.walletState = event.data
+      this.router.navigate('wallet')
+    })
+
+    this.walletManager.on('transactionComplete', (event: any) => {
+      this.router.navigate('success', event.data)
+    })
+
+    this.walletManager.on('transactionFailed', (event: any) => {
+      this.router.navigate('failed', { reason: event.data.message })
+    })
+
+    // Listen for router navigation
+    this.router.on('navigate', (event: any) => {
+      this.currentView = event.data.view
+      this.render()
+    })
+
+    // Handle browser back/forward buttons
+    window.addEventListener('popstate', () => {
+      this.handleUrlChange()
+    })
+  }
+
+  private handleUrlChange(): void {
+    const path = window.location.pathname
+    const params = new URLSearchParams(window.location.search)
+    
+    // Handle OAuth callback
+    if (path === '/oauth2callback' || params.has('code')) {
+      this.walletManager.handleOAuthCallback(window.location.search)
+      return
+    }
+
+    // Handle other routes
+    if (path === '/wallet' && this.walletState.isInitialized) {
+      this.router.navigate('wallet')
+    } else {
+      this.router.navigate('init')
+    }
+  }
+
+  public async init(): Promise<void> {
+    console.log('App.init() called')
+    try {
+      // Try to restore wallet state from storage
+      const savedState = this.storage.getWalletState()
+      console.log('Saved state:', savedState)
+      if (savedState && savedState.isInitialized) {
+        this.walletState = savedState
+        await this.walletManager.restoreWallet(savedState)
+      }
+
+      // Handle initial routing
+      this.handleUrlChange()
+      
+      // Initial render
+      console.log('About to render initial view')
+      this.render()
+      console.log('Initial render completed')
+    } catch (error) {
+      console.error('Failed to initialize app:', error)
+      this.router.navigate('init')
+    }
+  }
+
+  private render(): void {
+    console.log('render() called, currentView:', this.currentView)
+    const appElement = document.getElementById('app')
+    if (!appElement) {
+      console.error('App element not found')
+      throw new Error('App element not found')
+    }
+
+    // Clear previous content
+    appElement.innerHTML = ''
+
+    // Render current view
+    let viewElement: HTMLElement
+    switch (this.currentView) {
+      case 'init':
+        console.log('Rendering init view')
+        viewElement = this.router.renderInitView()
+        break
+      case 'wallet':
+        console.log('Rendering wallet view')
+        viewElement = this.router.renderWalletView(this.walletState)
+        break
+      case 'success':
+        console.log('Rendering success view')
+        viewElement = this.router.renderSuccessView(this.router.getViewData())
+        break
+      case 'failed':
+        console.log('Rendering failed view')
+        viewElement = this.router.renderFailedView(this.router.getViewData())
+        break
+      default:
+        console.log('Rendering default init view')
+        viewElement = this.router.renderInitView()
+    }
+
+    appElement.appendChild(viewElement)
+    console.log('View element appended to DOM')
+
+    // Set up event handlers for the current view
+    this.setupViewEventHandlers()
+  }
+
+  private setupViewEventHandlers(): void {
+    // Handle form submissions and button clicks based on current view
+    switch (this.currentView) {
+      case 'init':
+        this.setupInitHandlers()
+        break
+      case 'wallet':
+        this.setupWalletHandlers()
+        break
+    }
+  }
+
+  private setupInitHandlers(): void {
+    const form = document.querySelector('form') as HTMLFormElement
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const formData = new FormData(form)
+        const method = formData.get('method') as string
+        const network = formData.get('network') as string
+        const data = formData.get('zkfold_method_data') as string
+        
+        await this.walletManager.initializeWallet({
+          method: method as any,
+          network: network as any,
+          data
+        })
+      })
+    }
+
+    // Handle show controls button
+    const showControlsBtn = document.getElementById('show_controls')
+    if (showControlsBtn) {
+      showControlsBtn.addEventListener('click', () => {
+        this.toggleAdvancedControls()
+      })
+    }
+
+    // Handle method change
+    const methodSelect = document.getElementById('method_options')
+    if (methodSelect) {
+      methodSelect.addEventListener('change', () => {
+        this.updateMethodUI()
+      })
+    }
+  }
+
+  private setupWalletHandlers(): void {
+    const form = document.querySelector('form') as HTMLFormElement
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const formData = new FormData(form)
+        
+        await this.walletManager.sendTransaction({
+          recipient: formData.get('zkfold_address') as string,
+          recipientType: formData.get('recipient') as any,
+          amount: formData.get('zkfold_amount') as string,
+          asset: formData.get('zkfold_asset') as string || 'lovelace'
+        })
+      })
+    }
+
+    // Handle UI toggle buttons
+    const showAddressBtn = document.getElementById('show_address')
+    if (showAddressBtn) {
+      showAddressBtn.addEventListener('click', () => {
+        this.toggleAddressDisplay()
+      })
+    }
+
+    const showSelectorBtn = document.getElementById('show_selector')
+    if (showSelectorBtn) {
+      showSelectorBtn.addEventListener('click', () => {
+        this.toggleSelector()
+      })
+    }
+
+    const typeSelect = document.getElementById('type_selector')
+    if (typeSelect) {
+      typeSelect.addEventListener('change', () => {
+        this.updateTypeUI()
+      })
+    }
+  }
+
+  // UI helper methods (keeping existing functionality)
+  private toggleAdvancedControls(): void {
+    const header = document.getElementById("header")
+    const networkSel = document.getElementById("network_selector")
+    const networkOpt = document.getElementById("network_option") as HTMLSelectElement
+    const methodSel = document.getElementById("method_selector")
+    const button = document.getElementById("show_controls")
+    
+    if (header && networkSel && methodSel && button) {
+      if (networkSel.hidden) {
+        header.innerHTML = "Smart Wallet"
+        networkSel.hidden = false
+        methodSel.hidden = false
+        button.innerHTML = "Hide advanced controls"
+      } else {
+        header.innerHTML = "Smart Wallet (Preprod)"
+        networkSel.hidden = true
+        if (networkOpt) networkOpt.value = "Preprod"
+        methodSel.hidden = true
+        button.innerHTML = "Show advanced controls"
+      }
+      
+      const methodOpts = document.getElementById("method_options") as HTMLSelectElement
+      if (methodOpts) {
+        methodOpts.value = "Google Oauth"
+        this.updateMethodUI()
+      }
+    }
+  }
+
+  private updateMethodUI(): void {
+    const methodOpts = document.getElementById("method_options") as HTMLSelectElement
+    const addressInput = document.getElementById("address_input") as HTMLInputElement
+    const submit = document.getElementById("submit") as HTMLInputElement
+    
+    if (methodOpts && addressInput && submit) {
+      if (methodOpts.value === "Google Oauth") {
+        addressInput.hidden = true
+        submit.value = "Initialise wallet with Gmail"
+      } else {
+        addressInput.hidden = false
+        submit.value = "Initialise wallet with seedphrase"
+      }
+    }
+  }
+
+  private updateTypeUI(): void {
+    const addressInput = document.getElementById("address_input") as HTMLInputElement
+    const selector = document.getElementById("type_selector") as HTMLSelectElement
+    
+    if (addressInput && selector) {
+      if (selector.value === "Gmail") {
+        addressInput.placeholder = "example@gmail.com"
+      } else {
+        addressInput.placeholder = "addr_test1xyz...(Bech32)"
+      }
+    }
+  }
+
+  private toggleAddressDisplay(): void {
+    const label = document.getElementById("faucet_label")
+    const button = document.getElementById("show_address")
+    
+    if (label && button) {
+      if (label.hidden) {
+        label.hidden = false
+        button.innerHTML = "Hide address"
+      } else {
+        label.hidden = true
+        button.innerHTML = "Show address"
+      }
+    }
+  }
+
+  private toggleSelector(): void {
+    const label = document.getElementById("address_type")
+    const button = document.getElementById("show_selector")
+    const selector = document.getElementById("type_selector") as HTMLSelectElement
+    const assetName = document.getElementById("asset_name")
+    
+    if (label && button && assetName) {
+      if (label.hidden) {
+        label.hidden = false
+        button.innerHTML = "Hide address selector"
+        assetName.hidden = false
+      } else {
+        label.hidden = true
+        button.innerHTML = "Show all controls"
+        if (selector) selector.value = "Gmail"
+        assetName.hidden = true
+        this.updateTypeUI()
+      }
+    }
+  }
+}
