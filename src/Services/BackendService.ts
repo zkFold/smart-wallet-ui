@@ -1,6 +1,6 @@
 import { Backend } from 'zkfold-smart-wallet-api'
 import * as CSL from '@emurgo/cardano-serialization-lib-browser'
-import { AppConfig } from '../types'
+import { AppConfig } from '../Types'
 
 export class BackendService {
   private backend: Backend

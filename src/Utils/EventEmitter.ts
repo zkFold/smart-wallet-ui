@@ -1,4 +1,4 @@
-import { AppEvent, EventListener } from '../types'
+import { AppEvent, EventListener } from '../Types'
 
 export class EventEmitter {
   private listeners: Map<string, EventListener[]> = new Map()

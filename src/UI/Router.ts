@@ -1,7 +1,7 @@
-import { AppView, WalletState } from '../types'
-import { EventEmitter } from '../utils/EventEmitter'
-import { formatBalance } from '../utils/helpers'
-import { BackendService } from '../services/BackendService'
+import { AppView, WalletState } from '../Types'
+import { EventEmitter } from '../Utils/EventEmitter'
+import { formatBalance } from '../Utils/Helpers'
+import { BackendService } from '../Services/BackendService'
 
 export class Router extends EventEmitter {
   private currentViewData: any = null
@@ -19,7 +19,7 @@ export class Router extends EventEmitter {
   public navigate(view: AppView, data?: any): void {
     this.currentViewData = data
     this.emit('navigate', { view, data })
-    
+
     // Update browser URL without reload
     const url = this.getUrlForView(view)
     window.history.pushState({ view, data }, '', url)
@@ -44,7 +44,7 @@ export class Router extends EventEmitter {
   public renderInitView(): HTMLElement {
     const container = document.createElement('main')
     container.className = 'container'
-    
+
     container.innerHTML = `
       <a href="https://zkfold.io">
         <img src="logo-200x73.png" style="width:250px;height:100px;">
@@ -83,17 +83,17 @@ export class Router extends EventEmitter {
       </form>
       <button class="outline secondary" id="show_controls">Show advanced controls</button>
     `
-    
+
     return container
   }
 
   public renderWalletView(walletState: WalletState): HTMLElement {
     const container = document.createElement('main')
     container.className = 'container'
-    
+
     const balanceHtml = walletState.balance ? formatBalance(walletState.balance) : '<li>Loading...</li>'
     const address = walletState.address || 'Loading...'
-    
+
     container.innerHTML = `
       <a href="https://zkfold.io">
         <img src="logo-200x73.png" style="width:250px;height:100px;">
@@ -152,17 +152,17 @@ export class Router extends EventEmitter {
       <button class="outline secondary" id="show_address">Show address</button>
       <button class="outline secondary" id="show_selector">Show all controls</button>
     `
-    
+
     return container
   }
 
   public renderSuccessView(data: { txId: string, recipient: string }): HTMLElement {
     const container = document.createElement('main')
     container.className = 'container'
-    
+
     const txId = data?.txId || 'Unknown'
     const recipient = data?.recipient || 'Unknown'
-    
+
     container.innerHTML = `
       <a href="https://zkfold.io">
         <img src="logo-200x73.png" style="width:250px;height:100px;">
@@ -176,19 +176,19 @@ export class Router extends EventEmitter {
       <button id="new_tx" disabled>Make another transaction</button>
       <button id="new_wallet" disabled>Initialise a new wallet</button>
     `
-    
+
     // Add script to check transaction status
     this.addTransactionStatusScript(container, txId, recipient)
-    
+
     return container
   }
 
   public renderFailedView(data: { reason: string }): HTMLElement {
     const container = document.createElement('main')
     container.className = 'container'
-    
+
     const reason = data?.reason || 'Unknown error'
-    
+
     container.innerHTML = `
       <a href="https://zkfold.io">
         <img src="logo-200x73.png" style="width:250px;height:100px;">
@@ -201,7 +201,7 @@ export class Router extends EventEmitter {
       <button onclick="window.location.href='/wallet'">Make another transaction</button>
       <button onclick="window.location.href='/'">Initialise a new wallet</button>
     `
-    
+
     return container
   }
 
@@ -218,18 +218,18 @@ export class Router extends EventEmitter {
     }
 
     console.log('Starting transaction status checking:', txId, recipient)
-    
+
     const sleep = (delay: number) => new Promise((resolve) => setTimeout(resolve, delay))
-    
+
     try {
       let response = await this.backendService.checkTransactionStatus(txId, recipient)
-      
+
       while (response.outcome !== "success" && response.outcome !== "failure") {
         console.log('Transaction status:', response)
         await sleep(10000) // Wait 10 seconds
         response = await this.backendService.checkTransactionStatus(txId, recipient)
       }
-      
+
       this.updateTransactionStatus(response.outcome, response.reason)
     } catch (error) {
       console.error('Error checking transaction status:', error)
@@ -241,9 +241,9 @@ export class Router extends EventEmitter {
     const txStatus = document.getElementById("tx_status")
     const newTx = document.getElementById("new_tx") as HTMLButtonElement
     const newWallet = document.getElementById("new_wallet") as HTMLButtonElement
-    
+
     if (!txStatus || !newTx || !newWallet) return
-    
+
     if (outcome === "success") {
       txStatus.innerHTML = "Transaction successful!"
       newTx.disabled = false

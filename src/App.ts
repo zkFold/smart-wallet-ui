@@ -1,8 +1,8 @@
-import { AppConfig, AppView, WalletState } from './types'
-import { WalletManager } from './wallet/WalletManager'
-import { Router } from './ui/router'
-import { StorageManager } from './utils/storage'
-import { BackendService } from './services/BackendService'
+import { AppConfig, AppView, WalletState } from './Types'
+import { WalletManager } from './Wallet/WalletManager'
+import { Router } from './UI/Router'
+import { StorageManager } from './Utils/Storage'
+import { BackendService } from './Services/BackendService'
 
 export class App {
   private config: AppConfig

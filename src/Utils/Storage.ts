@@ -1,4 +1,4 @@
-import { WalletState } from '../types'
+import { WalletState } from '../Types'
 
 export class StorageManager {
   private readonly WALLET_STATE_KEY = 'smart-wallet-state'

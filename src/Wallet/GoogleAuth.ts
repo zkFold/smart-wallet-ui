@@ -1,5 +1,5 @@
 import { GoogleApi } from 'zkfold-smart-wallet-api'
-import { AppConfig } from '../types'
+import { AppConfig } from '../Types'
 
 export class GoogleAuth {
   private googleApi: GoogleApi

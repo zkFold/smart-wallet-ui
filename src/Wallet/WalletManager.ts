@@ -1,10 +1,10 @@
 import { Wallet, WalletType, SmartTxRecipient, Backend, BigIntWrap } from 'zkfold-smart-wallet-api'
 import * as CSL from '@emurgo/cardano-serialization-lib-browser'
-import { AppConfig, WalletConfig, WalletState, TransactionRequest, TransactionResult } from '../types'
-import { StorageManager } from '../utils/storage'
-import { EventEmitter } from '../utils/EventEmitter'
+import { AppConfig, WalletConfig, WalletState, TransactionRequest, TransactionResult } from '../Types'
+import { StorageManager } from '../Utils/Storage'
+import { EventEmitter } from '../Utils/EventEmitter'
 import { GoogleAuth } from './GoogleAuth'
-import { harden } from '../utils/helpers'
+import { harden } from '../Utils/Helpers'
 
 export class WalletManager extends EventEmitter {
   private config: AppConfig
@@ -34,9 +34,9 @@ export class WalletManager extends EventEmitter {
           if (!walletConfig.data) {
             throw new Error('Mnemonic is required')
           }
-          initialiser = { 
-            method: WalletType.Mnemonic, 
-            data: walletConfig.data 
+          initialiser = {
+            method: WalletType.Mnemonic,
+            data: walletConfig.data
           }
           await this.completeWalletInitialization(initialiser, walletConfig.network)
           break
@@ -46,7 +46,7 @@ export class WalletManager extends EventEmitter {
           const state = this.generateOAuthState()
           this.storage.saveSessionData('oauth_state', state)
           this.storage.saveSessionData('network', walletConfig.network)
-          
+
           // Redirect to Google OAuth
           const authUrl = await this.googleAuth.getAuthUrl(state)
           window.location.href = authUrl
@@ -93,11 +93,11 @@ export class WalletManager extends EventEmitter {
 
       // Get JWT token
       const jwt = await this.googleAuth.getJWT(code)
-      
-      const initialiser = { 
-        method: WalletType.Google, 
-        data: jwt, 
-        rootKey: prvKey.to_hex() 
+
+      const initialiser = {
+        method: WalletType.Google,
+        data: jwt,
+        rootKey: prvKey.to_hex()
       }
 
       const network = this.storage.getSessionItem('network')
@@ -123,7 +123,7 @@ export class WalletManager extends EventEmitter {
 
     // Create wallet instance
     this.wallet = new Wallet(this.backend, initialiser, '', network.toLowerCase())
-    
+
     // Get wallet balance and address
     const balance = await this.wallet.getBalance()
     const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
@@ -224,13 +224,13 @@ export class WalletManager extends EventEmitter {
 
       const address = CSL.Address.from_bech32(recipient)
       const utxos = await this.backend.addressUtxo(address)
-      
+
       for (const utxo of utxos) {
         if ((utxo as any).ref.transaction_id === txId) {
           return { outcome: "success", data: utxo }
         }
       }
-      
+
       return { outcome: "pending" }
     } catch (error) {
       console.error('Failed to check transaction status:', error)
