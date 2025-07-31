@@ -29,7 +29,7 @@ const requiredEnvVars = {
 // Parse the website URL to extract components
 const websiteUrl = new URL(requiredEnvVars.WEBSITE_URL!);
 const PORT = requiredEnvVars.PORT!;
-const REDIRECT_URL = `${requiredEnvVars.WEBSITE_URL}/oauth2callback/`;
+const REDIRECT_URL = `${requiredEnvVars.WEBSITE_URL}/oauth2callback`;
 
 // Check for missing required environment variables
 const missingVars = Object.entries(requiredEnvVars)
@@ -112,7 +112,7 @@ app.get('/tx_status', async (req, res) => {
             ? new Backend(backendUrl, requiredEnvVars.BACKEND_API_KEY)
             : new Backend(backendUrl);
         try {
-            const utxos = await backend.addressUtxo(recipient); 
+            const utxos = await backend.addressUtxo(recipient);
             for (var i = 0; i < utxos.length; i++) {
                 const utxo = utxos[i];
                 if ((utxo as any).ref.transaction_id == txId) { // Type assertion for now
