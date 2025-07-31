@@ -8,21 +8,17 @@ import fs from 'fs-extra';
 import unzip from 'unzip-stream';
 import * as dotenv from 'dotenv';
 import * as url from 'url';
-import CSL from '@emurgo/cardano-serialization-lib-nodejs';
+import * as CSL from '@emurgo/cardano-serialization-lib-browser';
 
 import { Wallet, WalletType, SmartTxRecipient } from 'zkfold-smart-wallet-api';
 import { Backend, BigIntWrap } from 'zkfold-smart-wallet-api'
-import { Notifier } from 'zkfold-smart-wallet-api'
 import { GoogleApi } from 'zkfold-smart-wallet-api'
 
 dotenv.config()
 
 // Validate required environment variables
 const requiredEnvVars = {
-    EMAIL_USER: process.env.EMAIL_USER,
-    EMAIL_KEY: process.env.EMAIL_KEY,
     CLIENT_ID: process.env.CLIENT_ID,
-    CLIENT_SECRET: process.env.CLIENT_SECRET,
     WEBSITE_URL: process.env.WEBSITE_URL,
     BACKEND_URL: process.env.BACKEND_URL,
     SESSION_SECRET: process.env.SESSION_SECRET,
@@ -33,7 +29,7 @@ const requiredEnvVars = {
 // Parse the website URL to extract components
 const websiteUrl = new URL(requiredEnvVars.WEBSITE_URL!);
 const PORT = requiredEnvVars.PORT!;
-const REDIRECT_URL = `${requiredEnvVars.WEBSITE_URL}/oauth2callback/`;
+const REDIRECT_URL = `${requiredEnvVars.WEBSITE_URL}/oauth2callback`;
 
 // Check for missing required environment variables
 const missingVars = Object.entries(requiredEnvVars)
@@ -47,8 +43,7 @@ if (missingVars.length > 0) {
 
 const app = express();
 
-const notifier = new Notifier(requiredEnvVars.EMAIL_USER!, requiredEnvVars.EMAIL_KEY!);
-const gapi = new GoogleApi(requiredEnvVars.CLIENT_ID!, requiredEnvVars.CLIENT_SECRET!, REDIRECT_URL);
+const gapi = new GoogleApi(requiredEnvVars.CLIENT_ID!, REDIRECT_URL);
 
 fs.createReadStream('./public/css.zip').pipe(unzip.Extract({ path: './public/' }));
 
@@ -117,7 +112,7 @@ app.get('/tx_status', async (req, res) => {
             ? new Backend(backendUrl, requiredEnvVars.BACKEND_API_KEY)
             : new Backend(backendUrl);
         try {
-            const utxos = await backend.addressUtxo(recipient); 
+            const utxos = await backend.addressUtxo(recipient);
             for (var i = 0; i < utxos.length; i++) {
                 const utxo = utxos[i];
                 if ((utxo as any).ref.transaction_id == txId) { // Type assertion for now
@@ -157,14 +152,6 @@ app.post('/send', async (req, res) => {
         const txId = await wallet.sendTo(recipient);
         console.log(`tx id: ${txId}`);
 
-        if (req.body.recipient == "Gmail") {
-            const template = fs.readFileSync('./email.html', 'utf-8');
-            const htmlText = template
-                .replaceAll('{{ recipient }}', req.body.zkfold_address)
-                .replaceAll('{{ website_url }}', requiredEnvVars.WEBSITE_URL!);
-            await notifier.sendMessage(req.body.zkfold_address, "You've received funds", htmlText);
-        }
-
         const template = fs.readFileSync('./success.html', 'utf-8');
         const addr = await wallet.addressForGmail(req.body.zkfold_address).then((x) => x.to_bech32());
         res.send(template.replaceAll('{ txId }', txId).replaceAll("{ recipient }", addr));
@@ -187,7 +174,7 @@ app.post('/init', async (req, res) => {
             break;
         };
         case "Google Oauth": {
-            const authUrl = gapi.getAuthUrl(state);
+            const authUrl = await gapi.getAuthUrl(state);
             res.redirect(authUrl);
             break;
         };
