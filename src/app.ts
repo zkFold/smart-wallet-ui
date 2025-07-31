@@ -2,12 +2,14 @@ import { AppConfig, AppView, WalletState } from './types'
 import { WalletManager } from './wallet/WalletManager'
 import { Router } from './ui/router'
 import { StorageManager } from './utils/storage'
+import { BackendService } from './services/BackendService'
 
 export class App {
   private config: AppConfig
   private walletManager: WalletManager
   private router: Router
   private storage: StorageManager
+  private backendService: BackendService
   private currentView: AppView = 'init'
   private walletState: WalletState = { isInitialized: false }
 
@@ -17,8 +19,9 @@ export class App {
     this.config = this.loadConfig()
     console.log('Config loaded:', this.config)
     this.storage = new StorageManager()
+    this.backendService = new BackendService(this.config)
     this.walletManager = new WalletManager(this.config, this.storage)
-    this.router = new Router()
+    this.router = new Router(this.backendService)
     
     // Set up event listeners
     this.setupEventListeners()

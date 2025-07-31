@@ -20,13 +20,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    host: true,
-    proxy: {
-      '/tx_status': {
-        target: 'http://localhost:3001',
-        changeOrigin: true
-      }
-    }
+    host: true
   },
   define: {
     global: 'globalThis',

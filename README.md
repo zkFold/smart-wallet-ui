@@ -26,21 +26,18 @@ Then edit `.env` with your actual values:
 npm run dev
 ```
 
-This starts both the client-side Vite dev server (port 3000) and a minimal API server (port 3001) for transaction status checking.
+The application runs on http://localhost:3000 with full client-side functionality, making direct cross-origin requests to the configured backend server.
 
 ## 📁 Project Structure
 
 - **`src/`** - Client-side TypeScript source code
 - **`public/`** - Static assets (CSS, images, etc.)
 - **`dist/`** - Production build output
-- **`api-server.ts`** - Minimal API server for transaction status
 - **Legacy files** - Original server-side code preserved for reference
 
 ## 🔧 Available Scripts
 
-- `npm run dev` - Start development servers (client + API)
-- `npm run dev:client` - Start only the Vite client dev server
-- `npm run dev:api` - Start only the API server
+- `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run legacy:start` - Run original server-side version
@@ -78,11 +75,6 @@ npm run build
 ```
 
 2. **Deploy the `dist/` folder** to your static hosting service (Netlify, Vercel, GitHub Pages, etc.)
-
-3. **Deploy the API server** (optional) for transaction status checking:
-```bash
-# Deploy api-server.ts to a Node.js hosting service
-```
 
 ## 🔐 Environment Configuration
 

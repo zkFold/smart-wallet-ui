@@ -1,9 +1,20 @@
 import { AppView, WalletState } from '../types'
 import { EventEmitter } from '../utils/EventEmitter'
 import { formatBalance } from '../utils/helpers'
+import { BackendService } from '../services/BackendService'
 
 export class Router extends EventEmitter {
   private currentViewData: any = null
+  private backendService?: BackendService
+
+  constructor(backendService?: BackendService) {
+    super()
+    this.backendService = backendService
+  }
+
+  public setBackendService(backendService: BackendService): void {
+    this.backendService = backendService
+  }
 
   public navigate(view: AppView, data?: any): void {
     this.currentViewData = data
@@ -194,50 +205,57 @@ export class Router extends EventEmitter {
     return container
   }
 
-  private addTransactionStatusScript(container: HTMLElement, txId: string, recipient: string): void {
-    // Create and inject the status checking script
-    const script = document.createElement('script')
-    script.textContent = `
-      (async function checkStatus() {
-        const sleep = (delay) => new Promise((resolve) => setTimeout(resolve, delay));
-        const txId = "${txId}";
-        const recipient = "${recipient}";
-        const url = \`/tx_status?txId=\${txId}&recipient=\${recipient}\`;
-        console.log('Checking transaction status:', url);
+  private addTransactionStatusScript(_container: HTMLElement, txId: string, recipient: string): void {
+    // Instead of using a script tag, we'll create a proper async function that uses the BackendService
+    this.startTransactionStatusChecking(txId, recipient)
+  }
 
-        try {
-          let response = await fetch(url).then((resp) => resp.json());
-          while (response.outcome !== "success" && response.outcome !== "failure") {
-            console.log('Transaction status:', response);
-            await sleep(10000);
-            response = await fetch(url).then((resp) => resp.json());
-          }
-          
-          const txStatus = document.getElementById("tx_status");
-          const newTx = document.getElementById("new_tx");
-          const newWallet = document.getElementById("new_wallet");
-          
-          if (response.outcome === "success") {
-            txStatus.innerHTML = "Transaction successful!";
-            newTx.disabled = false;
-            newWallet.disabled = false;
-            newTx.onclick = () => window.location.href = '/wallet';
-            newWallet.onclick = () => window.location.href = '/';
-          } else {
-            txStatus.innerHTML = "Transaction failed: " + (response.reason || "Unknown error");
-            newTx.disabled = false;
-            newWallet.disabled = false;
-            newTx.onclick = () => window.location.href = '/wallet';
-            newWallet.onclick = () => window.location.href = '/';
-          }
-        } catch (error) {
-          console.error('Error checking transaction status:', error);
-          const txStatus = document.getElementById("tx_status");
-          txStatus.innerHTML = "Error checking transaction status";
-        }
-      })();
-    `
+  private async startTransactionStatusChecking(txId: string, recipient: string): Promise<void> {
+    if (!this.backendService) {
+      console.error('BackendService not available for transaction status checking')
+      this.updateTransactionStatus('failure', 'Backend service not configured')
+      return
+    }
+
+    console.log('Starting transaction status checking:', txId, recipient)
     
-    container.appendChild(script)
+    const sleep = (delay: number) => new Promise((resolve) => setTimeout(resolve, delay))
+    
+    try {
+      let response = await this.backendService.checkTransactionStatus(txId, recipient)
+      
+      while (response.outcome !== "success" && response.outcome !== "failure") {
+        console.log('Transaction status:', response)
+        await sleep(10000) // Wait 10 seconds
+        response = await this.backendService.checkTransactionStatus(txId, recipient)
+      }
+      
+      this.updateTransactionStatus(response.outcome, response.reason)
+    } catch (error) {
+      console.error('Error checking transaction status:', error)
+      this.updateTransactionStatus('failure', 'Error checking transaction status')
+    }
+  }
+
+  private updateTransactionStatus(outcome: string, reason?: string): void {
+    const txStatus = document.getElementById("tx_status")
+    const newTx = document.getElementById("new_tx") as HTMLButtonElement
+    const newWallet = document.getElementById("new_wallet") as HTMLButtonElement
+    
+    if (!txStatus || !newTx || !newWallet) return
+    
+    if (outcome === "success") {
+      txStatus.innerHTML = "Transaction successful!"
+      newTx.disabled = false
+      newWallet.disabled = false
+      newTx.onclick = () => window.location.href = '/wallet'
+      newWallet.onclick = () => window.location.href = '/'
+    } else {
+      txStatus.innerHTML = "Transaction failed: " + (reason || "Unknown error")
+      newTx.disabled = false
+      newWallet.disabled = false
+      newTx.onclick = () => window.location.href = '/wallet'
+      newWallet.onclick = () => window.location.href = '/'
+    }
   }
 }

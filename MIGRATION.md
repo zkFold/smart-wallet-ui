@@ -27,12 +27,8 @@ npm install
 
 ### Development
 ```bash
-# Start both client and API server
-npm run dev
-
-# Or start them separately:
-npm run dev:client  # Vite dev server on port 3000
-npm run dev:api     # API server on port 3001 (for transaction status)
+# Start development server
+npm run dev  # Vite dev server on port 3000
 ```
 
 ### Production Build
@@ -86,7 +82,6 @@ smart-wallet-ui/
 │   ├── favicon.ico
 │   └── logo-200x73.png
 ├── dist/                        # Production build output
-├── api-server.ts                # Minimal API for transaction status
 ├── vite.config.ts               # Vite configuration
 ├── tsconfig.json                # TypeScript configuration
 └── package.json                 # Dependencies and scripts
@@ -137,8 +132,7 @@ State is managed client-side using:
 ### For Deployment
 
 1. **Static Hosting**: The app can now be deployed to any static hosting service
-2. **API Endpoint**: The minimal API server (`api-server.ts`) can be deployed separately for transaction status checking
-3. **Environment Variables**: Configure client-side variables for production
+2. **Environment Variables**: Configure client-side variables for production
 
 ## 🧪 Testing the Migration
 
