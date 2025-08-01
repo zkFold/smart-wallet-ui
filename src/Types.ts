@@ -16,10 +16,8 @@ export interface WalletState {
 export interface WalletInfo {
   id: string
   state: WalletState
-  credentials?: {
-    initialiser: any
-    network: string
-  }
+  network?: string
+  credential?: any
 }
 
 export interface MultiWalletStorage {

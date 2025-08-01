@@ -1,7 +1,8 @@
 import { WalletInfo, MultiWalletStorage } from '../Types'
 
 export class StorageManager {
-  private readonly MULTI_WALLET_KEY = 'smart-wallet-multi'
+  private readonly MULTI_WALLET_KEY = 'smart-wallets'
+  private readonly SESSION_KEY = 'smart-wallet-session'
 
   // Multi-wallet support with persistent credentials
   public saveWallet(walletInfo: WalletInfo): void {
@@ -81,7 +82,7 @@ export class StorageManager {
     try {
       const sessionData = this.getSessionData()
       sessionData[key] = data
-      localStorage.setItem('smart-wallet-session', JSON.stringify(sessionData))
+      localStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData))
     } catch (error) {
       console.warn('Failed to save session data:', error)
     }
@@ -89,7 +90,7 @@ export class StorageManager {
 
   public getSessionData(): any {
     try {
-      const stored = localStorage.getItem('smart-wallet-session')
+      const stored = localStorage.getItem(this.SESSION_KEY)
       return stored ? JSON.parse(stored) : {}
     } catch (error) {
       console.warn('Failed to retrieve session data:', error)
@@ -106,7 +107,7 @@ export class StorageManager {
     try {
       const sessionData = this.getSessionData()
       delete sessionData[key]
-      localStorage.setItem('smart-wallet-session', JSON.stringify(sessionData))
+      localStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData))
     } catch (error) {
       console.warn('Failed to remove session item:', error)
     }

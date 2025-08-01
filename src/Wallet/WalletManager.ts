@@ -138,14 +138,12 @@ export class WalletManager extends EventEmitter {
     // Generate unique wallet ID based on address
     const walletId = this.generateWalletId(address)
 
-    // Create wallet info with persistent credentials
+    // Create wallet info with persistent credential
     const walletInfo: WalletInfo = {
       id: walletId,
       state: walletState,
-      credentials: {
-        initialiser,
-        network: network.toLowerCase()
-      }
+      network: network.toLowerCase(),
+      credential: initialiser
     }
 
     // Save wallet to multi-wallet storage
@@ -169,10 +167,10 @@ export class WalletManager extends EventEmitter {
 
     // Restore from multi-wallet storage
     const activeWallet = this.storage.getActiveWallet()
-    if (activeWallet && activeWallet.credentials) {
+    if (activeWallet && activeWallet.credential && activeWallet.network) {
       try {
-        // Recreate wallet instance using stored credentials
-        this.wallet = new Wallet(this.backend, activeWallet.credentials.initialiser, '', activeWallet.credentials.network)
+        // Recreate wallet instance using stored credential
+        this.wallet = new Wallet(this.backend, activeWallet.credential, '', activeWallet.network)
         this.currentWalletId = activeWallet.id
         console.log('Wallet instance restored from persistent storage')
         return
@@ -191,8 +189,8 @@ export class WalletManager extends EventEmitter {
       throw new Error(`Wallet with ID ${walletId} not found`)
     }
 
-    if (!walletInfo.credentials) {
-      throw new Error('Wallet credentials not available')
+    if (!walletInfo.credential || !walletInfo.network) {
+      throw new Error('Wallet credential not available')
     }
 
     try {
@@ -204,7 +202,7 @@ export class WalletManager extends EventEmitter {
       }
 
       // Create wallet instance
-      this.wallet = new Wallet(this.backend, walletInfo.credentials.initialiser, '', walletInfo.credentials.network)
+      this.wallet = new Wallet(this.backend, walletInfo.credential, '', walletInfo.network)
       this.currentWalletId = walletId
       this.storage.setActiveWallet(walletId)
 
