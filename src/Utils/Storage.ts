@@ -116,10 +116,19 @@ export class StorageManager {
   private getMultiWalletStorage(): MultiWalletStorage {
     try {
       const stored = localStorage.getItem(this.MULTI_WALLET_KEY)
-      return stored ? JSON.parse(stored) : { wallets: {} }
+      if (stored) {
+        return JSON.parse(stored)
+      } else {
+        // Initialize empty storage if it doesn't exist
+        const defaultStorage: MultiWalletStorage = { wallets: {} }
+        localStorage.setItem(this.MULTI_WALLET_KEY, JSON.stringify(defaultStorage))
+        return defaultStorage
+      }
     } catch (error) {
       console.warn('Failed to parse multi-wallet storage:', error)
-      return { wallets: {} }
+      const defaultStorage: MultiWalletStorage = { wallets: {} }
+      localStorage.setItem(this.MULTI_WALLET_KEY, JSON.stringify(defaultStorage))
+      return defaultStorage
     }
   }
 }
