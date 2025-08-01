@@ -153,14 +153,12 @@ export class App {
       form.addEventListener('submit', async (e) => {
         e.preventDefault()
         const formData = new FormData(form)
-        const method = formData.get('method') as string
         const network = formData.get('network') as string
-        const data = formData.get('zkfold_method_data') as string
 
         await this.walletManager.initializeWallet({
-          method: method as any,
+          method: 'Google Oauth',
           network: network as any,
-          data
+          data: undefined
         })
       })
     }
@@ -173,13 +171,7 @@ export class App {
       })
     }
 
-    // Handle method change
-    const methodSelect = document.getElementById('method_options')
-    if (methodSelect) {
-      methodSelect.addEventListener('change', () => {
-        this.updateMethodUI()
-      })
-    }
+
   }
 
   private setupWalletHandlers(): void {
@@ -226,42 +218,23 @@ export class App {
     const header = document.getElementById("header")
     const networkSel = document.getElementById("network_selector")
     const networkOpt = document.getElementById("network_option") as HTMLSelectElement
-    const methodSel = document.getElementById("method_selector")
     const button = document.getElementById("show_controls")
 
-    if (header && networkSel && methodSel && button) {
+    if (header && networkSel && button) {
       if (networkSel.hidden) {
         header.innerHTML = "Smart Wallet"
         networkSel.hidden = false
-        methodSel.hidden = false
         button.innerHTML = "Hide advanced controls"
       } else {
         header.innerHTML = "Smart Wallet (Preprod)"
         networkSel.hidden = true
         if (networkOpt) networkOpt.value = "Preprod"
-        methodSel.hidden = true
         button.innerHTML = "Show advanced controls"
       }
-
-      const methodOpts = document.getElementById("method_options") as HTMLSelectElement
-      if (methodOpts) {
-        methodOpts.value = "Google Oauth"
-        this.updateMethodUI()
-      }
     }
   }
 
-  private updateMethodUI(): void {
-    const addressInput = document.getElementById("address_input") as HTMLInputElement
-    const submit = document.getElementById("submit") as HTMLInputElement
 
-    if (addressInput && submit) {
-      // Always hide address input and set Gmail submit text since we only support Google OAuth
-      addressInput.hidden = true
-      addressInput.style.display = 'none'
-      submit.value = "Initialise wallet with Gmail"
-    }
-  }
 
   private updateTypeUI(): void {
     const addressInput = document.getElementById("address_input") as HTMLInputElement

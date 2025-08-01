@@ -27,21 +27,19 @@ export class WalletManager extends EventEmitter {
         ? new Backend(this.config.backendUrl, this.config.backendApiKey)
         : new Backend(this.config.backendUrl)
 
-      switch (walletConfig.method) {
-        case 'Google Oauth':
-          // Generate state for OAuth flow
-          const state = this.generateOAuthState()
-          this.storage.saveSessionData('oauth_state', state)
-          this.storage.saveSessionData('network', walletConfig.network)
-
-          // Redirect to Google OAuth
-          const authUrl = this.googleAuth.getAuthUrl(state)
-          window.location.href = authUrl
-          break
-
-        default:
-          throw new Error(`Unsupported wallet method: ${walletConfig.method}`)
+      // Since we only support Google OAuth, directly handle it
+      if (walletConfig.method !== 'Google Oauth') {
+        throw new Error(`Unsupported wallet method: ${walletConfig.method}`)
       }
+
+      // Generate state for OAuth flow
+      const state = this.generateOAuthState()
+      this.storage.saveSessionData('oauth_state', state)
+      this.storage.saveSessionData('network', walletConfig.network)
+
+      // Redirect to Google OAuth
+      const authUrl = this.googleAuth.getAuthUrl(state)
+      window.location.href = authUrl
     } catch (error) {
       console.error('Failed to initialize wallet:', error)
       this.emit('walletInitializationFailed', error)
