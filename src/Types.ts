@@ -15,14 +15,11 @@ export interface WalletState {
 
 export interface WalletInfo {
   id: string
-  name: string
   state: WalletState
   credentials?: {
     initialiser: any
     network: string
   }
-  createdAt: number
-  lastUsed: number
 }
 
 export interface MultiWalletStorage {

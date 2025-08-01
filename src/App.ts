@@ -82,11 +82,11 @@ export class App {
 
   public async init(): Promise<void> {
     try {
-      // Try to restore wallet state from storage
-      const savedState = this.storage.getWalletState()
-      if (savedState && savedState.isInitialized) {
-        this.walletState = savedState
-        await this.walletManager.restoreWallet(savedState)
+      // Try to restore wallet state from active wallet in storage
+      const activeWallet = this.storage.getActiveWallet()
+      if (activeWallet && activeWallet.state.isInitialized) {
+        this.walletState = activeWallet.state
+        await this.walletManager.restoreWallet(activeWallet.state)
       }
 
       // Handle initial routing

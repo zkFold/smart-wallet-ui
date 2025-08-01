@@ -99,7 +99,6 @@ export class WalletManager extends EventEmitter {
       const network = this.storage.getSessionItem('network')
       await this.completeWalletInitialization(initialiser, network)
 
-      // Clean up OAuth-specific session data
       this.storage.removeSessionItem('oauth_state')
       this.storage.removeSessionItem('network')
 
@@ -136,29 +135,23 @@ export class WalletManager extends EventEmitter {
       method: 'Google Oauth'
     }
 
-    // Generate unique wallet ID
-    const walletId = this.generateWalletId(address, network)
+    // Generate unique wallet ID based on address
+    const walletId = this.generateWalletId(address)
 
     // Create wallet info with persistent credentials
     const walletInfo: WalletInfo = {
       id: walletId,
-      name: `${network} Wallet (${address.slice(0, 8)}...)`,
       state: walletState,
       credentials: {
         initialiser,
         network: network.toLowerCase()
-      },
-      createdAt: Date.now(),
-      lastUsed: Date.now()
+      }
     }
 
     // Save wallet to multi-wallet storage
     this.storage.saveWallet(walletInfo)
     this.storage.setActiveWallet(walletId)
     this.currentWalletId = walletId
-
-    // Also save to legacy single wallet storage for backward compatibility
-    this.storage.saveWalletState(walletState)
 
     // Emit wallet initialized event
     this.emit('walletInitialized', walletState)
@@ -174,7 +167,7 @@ export class WalletManager extends EventEmitter {
       ? new Backend(this.config.backendUrl, this.config.backendApiKey)
       : new Backend(this.config.backendUrl)
 
-    // First try to restore from multi-wallet storage
+    // Restore from multi-wallet storage
     const activeWallet = this.storage.getActiveWallet()
     if (activeWallet && activeWallet.credentials) {
       try {
@@ -185,21 +178,6 @@ export class WalletManager extends EventEmitter {
         return
       } catch (error) {
         console.warn('Failed to restore wallet instance from persistent storage:', error)
-      }
-    }
-
-    // Fallback to legacy session data restoration
-    const walletData = this.storage.getSessionItem('wallet_initializer')
-    if (walletData && walletData.initialiser && walletData.network) {
-      try {
-        // Recreate wallet instance using stored initializer data
-        this.wallet = new Wallet(this.backend, walletData.initialiser, '', walletData.network)
-        console.log('Wallet instance restored from legacy session data')
-        return
-      } catch (error) {
-        console.warn('Failed to restore wallet instance from legacy session data:', error)
-        // Clear invalid session data
-        this.storage.removeSessionItem('wallet_initializer')
       }
     }
 
@@ -230,7 +208,7 @@ export class WalletManager extends EventEmitter {
       this.currentWalletId = walletId
       this.storage.setActiveWallet(walletId)
 
-      console.log(`Switched to wallet: ${walletInfo.name}`)
+      console.log(`Switched to wallet: ${walletInfo.id}`)
       this.emit('walletSwitched', walletInfo.state)
     } catch (error) {
       console.error('Failed to switch wallet:', error)
@@ -262,10 +240,10 @@ export class WalletManager extends EventEmitter {
   public async sendTransaction(request: TransactionRequest): Promise<void> {
     try {
       if (!this.wallet) {
-        // Try to restore wallet if it's not available but we have state
-        const savedState = this.storage.getWalletState()
-        if (savedState && savedState.isInitialized) {
-          await this.restoreWallet(savedState)
+        // Try to restore wallet if it's not available but we have active wallet
+        const activeWallet = this.storage.getActiveWallet()
+        if (activeWallet) {
+          await this.restoreWallet(activeWallet.state)
         }
         
         // If wallet is still not available, throw error
@@ -372,16 +350,8 @@ export class WalletManager extends EventEmitter {
     return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
   }
 
-  private generateWalletId(address: string, network: string): string {
-    // Generate a unique ID based on address and network and timestamp
-    const data = `${address}-${network}-${Date.now()}`
-    // Use a simple approach - create hash from the data string
-    let hash = 0
-    for (let i = 0; i < data.length; i++) {
-      const char = data.charCodeAt(i)
-      hash = ((hash << 5) - hash) + char
-      hash = hash & hash // Convert to 32-bit integer
-    }
-    return Math.abs(hash).toString(16).padStart(8, '0')
+  private generateWalletId(address: string): string {
+    // Use address as wallet ID since it already contains network information
+    return address.slice(0, 16) // First 16 characters of the address
   }
 }
