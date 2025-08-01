@@ -19,26 +19,10 @@ export class Router extends EventEmitter {
   public navigate(view: AppView, data?: any): void {
     this.currentViewData = data
     this.emit('navigate', { view, data })
-
-    // Update browser URL without reload
-    const url = this.getUrlForView(view)
-    window.history.pushState({ view, data }, '', url)
   }
 
   public getViewData(): any {
     return this.currentViewData
-  }
-
-  private getUrlForView(view: AppView): string {
-    switch (view) {
-      case 'wallet':
-        return '/wallet'
-      case 'success':
-      case 'failed':
-        return '/transaction'
-      default:
-        return '/'
-    }
   }
 
   public renderInitView(): HTMLElement {
@@ -186,8 +170,8 @@ export class Router extends EventEmitter {
       <label name="balance_label">
           Reason: ${reason}
       </label>
-      <button onclick="window.location.href='/wallet'">Make another transaction</button>
-      <button onclick="window.location.href='/'">Initialise a new wallet</button>
+      <button id="new_tx" disabled>Make another transaction</button>
+      <button id="new_wallet" disabled>Initialise a new wallet</button>
     `
 
     return container
@@ -236,14 +220,14 @@ export class Router extends EventEmitter {
       txStatus.innerHTML = "Transaction successful!"
       newTx.disabled = false
       newWallet.disabled = false
-      newTx.onclick = () => window.location.href = '/wallet'
-      newWallet.onclick = () => window.location.href = '/'
+      newTx.onclick = () => this.navigate('wallet')
+      newWallet.onclick = () => this.navigate('init')
     } else {
       txStatus.innerHTML = "Transaction failed: " + (reason || "Unknown error")
       newTx.disabled = false
       newWallet.disabled = false
-      newTx.onclick = () => window.location.href = '/wallet'
-      newWallet.onclick = () => window.location.href = '/'
+      newTx.onclick = () => this.navigate('wallet')
+      newWallet.onclick = () => this.navigate('init')
     }
   }
 }

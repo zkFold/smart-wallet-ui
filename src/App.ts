@@ -55,42 +55,26 @@ export class App {
       this.currentView = event.data.view
       this.render()
     })
-
-    // Handle browser back/forward buttons
-    window.addEventListener('popstate', () => {
-      this.handleUrlChange()
-    })
-  }
-
-  private handleUrlChange(): void {
-    const path = window.location.pathname
-    const params = new URLSearchParams(window.location.search)
-
-    // Handle OAuth callback - authorization code flow
-    if (params.has('code')) {
-      this.walletManager.handleOAuthCallback(window.location.search)
-      return
-    }
-
-    // Handle other routes
-    if (path === '/wallet' && this.walletState.isInitialized) {
-      this.router.navigate('wallet')
-    } else {
-      this.router.navigate('init')
-    }
   }
 
   public async init(): Promise<void> {
     try {
+      // Check for OAuth callback first
+      const params = new URLSearchParams(window.location.search)
+      if (params.has('code')) {
+        this.walletManager.handleOAuthCallback(window.location.search)
+        return
+      }
+      
       // Try to restore wallet state from active wallet in storage
       const activeWallet = this.storage.getActiveWallet()
       if (activeWallet && activeWallet.state.isInitialized) {
         this.walletState = activeWallet.state
         await this.walletManager.restoreWallet(activeWallet.state)
+        this.router.navigate('wallet')
+      } else {
+        this.router.navigate('init')
       }
-
-      // Handle initial routing
-      this.handleUrlChange()
 
       // Initial render
       this.render()
@@ -143,6 +127,9 @@ export class App {
         break
       case 'wallet':
         this.setupWalletHandlers()
+        break
+      case 'failed':
+        this.setupFailedHandlers()
         break
     }
   }
@@ -209,6 +196,25 @@ export class App {
     if (typeSelect) {
       typeSelect.addEventListener('change', () => {
         this.updateTypeUI()
+      })
+    }
+  }
+
+  private setupFailedHandlers(): void {
+    const retryBtn = document.getElementById('new_tx')
+    const newWalletBtn = document.getElementById('new_wallet')
+
+    if (retryBtn) {
+      retryBtn.removeAttribute('disabled')
+      retryBtn.addEventListener('click', () => {
+        this.router.navigate('wallet')
+      })
+    }
+
+    if (newWalletBtn) {
+      newWalletBtn.removeAttribute('disabled')
+      newWalletBtn.addEventListener('click', () => {
+        this.router.navigate('init')
       })
     }
   }
