@@ -25,7 +25,3 @@ stack.yaml*
 .DS_Store
 node_modules
 public/css/
-package-lock.json
-
-# Environment variables
-.env
