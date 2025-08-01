@@ -14,7 +14,14 @@ export default defineConfig({
   },
   server: {
     port: 8080,
-    host: true
+    host: true,
+    proxy: {
+      '/v0': {
+        target: 'http://localhost:8082',
+        changeOrigin: true,
+        secure: false
+      }
+    }
   },
   define: {
     global: 'globalThis',

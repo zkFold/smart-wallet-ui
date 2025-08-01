@@ -37,6 +37,7 @@ export type AppView = 'init' | 'wallet' | 'success' | 'failed'
 // Environment configuration
 export interface AppConfig {
   clientId: string
+  clientSecret: string
   websiteUrl: string
   backendUrl: string
   backendApiKey?: string

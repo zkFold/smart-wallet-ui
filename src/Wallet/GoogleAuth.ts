@@ -6,15 +6,15 @@ export class GoogleAuth {
 
   constructor(config: AppConfig) {
     const redirectUrl = `${config.websiteUrl}/oauth2callback`
-    this.googleApi = new GoogleApi(config.clientId, redirectUrl)
+    this.googleApi = new GoogleApi(config.clientId, config.clientSecret, redirectUrl)
   }
 
-  public async getAuthUrl(state: string): Promise<string> {
-    return await this.googleApi.getAuthUrl(state)
+  public getAuthUrl(state: string): string {
+    return this.googleApi.getAuthUrl(state)
   }
 
-  public async getJWT(authorizationCode: string): Promise<string> {
-    const result = await this.googleApi.getJWT(authorizationCode)
+  public async getJWT(code: string): Promise<string> {
+    const result = await this.googleApi.getJWT(code)
     return result || ''  // Handle potential undefined
   }
 }

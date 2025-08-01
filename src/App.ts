@@ -28,6 +28,7 @@ export class App {
   private loadConfig(): AppConfig {
     return {
       clientId: import.meta.env.VITE_CLIENT_ID || '',
+      clientSecret: import.meta.env.VITE_CLIENT_SECRET || '',
       websiteUrl: import.meta.env.VITE_WEBSITE_URL || window.location.origin,
       backendUrl: import.meta.env.VITE_BACKEND_URL || '',
       backendApiKey: import.meta.env.VITE_BACKEND_API_KEY
@@ -64,15 +65,9 @@ export class App {
   private handleUrlChange(): void {
     const path = window.location.pathname
     const params = new URLSearchParams(window.location.search)
-    const fragment = window.location.hash
 
-    // Handle OAuth callback - check for implicit flow (hash) or authorization code (search params)
-    if (fragment && fragment.includes('access_token')) {
-      // Implicit flow - tokens in URL fragment
-      this.walletManager.handleOAuthCallback(fragment)
-      return
-    } else if (params.has('code')) {
-      // Authorization code flow - code in search params (legacy support)
+    // Handle OAuth callback - authorization code flow
+    if (params.has('code')) {
       this.walletManager.handleOAuthCallback(window.location.search)
       return
     }

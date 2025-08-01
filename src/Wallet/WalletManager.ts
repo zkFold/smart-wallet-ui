@@ -48,7 +48,7 @@ export class WalletManager extends EventEmitter {
           this.storage.saveSessionData('network', walletConfig.network)
 
           // Redirect to Google OAuth
-          const authUrl = await this.googleAuth.getAuthUrl(state)
+          const authUrl = this.googleAuth.getAuthUrl(state)
           window.location.href = authUrl
           break
 
@@ -62,9 +62,15 @@ export class WalletManager extends EventEmitter {
     }
   }
 
-  public async handleOAuthCallback(searchParams: string): Promise<void> {
+  public async handleOAuthCallback(callbackData: string): Promise<void> {
     try {
-      const params = new URLSearchParams(searchParams)
+      // Initialize backend (needed for OAuth callback flow)
+      this.backend = this.config.backendApiKey
+        ? new Backend(this.config.backendUrl, this.config.backendApiKey)
+        : new Backend(this.config.backendUrl)
+
+      // Parse URL parameters to get authorization code
+      const params = new URLSearchParams(callbackData)
       const code = params.get('code')
       const state = params.get('state')
       const error = params.get('error')
@@ -82,6 +88,13 @@ export class WalletManager extends EventEmitter {
         throw new Error('Missing authorization code')
       }
 
+      // Get JWT token using authorization code (now async)
+      const jwt = await this.googleAuth.getJWT(code)
+
+      if (!jwt) {
+        throw new Error('Failed to get JWT from authorization code')
+      }
+
       // Generate root key for Google OAuth wallet
       const prvKey = CSL.Bip32PrivateKey
         .generate_ed25519_bip32()
@@ -90,9 +103,6 @@ export class WalletManager extends EventEmitter {
         .derive(harden(0)) // account #0
         .derive(0)
         .derive(0)
-
-      // Get JWT token
-      const jwt = await this.googleAuth.getJWT(code)
 
       const initialiser = {
         method: WalletType.Google,
