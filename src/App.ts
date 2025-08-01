@@ -252,18 +252,14 @@ export class App {
   }
 
   private updateMethodUI(): void {
-    const methodOpts = document.getElementById("method_options") as HTMLSelectElement
     const addressInput = document.getElementById("address_input") as HTMLInputElement
     const submit = document.getElementById("submit") as HTMLInputElement
 
-    if (methodOpts && addressInput && submit) {
-      if (methodOpts.value === "Google Oauth") {
-        addressInput.hidden = true
-        submit.value = "Initialise wallet with Gmail"
-      } else {
-        addressInput.hidden = false
-        submit.value = "Initialise wallet with seedphrase"
-      }
+    if (addressInput && submit) {
+      // Always hide address input and set Gmail submit text since we only support Google OAuth
+      addressInput.hidden = true
+      addressInput.style.display = 'none'
+      submit.value = "Initialise wallet with Gmail"
     }
   }
 

@@ -27,20 +27,7 @@ export class WalletManager extends EventEmitter {
         ? new Backend(this.config.backendUrl, this.config.backendApiKey)
         : new Backend(this.config.backendUrl)
 
-      let initialiser: any
-
       switch (walletConfig.method) {
-        case 'Mnemonic':
-          if (!walletConfig.data) {
-            throw new Error('Mnemonic is required')
-          }
-          initialiser = {
-            method: WalletType.Mnemonic,
-            data: walletConfig.data
-          }
-          await this.completeWalletInitialization(initialiser, walletConfig.network)
-          break
-
         case 'Google Oauth':
           // Generate state for OAuth flow
           const state = this.generateOAuthState()
@@ -147,7 +134,7 @@ export class WalletManager extends EventEmitter {
       address,
       balance,
       network: network as any,
-      method: initialiser.method === WalletType.Mnemonic ? 'Mnemonic' : 'Google Oauth'
+      method: 'Google Oauth'
     }
 
     // Save state to storage
@@ -220,7 +207,7 @@ export class WalletManager extends EventEmitter {
       let recipient: SmartTxRecipient
       switch (request.recipientType) {
         case 'Bech32':
-          recipient = new SmartTxRecipient(WalletType.Mnemonic, request.recipient, assetDict)
+          recipient = new SmartTxRecipient(WalletType.Google, request.recipient, assetDict)
           break
         case 'Gmail':
           recipient = new SmartTxRecipient(WalletType.Google, request.recipient, assetDict)

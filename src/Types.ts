@@ -29,7 +29,7 @@ export interface TransactionResult {
   recipient: string
 }
 
-export type WalletMethod = 'Mnemonic' | 'Google Oauth'
+export type WalletMethod = 'Google Oauth'
 export type Network = 'Preview' | 'Preprod' | 'Mainnet'
 export type RecipientType = 'Bech32' | 'Gmail'
 export type AppView = 'init' | 'wallet' | 'success' | 'failed'

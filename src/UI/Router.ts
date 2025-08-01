@@ -63,15 +63,15 @@ export class Router extends EventEmitter {
           <label id="method_selector" hidden>
             Method 
             <select name="method" aria-label="Select creation method" id="method_options" required>
-              <option>Mnemonic</option>
               <option selected="selected">Google Oauth</option>
             </select>
           </label>
           <input
             name="zkfold_method_data" 
             id="address_input" 
-            placeholder="Mnemonic" 
+            placeholder="Google OAuth data" 
             hidden 
+            style="display: none;"
             autocomplete="off"
           />
         </fieldset>
