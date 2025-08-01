@@ -113,7 +113,7 @@ export class WalletManager extends EventEmitter {
       const network = this.storage.getSessionItem('network')
       await this.completeWalletInitialization(initialiser, network)
 
-      // Clean up session data
+      // Clean up OAuth-specific session data (but keep wallet_initializer)
       this.storage.removeSessionItem('oauth_state')
       this.storage.removeSessionItem('network')
 
@@ -153,14 +153,18 @@ export class WalletManager extends EventEmitter {
     // Save state to storage
     this.storage.saveWalletState(walletState)
 
+    // Store wallet initialization data in session storage for restoration
+    // This is cleared when the browser session ends, providing reasonable security
+    this.storage.saveSessionData('wallet_initializer', {
+      initialiser,
+      network: network.toLowerCase()
+    })
+
     // Emit wallet initialized event
     this.emit('walletInitialized', walletState)
   }
 
   public async restoreWallet(walletState: WalletState): Promise<void> {
-    // For now, we can't fully restore the wallet without the original initializer
-    // This would require storing encrypted wallet data
-    // For the MVP, we'll just validate that we have the required data
     if (!walletState.isInitialized || !walletState.address) {
       throw new Error('Invalid wallet state')
     }
@@ -170,15 +174,40 @@ export class WalletManager extends EventEmitter {
       ? new Backend(this.config.backendUrl, this.config.backendApiKey)
       : new Backend(this.config.backendUrl)
 
-    // For now, we'll need the user to re-initialize if they refresh the page
-    // In a production app, we'd store encrypted wallet data or use session tokens
-    console.log('Wallet state loaded from storage:', walletState)
+    // Try to restore wallet instance from session data
+    const walletData = this.storage.getSessionItem('wallet_initializer')
+    if (walletData && walletData.initialiser && walletData.network) {
+      try {
+        // Recreate wallet instance using stored initializer data
+        this.wallet = new Wallet(this.backend, walletData.initialiser, '', walletData.network)
+        console.log('Wallet instance restored from session data')
+        return
+      } catch (error) {
+        console.warn('Failed to restore wallet instance:', error)
+        // Clear invalid session data
+        this.storage.removeSessionItem('wallet_initializer')
+      }
+    }
+
+    // If we can't restore the wallet instance, the user will need to re-initialize
+    // This happens when the session data is not available (e.g., after page refresh
+    // or when JWT tokens have expired)
+    console.log('Wallet state loaded but instance could not be restored. Re-initialization required.')
   }
 
   public async sendTransaction(request: TransactionRequest): Promise<void> {
     try {
       if (!this.wallet) {
-        throw new Error('Wallet not initialized')
+        // Try to restore wallet if it's not available but we have state
+        const savedState = this.storage.getWalletState()
+        if (savedState && savedState.isInitialized) {
+          await this.restoreWallet(savedState)
+        }
+        
+        // If wallet is still not available, throw error
+        if (!this.wallet) {
+          throw new Error('Wallet not initialized')
+        }
       }
 
       console.log(`Sending ${request.amount} ${request.asset} to ${request.recipient} using ${request.recipientType}`)
@@ -260,6 +289,17 @@ export class WalletManager extends EventEmitter {
       throw new Error('Wallet not initialized')
     }
     return await this.wallet.getAddress().then((x: any) => x.to_bech32())
+  }
+
+  public isWalletReady(): boolean {
+    return this.wallet !== null
+  }
+
+  public clearWallet(): void {
+    this.wallet = null
+    this.backend = null
+    this.storage.clearWalletState()
+    this.storage.removeSessionItem('wallet_initializer')
   }
 
   private generateOAuthState(): string {
