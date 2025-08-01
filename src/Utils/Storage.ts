@@ -1,9 +1,11 @@
-import { WalletState } from '../Types'
+import { WalletState, WalletInfo, MultiWalletStorage } from '../Types'
 
 export class StorageManager {
   private readonly WALLET_STATE_KEY = 'smart-wallet-state'
+  private readonly MULTI_WALLET_KEY = 'smart-wallet-multi'
   private readonly SESSION_KEY = 'smart-wallet-session'
 
+  // Legacy single wallet support - keep for backward compatibility
   public saveWalletState(state: WalletState): void {
     try {
       localStorage.setItem(this.WALLET_STATE_KEY, JSON.stringify(state))
@@ -22,15 +24,94 @@ export class StorageManager {
     }
   }
 
+  // New multi-wallet support with persistent credentials
+  public saveWallet(walletInfo: WalletInfo): void {
+    try {
+      const multiWallet = this.getMultiWalletStorage()
+      multiWallet.wallets[walletInfo.id] = walletInfo
+      localStorage.setItem(this.MULTI_WALLET_KEY, JSON.stringify(multiWallet))
+    } catch (error) {
+      console.warn('Failed to save wallet to localStorage:', error)
+    }
+  }
+
+  public getWallet(walletId: string): WalletInfo | null {
+    try {
+      const multiWallet = this.getMultiWalletStorage()
+      return multiWallet.wallets[walletId] || null
+    } catch (error) {
+      console.warn('Failed to retrieve wallet from localStorage:', error)
+      return null
+    }
+  }
+
+  public getAllWallets(): WalletInfo[] {
+    try {
+      const multiWallet = this.getMultiWalletStorage()
+      return Object.values(multiWallet.wallets)
+    } catch (error) {
+      console.warn('Failed to retrieve wallets from localStorage:', error)
+      return []
+    }
+  }
+
+  public removeWallet(walletId: string): void {
+    try {
+      const multiWallet = this.getMultiWalletStorage()
+      delete multiWallet.wallets[walletId]
+      if (multiWallet.activeWalletId === walletId) {
+        multiWallet.activeWalletId = undefined
+      }
+      localStorage.setItem(this.MULTI_WALLET_KEY, JSON.stringify(multiWallet))
+    } catch (error) {
+      console.warn('Failed to remove wallet from localStorage:', error)
+    }
+  }
+
+  public setActiveWallet(walletId: string): void {
+    try {
+      const multiWallet = this.getMultiWalletStorage()
+      if (multiWallet.wallets[walletId]) {
+        multiWallet.activeWalletId = walletId
+        multiWallet.wallets[walletId].lastUsed = Date.now()
+        localStorage.setItem(this.MULTI_WALLET_KEY, JSON.stringify(multiWallet))
+      }
+    } catch (error) {
+      console.warn('Failed to set active wallet:', error)
+    }
+  }
+
+  public getActiveWallet(): WalletInfo | null {
+    try {
+      const multiWallet = this.getMultiWalletStorage()
+      return multiWallet.activeWalletId ? multiWallet.wallets[multiWallet.activeWalletId] || null : null
+    } catch (error) {
+      console.warn('Failed to get active wallet:', error)
+      return null
+    }
+  }
+
+  private getMultiWalletStorage(): MultiWalletStorage {
+    try {
+      const stored = localStorage.getItem(this.MULTI_WALLET_KEY)
+      return stored ? JSON.parse(stored) : { wallets: {} }
+    } catch (error) {
+      console.warn('Failed to parse multi-wallet storage:', error)
+      return { wallets: {} }
+    }
+  }
+
   public clearWalletState(): void {
     try {
       localStorage.removeItem(this.WALLET_STATE_KEY)
+      localStorage.removeItem(this.MULTI_WALLET_KEY)
       localStorage.removeItem(this.SESSION_KEY)
     } catch (error) {
       console.warn('Failed to clear wallet state from localStorage:', error)
     }
   }
 
+  // Session data methods - now using localStorage for persistence
   public saveSessionData(key: string, data: any): void {
     try {
       const sessionData = this.getSessionData()

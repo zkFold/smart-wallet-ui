@@ -1,6 +1,6 @@
 import { Wallet, WalletType, SmartTxRecipient, Backend, BigIntWrap } from 'zkfold-smart-wallet-api'
 import * as CSL from '@emurgo/cardano-serialization-lib-browser'
-import { AppConfig, WalletConfig, WalletState, TransactionRequest, TransactionResult } from '../Types'
+import { AppConfig, WalletConfig, WalletState, WalletInfo, TransactionRequest, TransactionResult } from '../Types'
 import { StorageManager } from '../Utils/Storage'
 import { EventEmitter } from '../Utils/EventEmitter'
 import { GoogleAuth } from './GoogleAuth'
@@ -12,6 +12,7 @@ export class WalletManager extends EventEmitter {
   private googleAuth: GoogleAuth
   private wallet: Wallet | null = null
   private backend: Backend | null = null
+  private currentWalletId: string | null = null
 
   constructor(config: AppConfig, storage: StorageManager) {
     super()
@@ -98,7 +99,7 @@ export class WalletManager extends EventEmitter {
       const network = this.storage.getSessionItem('network')
       await this.completeWalletInitialization(initialiser, network)
 
-      // Clean up OAuth-specific session data (but keep wallet_initializer)
+      // Clean up OAuth-specific session data
       this.storage.removeSessionItem('oauth_state')
       this.storage.removeSessionItem('network')
 
@@ -135,15 +136,29 @@ export class WalletManager extends EventEmitter {
       method: 'Google Oauth'
     }
 
-    // Save state to storage
-    this.storage.saveWalletState(walletState)
+    // Generate unique wallet ID
+    const walletId = this.generateWalletId(address, network)
 
-    // Store wallet initialization data in session storage for restoration
-    // This is cleared when the browser session ends, providing reasonable security
-    this.storage.saveSessionData('wallet_initializer', {
-      initialiser,
-      network: network.toLowerCase()
-    })
+    // Create wallet info with persistent credentials
+    const walletInfo: WalletInfo = {
+      id: walletId,
+      name: `${network} Wallet (${address.slice(0, 8)}...)`,
+      state: walletState,
+      credentials: {
+        initialiser,
+        network: network.toLowerCase()
+      },
+      createdAt: Date.now(),
+      lastUsed: Date.now()
+    }
+
+    // Save wallet to multi-wallet storage
+    this.storage.saveWallet(walletInfo)
+    this.storage.setActiveWallet(walletId)
+    this.currentWalletId = walletId
+
+    // Also save to legacy single wallet storage for backward compatibility
+    this.storage.saveWalletState(walletState)
 
     // Emit wallet initialized event
     this.emit('walletInitialized', walletState)
@@ -159,25 +174,89 @@ export class WalletManager extends EventEmitter {
       ? new Backend(this.config.backendUrl, this.config.backendApiKey)
       : new Backend(this.config.backendUrl)
 
-    // Try to restore wallet instance from session data
+    // First try to restore from multi-wallet storage
+    const activeWallet = this.storage.getActiveWallet()
+    if (activeWallet && activeWallet.credentials) {
+      try {
+        // Recreate wallet instance using stored credentials
+        this.wallet = new Wallet(this.backend, activeWallet.credentials.initialiser, '', activeWallet.credentials.network)
+        this.currentWalletId = activeWallet.id
+        console.log('Wallet instance restored from persistent storage')
+        return
+      } catch (error) {
+        console.warn('Failed to restore wallet instance from persistent storage:', error)
+      }
+    }
+
+    // Fallback to legacy session data restoration
     const walletData = this.storage.getSessionItem('wallet_initializer')
     if (walletData && walletData.initialiser && walletData.network) {
       try {
         // Recreate wallet instance using stored initializer data
         this.wallet = new Wallet(this.backend, walletData.initialiser, '', walletData.network)
-        console.log('Wallet instance restored from session data')
+        console.log('Wallet instance restored from legacy session data')
         return
       } catch (error) {
-        console.warn('Failed to restore wallet instance:', error)
+        console.warn('Failed to restore wallet instance from legacy session data:', error)
         // Clear invalid session data
         this.storage.removeSessionItem('wallet_initializer')
       }
     }
 
     // If we can't restore the wallet instance, the user will need to re-initialize
-    // This happens when the session data is not available (e.g., after page refresh
-    // or when JWT tokens have expired)
     console.log('Wallet state loaded but instance could not be restored. Re-initialization required.')
+  }
+
+  public async switchToWallet(walletId: string): Promise<void> {
+    const walletInfo = this.storage.getWallet(walletId)
+    if (!walletInfo) {
+      throw new Error(`Wallet with ID ${walletId} not found`)
+    }
+
+    if (!walletInfo.credentials) {
+      throw new Error('Wallet credentials not available')
+    }
+
+    try {
+      // Initialize backend if needed
+      if (!this.backend) {
+        this.backend = this.config.backendApiKey
+          ? new Backend(this.config.backendUrl, this.config.backendApiKey)
+          : new Backend(this.config.backendUrl)
+      }
+
+      // Create wallet instance
+      this.wallet = new Wallet(this.backend, walletInfo.credentials.initialiser, '', walletInfo.credentials.network)
+      this.currentWalletId = walletId
+      this.storage.setActiveWallet(walletId)
+
+      console.log(`Switched to wallet: ${walletInfo.name}`)
+      this.emit('walletSwitched', walletInfo.state)
+    } catch (error) {
+      console.error('Failed to switch wallet:', error)
+      throw error
+    }
+  }
+
+  public getAllWallets(): WalletInfo[] {
+    return this.storage.getAllWallets()
+  }
+
+  public getCurrentWalletId(): string | null {
+    return this.currentWalletId
+  }
+
+  public removeWallet(walletId: string): void {
+    this.storage.removeWallet(walletId)
+    if (this.currentWalletId === walletId) {
+      this.wallet = null
+      this.currentWalletId = null
+      // Switch to another wallet if available
+      const availableWallets = this.getAllWallets()
+      if (availableWallets.length > 0) {
+        this.switchToWallet(availableWallets[0].id)
+      }
+    }
   }
 
   public async sendTransaction(request: TransactionRequest): Promise<void> {
@@ -283,13 +362,26 @@ export class WalletManager extends EventEmitter {
   public clearWallet(): void {
     this.wallet = null
     this.backend = null
+    this.currentWalletId = null
     this.storage.clearWalletState()
-    this.storage.removeSessionItem('wallet_initializer')
   }
 
   private generateOAuthState(): string {
     const array = new Uint8Array(32)
     crypto.getRandomValues(array)
     return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('')
+  }
+
+  private generateWalletId(address: string, network: string): string {
+    // Generate a unique ID based on address and network and timestamp
+    const data = `${address}-${network}-${Date.now()}`
+    // Use a simple approach - create hash from the data string
+    let hash = 0
+    for (let i = 0; i < data.length; i++) {
+      const char = data.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(16).padStart(8, '0')
   }
 }

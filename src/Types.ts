@@ -13,6 +13,23 @@ export interface WalletState {
   method?: WalletMethod
 }
 
+export interface WalletInfo {
+  id: string
+  name: string
+  state: WalletState
+  credentials?: {
+    initialiser: any
+    network: string
+  }
+  createdAt: number
+  lastUsed: number
+}
+
+export interface MultiWalletStorage {
+  wallets: { [id: string]: WalletInfo }
+  activeWalletId?: string
+}
+
 export interface WalletBalance {
   [asset: string]: any  // Changed from bigint to any to handle BigIntWrap
 }
