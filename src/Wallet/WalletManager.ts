@@ -102,6 +102,9 @@ export class WalletManager extends EventEmitter {
       this.storage.removeSessionItem('oauth_state')
       this.storage.removeSessionItem('network')
 
+      // Redirect to root address after successful OAuth callback
+      window.history.replaceState({}, '', '/')
+
     } catch (error) {
       console.error('OAuth callback failed:', error)
       this.emit('walletInitializationFailed', error)
