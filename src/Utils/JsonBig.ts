@@ -3,7 +3,7 @@
  * Adapted from the Backend class serialize method from zkfold-smart-wallet-api
  */
 
-const JSONbig = require('json-bigint')
+import JSONbig from 'json-bigint'
 
 // Configure JSONbig to handle BigInt values properly
 const JSONbigConfig = JSONbig({
