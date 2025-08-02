@@ -1,4 +1,5 @@
 import { WalletInfo, MultiWalletStorage } from '../Types'
+import { serialize, deserialize } from './JsonBig'
 
 export class StorageManager {
   private readonly MULTI_WALLET_KEY = 'smart-wallets'
@@ -9,7 +10,7 @@ export class StorageManager {
     try {
       const multiWallet = this.getMultiWalletStorage()
       multiWallet.wallets[walletInfo.id] = walletInfo
-      localStorage.setItem(this.MULTI_WALLET_KEY, JSON.stringify(multiWallet))
+      localStorage.setItem(this.MULTI_WALLET_KEY, serialize(multiWallet))
     } catch (error) {
       console.warn('Failed to save wallet to localStorage:', error)
     }
@@ -42,7 +43,7 @@ export class StorageManager {
       if (multiWallet.activeWalletId === walletId) {
         multiWallet.activeWalletId = undefined
       }
-      localStorage.setItem(this.MULTI_WALLET_KEY, JSON.stringify(multiWallet))
+      localStorage.setItem(this.MULTI_WALLET_KEY, serialize(multiWallet))
     } catch (error) {
       console.warn('Failed to remove wallet from localStorage:', error)
     }
@@ -53,7 +54,7 @@ export class StorageManager {
       const multiWallet = this.getMultiWalletStorage()
       if (multiWallet.wallets[walletId]) {
         multiWallet.activeWalletId = walletId
-        localStorage.setItem(this.MULTI_WALLET_KEY, JSON.stringify(multiWallet))
+        localStorage.setItem(this.MULTI_WALLET_KEY, serialize(multiWallet))
       }
     } catch (error) {
       console.warn('Failed to set active wallet:', error)
@@ -82,7 +83,7 @@ export class StorageManager {
     try {
       const sessionData = this.getSessionData()
       sessionData[key] = data
-      sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData))
+      sessionStorage.setItem(this.SESSION_KEY, serialize(sessionData))
     } catch (error) {
       console.warn('Failed to save session data:', error)
     }
@@ -91,7 +92,7 @@ export class StorageManager {
   public getSessionData(): any {
     try {
       const stored = sessionStorage.getItem(this.SESSION_KEY)
-      return stored ? JSON.parse(stored) : {}
+      return stored ? deserialize(stored) : {}
     } catch (error) {
       console.warn('Failed to retrieve session data:', error)
       return {}
@@ -107,7 +108,7 @@ export class StorageManager {
     try {
       const sessionData = this.getSessionData()
       delete sessionData[key]
-      sessionStorage.setItem(this.SESSION_KEY, JSON.stringify(sessionData))
+      sessionStorage.setItem(this.SESSION_KEY, serialize(sessionData))
     } catch (error) {
       console.warn('Failed to remove session item:', error)
     }
@@ -117,17 +118,17 @@ export class StorageManager {
     try {
       const stored = localStorage.getItem(this.MULTI_WALLET_KEY)
       if (stored) {
-        return JSON.parse(stored)
+        return deserialize(stored)
       } else {
         // Initialize empty storage if it doesn't exist
         const defaultStorage: MultiWalletStorage = { wallets: {} }
-        localStorage.setItem(this.MULTI_WALLET_KEY, JSON.stringify(defaultStorage))
+        localStorage.setItem(this.MULTI_WALLET_KEY, serialize(defaultStorage))
         return defaultStorage
       }
     } catch (error) {
       console.warn('Failed to parse multi-wallet storage:', error)
       const defaultStorage: MultiWalletStorage = { wallets: {} }
-      localStorage.setItem(this.MULTI_WALLET_KEY, JSON.stringify(defaultStorage))
+      localStorage.setItem(this.MULTI_WALLET_KEY, serialize(defaultStorage))
       return defaultStorage
     }
   }
