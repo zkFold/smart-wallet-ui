@@ -62,15 +62,15 @@ export class App {
       // Check for OAuth callback first
       const params = new URLSearchParams(window.location.search)
       if (params.has('code')) {
-        this.walletManager.handleOAuthCallback(window.location.search)
+        await this.walletManager.handleOAuthCallback(window.location.search)
         return
       }
-
-      // Try to restore wallet state from storage
-      const savedState = this.storage.getWalletState()
-      if (savedState && savedState.isInitialized) {
-        this.walletState = savedState
-        await this.walletManager.restoreWallet(savedState)
+      
+      // Try to restore wallet state from active wallet in storage
+      const activeWallet = this.storage.getActiveWallet()
+      if (activeWallet && activeWallet.state.isInitialized) {
+        this.walletState = activeWallet.state
+        await this.walletManager.restoreWallet(activeWallet.state)
         this.router.navigate('wallet')
       } else {
         this.router.navigate('init')
