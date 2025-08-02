@@ -1,7 +1,13 @@
 export function formatBalance(balance: { [asset: string]: bigint }): string {
   let assets = ""
   for (const [key, value] of Object.entries(balance)) {
-    assets += `<li><b>${value}</b> <i>${key}</i></li>`
+    if (key === 'lovelace') {
+      // Convert lovelaces to ADA (1 ADA = 1,000,000 lovelaces)
+      const adaValue = Number(value) / 1_000_000
+      assets += `<li><b>${adaValue.toFixed(6)}</b> <i>ada</i></li>`
+    } else {
+      assets += `<li><b>${value}</b> <i>${key}</i></li>`
+    }
   }
   if (assets === "") {
     assets = "<li>No assets available</li>"
@@ -48,4 +54,24 @@ export function validateBech32Address(address: string): boolean {
 
 export function sanitizeInput(input: string): string {
   return input.trim().replace(/[<>\"'&]/g, '')
+}
+
+export function decodeJWT(token: string): any {
+  try {
+    // JWT has 3 parts separated by dots: header.payload.signature
+    const parts = token.split('.')
+    if (parts.length !== 3) {
+      throw new Error('Invalid JWT format')
+    }
+    
+    // Decode the payload (second part)
+    const payload = parts[1]
+    // Add padding if needed for base64 decoding
+    const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4)
+    const decoded = atob(paddedPayload.replace(/-/g, '+').replace(/_/g, '/'))
+    return JSON.parse(decoded)
+  } catch (error) {
+    console.error('Failed to decode JWT:', error)
+    return null
+  }
 }

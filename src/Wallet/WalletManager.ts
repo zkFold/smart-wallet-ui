@@ -4,7 +4,7 @@ import { AppConfig, WalletConfig, WalletState, WalletInfo, TransactionRequest, T
 import { StorageManager } from '../Utils/Storage'
 import { EventEmitter } from '../Utils/EventEmitter'
 import { GoogleAuth } from './GoogleAuth'
-import { harden } from '../Utils/Helpers'
+import { harden, decodeJWT } from '../Utils/Helpers'
 
 export class WalletManager extends EventEmitter {
   private config: AppConfig
@@ -129,13 +129,23 @@ export class WalletManager extends EventEmitter {
     console.log(`Initialized a ${network} wallet with address ${address}`)
     console.log('Balance:', balance)
 
+    // Extract email from JWT token
+    let userEmail: string | undefined
+    if (initialiser.data) {
+      const jwtPayload = decodeJWT(initialiser.data)
+      if (jwtPayload && jwtPayload.email) {
+        userEmail = jwtPayload.email
+      }
+    }
+
     // Create wallet state
     const walletState: WalletState = {
       isInitialized: true,
       address,
       balance,
       network: network as any,
-      method: 'Google Oauth'
+      method: 'Google Oauth',
+      userEmail
     }
 
     // Generate unique wallet ID based on address
@@ -343,6 +353,17 @@ export class WalletManager extends EventEmitter {
     this.backend = null
     this.currentWalletId = null
     this.storage.clearWalletState()
+  }
+
+  public logout(): void {
+    // Clear the current session without deleting wallet data from localStorage
+    this.wallet = null
+    this.backend = null
+    this.currentWalletId = null
+    // Clear any session data
+    sessionStorage.clear()
+    // Emit logout event
+    this.emit('walletLoggedOut', {})
   }
 
   private generateOAuthState(): string {
