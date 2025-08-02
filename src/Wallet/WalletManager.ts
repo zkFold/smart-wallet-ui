@@ -149,19 +149,10 @@ export class WalletManager extends EventEmitter {
       credential: initialiser
     }
 
-    console.log('Created walletInfo:', {
-      id: walletInfo.id,
-      hasState: !!walletInfo.state,
-      network: walletInfo.network,
-      hasCredential: !!walletInfo.credential
-    })
-
     // Save wallet to multi-wallet storage
     this.storage.saveWallet(walletInfo)
     this.storage.setActiveWallet(walletId)
     this.currentWalletId = walletId
-
-    console.log('Wallet saved and set as active, currentWalletId:', this.currentWalletId)
 
     // Emit wallet initialized event
     this.emit('walletInitialized', walletState)
