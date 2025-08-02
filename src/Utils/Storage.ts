@@ -7,9 +7,16 @@ export class StorageManager {
   // Multi-wallet support with persistent credentials
   public saveWallet(walletInfo: WalletInfo): void {
     try {
+      console.log('Saving wallet with ID:', walletInfo.id)
       const multiWallet = this.getMultiWalletStorage()
+      console.log('Current storage before save:', multiWallet)
       multiWallet.wallets[walletInfo.id] = walletInfo
+      console.log('Storage after adding wallet:', multiWallet)
       localStorage.setItem(this.MULTI_WALLET_KEY, JSON.stringify(multiWallet))
+      
+      // Verify the save worked
+      const verification = localStorage.getItem(this.MULTI_WALLET_KEY)
+      console.log('Verification read from localStorage:', verification ? JSON.parse(verification) : null)
     } catch (error) {
       console.warn('Failed to save wallet to localStorage:', error)
     }
@@ -50,10 +57,15 @@ export class StorageManager {
 
   public setActiveWallet(walletId: string): void {
     try {
+      console.log('Setting active wallet to:', walletId)
       const multiWallet = this.getMultiWalletStorage()
+      console.log('Available wallets:', Object.keys(multiWallet.wallets))
       if (multiWallet.wallets[walletId]) {
         multiWallet.activeWalletId = walletId
         localStorage.setItem(this.MULTI_WALLET_KEY, JSON.stringify(multiWallet))
+        console.log('Successfully set active wallet to:', walletId)
+      } else {
+        console.warn('Wallet not found when setting active:', walletId)
       }
     } catch (error) {
       console.warn('Failed to set active wallet:', error)
