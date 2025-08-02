@@ -11,6 +11,7 @@ export interface WalletState {
   balance?: WalletBalance
   network?: Network
   method?: WalletMethod
+  userEmail?: string
 }
 
 export interface WalletInfo {

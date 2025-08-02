@@ -50,6 +50,10 @@ export class App {
       this.router.navigate('failed', { reason: event.data.message })
     })
 
+    this.walletManager.on('walletLoggedOut', () => {
+      this.router.navigate('init')
+    })
+
     // Listen for router navigation
     this.router.on('navigate', (event: any) => {
       this.currentView = event.data.view
@@ -198,6 +202,13 @@ export class App {
         this.updateTypeUI()
       })
     }
+
+    const logoutBtn = document.getElementById('logout_button')
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', () => {
+        this.walletManager.logout()
+      })
+    }
   }
 
   private setupFailedHandlers(): void {
@@ -228,11 +239,11 @@ export class App {
 
     if (header && networkSel && button) {
       if (networkSel.hidden) {
-        header.innerHTML = "Smart Wallet"
+        header.innerHTML = "zkFold Smart Wallet"
         networkSel.hidden = false
         button.innerHTML = "Hide advanced controls"
       } else {
-        header.innerHTML = "Smart Wallet (Preprod)"
+        header.innerHTML = "zkFold Smart Wallet (Preprod)"
         networkSel.hidden = true
         if (networkOpt) networkOpt.value = "Preprod"
         button.innerHTML = "Show advanced controls"

@@ -34,7 +34,7 @@ export class Router extends EventEmitter {
         <img src="logo-200x73.png" style="width:250px;height:100px;">
       </a>
       <br><br>
-      <h1 id="header">Smart Wallet (Preprod)</h1>
+      <h1 id="header">zkFold Smart Wallet</h1>
       <form action="#" method="POST">
         <fieldset>
           <label id="network_selector" hidden>
@@ -65,13 +65,18 @@ export class Router extends EventEmitter {
 
     const balanceHtml = walletState.balance ? formatBalance(walletState.balance) : '<li>Loading...</li>'
     const address = walletState.address || 'Loading...'
+    const userEmail = walletState.userEmail || 'Unknown'
 
     container.innerHTML = `
       <a href="https://zkfold.io">
         <img src="logo-200x73.png" style="width:250px;height:100px;">
       </a>
       <br><br>
-      <h1>Perform a transaction</h1>
+      <h1>zkFold Smart Wallet</h1>
+      <label name="user_email">
+          User: <strong>${userEmail}</strong>
+      </label>
+      <br><br>
       <label name="balance_label">
           Wallet balance: 
           <ul>
@@ -123,6 +128,7 @@ export class Router extends EventEmitter {
       </label>
       <button class="outline secondary" id="show_address">Show address</button>
       <button class="outline secondary" id="show_selector">Show all controls</button>
+      <button class="outline" id="logout_button">Log out</button>
     `
 
     return container
