@@ -1,6 +1,6 @@
-import { Wallet, WalletType, SmartTxRecipient, Backend, BigIntWrap } from 'zkfold-smart-wallet-api'
+import { Wallet, WalletType, SmartTxRecipient, Backend, BigIntWrap, Network } from 'zkfold-smart-wallet-api'
 import * as CSL from '@emurgo/cardano-serialization-lib-browser'
-import { AppConfig, WalletState, WalletInfo, TransactionRequest, TransactionResult, Network } from '../Types'
+import { AppConfig, WalletState, WalletInfo, TransactionRequest, TransactionResult } from '../Types'
 import { StorageManager } from '../Utils/Storage'
 import { EventEmitter } from '../Utils/EventEmitter'
 import { GoogleAuth } from './GoogleAuth'
@@ -115,7 +115,7 @@ export class WalletManager extends EventEmitter {
     }
 
     // Create wallet instance
-    this.wallet = new Wallet(this.backend, initialiser, '', network.toLowerCase())
+    this.wallet = new Wallet(this.backend, initialiser, '', network)
 
     // Get wallet balance and address
     const balance = await this.wallet.getBalance()
@@ -178,7 +178,7 @@ export class WalletManager extends EventEmitter {
     if (activeWallet && activeWallet.credential && activeWallet.network) {
       try {
         // Recreate wallet instance using stored credential
-        this.wallet = new Wallet(this.backend, activeWallet.credential, '', activeWallet.network?.toLowerCase())
+        this.wallet = new Wallet(this.backend, activeWallet.credential, '', activeWallet.network)
         this.currentWalletId = activeWallet.id
         console.log('Wallet instance restored from persistent storage')
         return
@@ -210,7 +210,7 @@ export class WalletManager extends EventEmitter {
       }
 
       // Create wallet instance
-      this.wallet = new Wallet(this.backend, walletInfo.credential, '', walletInfo.network?.toLowerCase())
+      this.wallet = new Wallet(this.backend, walletInfo.credential, '', walletInfo.network)
       this.currentWalletId = walletId
       this.storage.setActiveWallet(walletId)
 

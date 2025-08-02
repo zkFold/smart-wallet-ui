@@ -1,5 +1,5 @@
 import { WalletInfo, MultiWalletStorage } from '../Types'
-import { serialize, deserialize } from './JsonBig'
+import { serialize, deserialize } from 'zkfold-smart-wallet-api'
 
 export class StorageManager {
   private readonly MULTI_WALLET_KEY = 'smart-wallets'

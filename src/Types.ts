@@ -1,3 +1,5 @@
+import { Network } from 'zkfold-smart-wallet-api'
+
 // Application types
 export interface WalletState {
   isInitialized: boolean
@@ -37,7 +39,6 @@ export interface TransactionResult {
 }
 
 export type WalletMethod = 'Google Oauth'
-export type Network = 'Preview' | 'Preprod' | 'Mainnet'
 export type RecipientType = 'Bech32' | 'Gmail'
 export type AppView = 'init' | 'wallet' | 'success' | 'failed'
 
