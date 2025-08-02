@@ -62,7 +62,7 @@ export class App {
       // Check for OAuth callback first
       const params = new URLSearchParams(window.location.search)
       if (params.has('code')) {
-        this.walletManager.handleOAuthCallback(window.location.search)
+        await this.walletManager.handleOAuthCallback(window.location.search)
         return
       }
       
