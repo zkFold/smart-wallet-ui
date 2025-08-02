@@ -1,6 +1,6 @@
 import { Wallet, WalletType, SmartTxRecipient, Backend, BigIntWrap } from 'zkfold-smart-wallet-api'
 import * as CSL from '@emurgo/cardano-serialization-lib-browser'
-import { AppConfig, WalletConfig, WalletState, WalletInfo, TransactionRequest, TransactionResult } from '../Types'
+import { AppConfig, WalletState, WalletInfo, TransactionRequest, TransactionResult, Network } from '../Types'
 import { StorageManager } from '../Utils/Storage'
 import { EventEmitter } from '../Utils/EventEmitter'
 import { GoogleAuth } from './GoogleAuth'
@@ -21,22 +21,17 @@ export class WalletManager extends EventEmitter {
     this.googleAuth = new GoogleAuth(config)
   }
 
-  public async initializeWallet(walletConfig: WalletConfig): Promise<void> {
+  public async initializeWallet(network: Network): Promise<void> {
     try {
       // Initialize backend
       this.backend = this.config.backendApiKey
         ? new Backend(this.config.backendUrl, this.config.backendApiKey)
         : new Backend(this.config.backendUrl)
 
-      // Since we only support Google OAuth, directly handle it
-      if (walletConfig.method !== 'Google Oauth') {
-        throw new Error(`Unsupported wallet method: ${walletConfig.method}`)
-      }
-
       // Generate state for OAuth flow
       const state = this.generateOAuthState()
       this.storage.saveSessionData('oauth_state', state)
-      this.storage.saveSessionData('network', walletConfig.network)
+      this.storage.saveSessionData('network', network)
 
       // Redirect to Google OAuth
       const authUrl = this.googleAuth.getAuthUrl(state)
@@ -114,7 +109,7 @@ export class WalletManager extends EventEmitter {
     }
   }
 
-  private async completeWalletInitialization(initialiser: any, network: string): Promise<void> {
+  private async completeWalletInitialization(initialiser: any, network: Network): Promise<void> {
     if (!this.backend) {
       throw new Error('Backend not initialized')
     }
@@ -155,7 +150,7 @@ export class WalletManager extends EventEmitter {
     const walletInfo: WalletInfo = {
       id: walletId,
       state: walletState,
-      network: network.toLowerCase(),
+      network: network,
       credential: initialiser
     }
 
@@ -183,7 +178,7 @@ export class WalletManager extends EventEmitter {
     if (activeWallet && activeWallet.credential && activeWallet.network) {
       try {
         // Recreate wallet instance using stored credential
-        this.wallet = new Wallet(this.backend, activeWallet.credential, '', activeWallet.network)
+        this.wallet = new Wallet(this.backend, activeWallet.credential, '', activeWallet.network?.toLowerCase())
         this.currentWalletId = activeWallet.id
         console.log('Wallet instance restored from persistent storage')
         return
@@ -215,7 +210,7 @@ export class WalletManager extends EventEmitter {
       }
 
       // Create wallet instance
-      this.wallet = new Wallet(this.backend, walletInfo.credential, '', walletInfo.network)
+      this.wallet = new Wallet(this.backend, walletInfo.credential, '', walletInfo.network?.toLowerCase())
       this.currentWalletId = walletId
       this.storage.setActiveWallet(walletId)
 
@@ -256,7 +251,7 @@ export class WalletManager extends EventEmitter {
         if (activeWallet) {
           await this.restoreWallet(activeWallet.state)
         }
-        
+
         // If wallet is still not available, throw error
         if (!this.wallet) {
           throw new Error('Wallet not initialized')

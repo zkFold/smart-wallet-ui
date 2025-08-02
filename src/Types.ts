@@ -1,10 +1,4 @@
 // Application types
-export interface WalletConfig {
-  method: WalletMethod
-  network: Network
-  data?: string
-}
-
 export interface WalletState {
   isInitialized: boolean
   address?: string
@@ -17,7 +11,7 @@ export interface WalletState {
 export interface WalletInfo {
   id: string
   state: WalletState
-  network?: string
+  network?: Network
   credential?: any
 }
 

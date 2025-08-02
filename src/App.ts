@@ -1,4 +1,4 @@
-import { AppConfig, AppView, WalletState } from './Types'
+import { AppConfig, AppView, Network, WalletState } from './Types'
 import { WalletManager } from './Wallet/WalletManager'
 import { Router } from './UI/Router'
 import { StorageManager } from './Utils/Storage'
@@ -69,7 +69,7 @@ export class App {
         await this.walletManager.handleOAuthCallback(window.location.search)
         return
       }
-      
+
       // Try to restore wallet state from active wallet in storage
       const activeWallet = this.storage.getActiveWallet()
       if (activeWallet && activeWallet.state.isInitialized) {
@@ -144,13 +144,9 @@ export class App {
       form.addEventListener('submit', async (e) => {
         e.preventDefault()
         const formData = new FormData(form)
-        const network = formData.get('network') as string
+        const network = formData.get('network') as Network
 
-        await this.walletManager.initializeWallet({
-          method: 'Google Oauth',
-          network: network as any,
-          data: undefined
-        })
+        await this.walletManager.initializeWallet(network)
       })
     }
 
