@@ -143,8 +143,8 @@ export class Router extends EventEmitter {
     const isProofComputing = data?.isProofComputing || false
 
     // Determine the initial message based on proof computation state
-    const initialMessage = isProofComputing 
-      ? 'Computing zero-knowledge proof...'
+    const initialMessage = isProofComputing
+      ? 'Computing zero-knowledge proof. It will take approximately 5 minutes (one time operation).'
       : 'Transaction pending. This page will refresh automatically when transaction succeeds.'
 
     container.innerHTML = `
@@ -248,13 +248,13 @@ export class Router extends EventEmitter {
   public updateProofComputationComplete(txId: string, recipient: string): void {
     const txStatus = document.getElementById("tx_status")
     const txIdLabel = document.querySelector('label[name="txid_label"]')
-    
+
     if (txStatus) {
       txStatus.innerHTML = "Transaction pending. This page will refresh automatically when transaction succeeds."
       // Start transaction status checking now that proof is complete
       this.startTransactionStatusChecking(txId, recipient)
     }
-    
+
     if (txIdLabel) {
       txIdLabel.innerHTML = `Transaction id: ${txId}`
     }
