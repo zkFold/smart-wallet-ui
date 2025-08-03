@@ -247,10 +247,16 @@ export class Router extends EventEmitter {
 
   public updateProofComputationComplete(txId: string, recipient: string): void {
     const txStatus = document.getElementById("tx_status")
+    const txIdLabel = document.querySelector('label[name="txid_label"]')
+    
     if (txStatus) {
       txStatus.innerHTML = "Transaction pending. This page will refresh automatically when transaction succeeds."
       // Start transaction status checking now that proof is complete
       this.startTransactionStatusChecking(txId, recipient)
+    }
+    
+    if (txIdLabel) {
+      txIdLabel.innerHTML = `Transaction id: ${txId}`
     }
   }
 }
