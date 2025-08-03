@@ -276,6 +276,7 @@ export class WalletManager extends EventEmitter {
   public async sendTransaction(request: TransactionRequest): Promise<void> {
     try {
       if (!this.wallet) {
+        console.log('Wallet instance not available, attempting to restore...')
         // Try to restore wallet if it's not available but we have active wallet
         const activeWallet = this.storage.getActiveWallet()
         if (activeWallet) {
@@ -286,6 +287,9 @@ export class WalletManager extends EventEmitter {
         if (!this.wallet) {
           throw new Error('Wallet not initialized')
         }
+        console.log('Wallet instance restored successfully')
+      } else {
+        console.log('Using existing wallet instance (no restoration needed)')
       }
 
       console.log(`Sending ${request.amount} ${request.asset} to ${request.recipient} using ${request.recipientType}`)
@@ -379,8 +383,28 @@ export class WalletManager extends EventEmitter {
   }
 
   public async refreshWalletState(): Promise<WalletState> {
+    // Ensure backend is available
+    if (!this.backend) {
+      this.backend = this.config.backendApiKey
+        ? new Backend(this.config.backendUrl, this.config.backendApiKey)
+        : new Backend(this.config.backendUrl)
+      console.log('Backend instance initialized for refresh')
+    }
+
     if (!this.wallet) {
-      throw new Error('Wallet not initialized')
+      console.log('Wallet instance not available during refresh, attempting to restore...')
+      // Try to restore wallet if it's not available
+      const activeWallet = this.storage.getActiveWallet()
+      if (activeWallet) {
+        await this.restoreWallet(activeWallet.state)
+      }
+      
+      if (!this.wallet) {
+        throw new Error('Wallet not initialized and could not be restored')
+      }
+      console.log('Wallet instance restored for refresh')
+    } else {
+      console.log('Using existing wallet instance for refresh')
     }
 
     // Get fresh balance and address
