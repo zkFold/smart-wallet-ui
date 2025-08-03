@@ -133,34 +133,64 @@ export class WalletManager extends EventEmitter {
       }
     }
 
-    // Create wallet state
-    const walletState: WalletState = {
-      isInitialized: true,
-      address,
-      balance,
-      network: network as any,
-      method: 'Google Oauth',
-      userEmail
+    // Check if a wallet with the same email already exists
+    let existingWallet: WalletInfo | null = null
+    if (userEmail) {
+      existingWallet = this.storage.findWalletByEmail(userEmail)
     }
 
-    // Generate unique wallet ID based on address
-    const walletId = this.generateWalletId(address)
+    if (existingWallet) {
+      // Reuse existing wallet credential to avoid expensive proof recomputation
+      console.log(`Found existing wallet for email ${userEmail}. Reusing existing credential.`)
+      
+      // Update wallet balance and address in case they changed
+      existingWallet.state.balance = balance
+      existingWallet.state.address = address
+      existingWallet.state.isInitialized = true
+      
+      // Save the updated wallet info (without replacing the credential)
+      this.storage.saveWallet(existingWallet)
+      this.storage.setActiveWallet(existingWallet.id)
+      this.currentWalletId = existingWallet.id
+      
+      // Recreate wallet instance with existing credential
+      this.wallet = new Wallet(this.backend!, existingWallet.credential, '', existingWallet.network!)
+      
+      // Emit wallet initialized event with updated state
+      this.emit('walletInitialized', existingWallet.state)
+    } else {
+      // Create new wallet as no existing wallet found for this email
+      console.log(`No existing wallet found for email ${userEmail}. Creating new wallet.`)
+      
+      // Create wallet state
+      const walletState: WalletState = {
+        isInitialized: true,
+        address,
+        balance,
+        network: network as any,
+        method: 'Google Oauth',
+        userEmail
+      }
 
-    // Create wallet info with persistent credential
-    const walletInfo: WalletInfo = {
-      id: walletId,
-      state: walletState,
-      network: network,
-      credential: initialiser
+      // Generate unique wallet ID based on address
+      const walletId = this.generateWalletId(address)
+
+      // Create wallet info with persistent credential
+      const walletInfo: WalletInfo = {
+        id: walletId,
+        state: walletState,
+        network: network,
+        credential: initialiser
+      }
+
+      // Save wallet to multi-wallet storage
+      this.storage.saveWallet(walletInfo)
+      this.storage.setActiveWallet(walletId)
+      this.currentWalletId = walletId
+      
+      // Emit wallet initialized event
+      this.emit('walletInitialized', walletState)
     }
-
-    // Save wallet to multi-wallet storage
-    this.storage.saveWallet(walletInfo)
-    this.storage.setActiveWallet(walletId)
-    this.currentWalletId = walletId
-
-    // Emit wallet initialized event
-    this.emit('walletInitialized', walletState)
   }
 
   public async restoreWallet(walletState: WalletState): Promise<void> {
@@ -246,6 +276,7 @@ export class WalletManager extends EventEmitter {
   public async sendTransaction(request: TransactionRequest): Promise<void> {
     try {
       if (!this.wallet) {
+        console.log('Wallet instance not available, attempting to restore...')
         // Try to restore wallet if it's not available but we have active wallet
         const activeWallet = this.storage.getActiveWallet()
         if (activeWallet) {
@@ -256,6 +287,9 @@ export class WalletManager extends EventEmitter {
         if (!this.wallet) {
           throw new Error('Wallet not initialized')
         }
+        console.log('Wallet instance restored successfully')
+      } else {
+        console.log('Using existing wallet instance (no restoration needed)')
       }
 
       console.log(`Sending ${request.amount} ${request.asset} to ${request.recipient} using ${request.recipientType}`)
@@ -346,6 +380,60 @@ export class WalletManager extends EventEmitter {
       throw new Error('Wallet not initialized')
     }
     return await this.wallet.getAddress().then((x: any) => x.to_bech32())
+  }
+
+  public async refreshWalletState(): Promise<WalletState> {
+    // Ensure backend is available
+    if (!this.backend) {
+      this.backend = this.config.backendApiKey
+        ? new Backend(this.config.backendUrl, this.config.backendApiKey)
+        : new Backend(this.config.backendUrl)
+      console.log('Backend instance initialized for refresh')
+    }
+
+    if (!this.wallet) {
+      console.log('Wallet instance not available during refresh, attempting to restore...')
+      // Try to restore wallet if it's not available
+      const activeWallet = this.storage.getActiveWallet()
+      if (activeWallet) {
+        await this.restoreWallet(activeWallet.state)
+      }
+      
+      if (!this.wallet) {
+        throw new Error('Wallet not initialized and could not be restored')
+      }
+      console.log('Wallet instance restored for refresh')
+    } else {
+      console.log('Using existing wallet instance for refresh')
+    }
+
+    // Get fresh balance and address
+    const balance = await this.wallet.getBalance()
+    const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
+
+    // Get current wallet info to preserve other data
+    const activeWallet = this.storage.getActiveWallet()
+    if (!activeWallet) {
+      throw new Error('No active wallet found')
+    }
+
+    // Update wallet state with fresh data
+    const updatedState: WalletState = {
+      ...activeWallet.state,
+      balance,
+      address
+    }
+
+    // Update stored wallet info
+    const updatedWalletInfo: WalletInfo = {
+      ...activeWallet,
+      state: updatedState
+    }
+    
+    this.storage.saveWallet(updatedWalletInfo)
+
+    console.log('Wallet state refreshed with updated balance:', balance)
+    return updatedState
   }
 
   public isWalletReady(): boolean {
