@@ -36,6 +36,16 @@ export class StorageManager {
     }
   }
 
+  public findWalletByEmail(email: string): WalletInfo | null {
+    try {
+      const allWallets = this.getAllWallets()
+      return allWallets.find(wallet => wallet.state.userEmail === email) || null
+    } catch (error) {
+      console.warn('Failed to find wallet by email:', error)
+      return null
+    }
+  }
+
   public removeWallet(walletId: string): void {
     try {
       const multiWallet = this.getMultiWalletStorage()

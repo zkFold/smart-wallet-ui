@@ -133,34 +133,64 @@ export class WalletManager extends EventEmitter {
       }
     }
 
-    // Create wallet state
-    const walletState: WalletState = {
-      isInitialized: true,
-      address,
-      balance,
-      network: network as any,
-      method: 'Google Oauth',
-      userEmail
+    // Check if a wallet with the same email already exists
+    let existingWallet: WalletInfo | null = null
+    if (userEmail) {
+      existingWallet = this.storage.findWalletByEmail(userEmail)
     }
 
-    // Generate unique wallet ID based on address
-    const walletId = this.generateWalletId(address)
+    if (existingWallet) {
+      // Reuse existing wallet credential to avoid expensive proof recomputation
+      console.log(`Found existing wallet for email ${userEmail}. Reusing existing credential.`)
+      
+      // Update wallet balance and address in case they changed
+      existingWallet.state.balance = balance
+      existingWallet.state.address = address
+      existingWallet.state.isInitialized = true
+      
+      // Save the updated wallet info (without replacing the credential)
+      this.storage.saveWallet(existingWallet)
+      this.storage.setActiveWallet(existingWallet.id)
+      this.currentWalletId = existingWallet.id
+      
+      // Recreate wallet instance with existing credential
+      this.wallet = new Wallet(this.backend!, existingWallet.credential, '', existingWallet.network!)
+      
+      // Emit wallet initialized event with updated state
+      this.emit('walletInitialized', existingWallet.state)
+    } else {
+      // Create new wallet as no existing wallet found for this email
+      console.log(`No existing wallet found for email ${userEmail}. Creating new wallet.`)
+      
+      // Create wallet state
+      const walletState: WalletState = {
+        isInitialized: true,
+        address,
+        balance,
+        network: network as any,
+        method: 'Google Oauth',
+        userEmail
+      }
 
-    // Create wallet info with persistent credential
-    const walletInfo: WalletInfo = {
-      id: walletId,
-      state: walletState,
-      network: network,
-      credential: initialiser
+      // Generate unique wallet ID based on address
+      const walletId = this.generateWalletId(address)
+
+      // Create wallet info with persistent credential
+      const walletInfo: WalletInfo = {
+        id: walletId,
+        state: walletState,
+        network: network,
+        credential: initialiser
+      }
+
+      // Save wallet to multi-wallet storage
+      this.storage.saveWallet(walletInfo)
+      this.storage.setActiveWallet(walletId)
+      this.currentWalletId = walletId
+      
+      // Emit wallet initialized event
+      this.emit('walletInitialized', walletState)
     }
-
-    // Save wallet to multi-wallet storage
-    this.storage.saveWallet(walletInfo)
-    this.storage.setActiveWallet(walletId)
-    this.currentWalletId = walletId
-
-    // Emit wallet initialized event
-    this.emit('walletInitialized', walletState)
   }
 
   public async restoreWallet(walletState: WalletState): Promise<void> {
