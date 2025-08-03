@@ -1,6 +1,14 @@
+// Policy ID for Smart Wallet utility tokens that should be hidden
+const HIDDEN_POLICY_ID = '10a01cd6ba666b392ef1967c7af500377d9241d5414b2d658f2179aa'
+
 export function formatBalance(balance: { [asset: string]: bigint }): string {
   let assets = ""
   for (const [key, value] of Object.entries(balance)) {
+    // Skip tokens with the Smart Wallet utility policy ID
+    if (key.startsWith(HIDDEN_POLICY_ID)) {
+      continue
+    }
+    
     if (key === 'lovelace') {
       // Convert lovelaces to ADA (1 ADA = 1,000,000 lovelaces)
       const adaValue = Number(value) / 1_000_000
