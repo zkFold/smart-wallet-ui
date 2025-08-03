@@ -378,6 +378,40 @@ export class WalletManager extends EventEmitter {
     return await this.wallet.getAddress().then((x: any) => x.to_bech32())
   }
 
+  public async refreshWalletState(): Promise<WalletState> {
+    if (!this.wallet) {
+      throw new Error('Wallet not initialized')
+    }
+
+    // Get fresh balance and address
+    const balance = await this.wallet.getBalance()
+    const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
+
+    // Get current wallet info to preserve other data
+    const activeWallet = this.storage.getActiveWallet()
+    if (!activeWallet) {
+      throw new Error('No active wallet found')
+    }
+
+    // Update wallet state with fresh data
+    const updatedState: WalletState = {
+      ...activeWallet.state,
+      balance,
+      address
+    }
+
+    // Update stored wallet info
+    const updatedWalletInfo: WalletInfo = {
+      ...activeWallet,
+      state: updatedState
+    }
+    
+    this.storage.saveWallet(updatedWalletInfo)
+
+    console.log('Wallet state refreshed with updated balance:', balance)
+    return updatedState
+  }
+
   public isWalletReady(): boolean {
     return this.wallet !== null
   }

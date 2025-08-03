@@ -65,6 +65,25 @@ export class App {
       this.currentView = event.data.view
       this.render()
     })
+
+    // Listen for refresh and navigate events
+    this.router.on('refreshAndNavigate', async (event: any) => {
+      const targetView = event.data
+      if (targetView === 'wallet') {
+        try {
+          // Refresh wallet state before navigating
+          this.walletState = await this.walletManager.refreshWalletState()
+          this.currentView = 'wallet'
+          this.render()
+        } catch (error) {
+          console.error('Failed to refresh wallet state:', error)
+          // Fallback to regular navigation
+          this.router.navigate('wallet')
+        }
+      } else {
+        this.router.navigate(targetView)
+      }
+    })
   }
 
   public async init(): Promise<void> {
@@ -219,8 +238,17 @@ export class App {
 
     if (retryBtn) {
       retryBtn.removeAttribute('disabled')
-      retryBtn.addEventListener('click', () => {
-        this.router.navigate('wallet')
+      retryBtn.addEventListener('click', async () => {
+        try {
+          // Refresh wallet state before navigating
+          this.walletState = await this.walletManager.refreshWalletState()
+          this.currentView = 'wallet'
+          this.render()
+        } catch (error) {
+          console.error('Failed to refresh wallet state:', error)
+          // Fallback to regular navigation
+          this.router.navigate('wallet')
+        }
       })
     }
 

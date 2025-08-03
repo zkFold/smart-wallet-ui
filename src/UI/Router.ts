@@ -234,13 +234,13 @@ export class Router extends EventEmitter {
       txStatus.innerHTML = "Transaction successful!"
       newTx.disabled = false
       newWallet.disabled = false
-      newTx.onclick = () => this.navigate('wallet')
+      newTx.onclick = () => this.emit('refreshAndNavigate', 'wallet')
       newWallet.onclick = () => this.navigate('init')
     } else {
       txStatus.innerHTML = "Transaction failed: " + (reason || "Unknown error")
       newTx.disabled = false
       newWallet.disabled = false
-      newTx.onclick = () => this.navigate('wallet')
+      newTx.onclick = () => this.emit('refreshAndNavigate', 'wallet')
       newWallet.onclick = () => this.navigate('init')
     }
   }
