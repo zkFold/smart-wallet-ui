@@ -277,10 +277,6 @@ export class WalletManager extends EventEmitter {
           throw new Error(`Unsupported recipient type: ${request.recipientType}`)
       }
 
-      // Send transaction
-      const txId = await this.wallet.sendTo(recipient)
-      console.log(`Transaction ID: ${txId}`)
-
       // Get recipient address for tracking
       let recipientAddress: string
       if (request.recipientType === 'Gmail') {
@@ -289,12 +285,25 @@ export class WalletManager extends EventEmitter {
         recipientAddress = request.recipient
       }
 
-      const result: TransactionResult = {
-        txId,
-        recipient: recipientAddress
+      // Navigate to success view immediately with proof computing state
+      const initialResult: TransactionResult = {
+        txId: 'Computing...', // Temporary value while computing
+        recipient: recipientAddress,
+        isProofComputing: true
       }
+      this.emit('transactionComplete', initialResult)
 
-      this.emit('transactionComplete', result)
+      // Send transaction (this includes the proof computation)
+      const txId = await this.wallet.sendTo(recipient)
+      console.log(`Transaction ID: ${txId}`)
+
+      // Emit proof computation complete event
+      const finalResult: TransactionResult = {
+        txId,
+        recipient: recipientAddress,
+        isProofComputing: false
+      }
+      this.emit('proofComputationComplete', finalResult)
 
     } catch (error) {
       console.error('Transaction failed:', error)

@@ -47,6 +47,11 @@ export class App {
       this.router.navigate('success', event.data)
     })
 
+    this.walletManager.on('proofComputationComplete', (event: any) => {
+      // Update the success view to show transaction pending instead of proof computing
+      this.router.updateProofComputationComplete(event.data.txId, event.data.recipient)
+    })
+
     this.walletManager.on('transactionFailed', (event: any) => {
       this.router.navigate('failed', { reason: event.data.message })
     })
