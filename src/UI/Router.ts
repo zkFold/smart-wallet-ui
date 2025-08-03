@@ -134,19 +134,25 @@ export class Router extends EventEmitter {
     return container
   }
 
-  public renderSuccessView(data: { txId: string, recipient: string }): HTMLElement {
+  public renderSuccessView(data: { txId: string, recipient: string, isProofComputing?: boolean }): HTMLElement {
     const container = document.createElement('main')
     container.className = 'container'
 
     const txId = data?.txId || 'Unknown'
     const recipient = data?.recipient || 'Unknown'
+    const isProofComputing = data?.isProofComputing || false
+
+    // Determine the initial message based on proof computation state
+    const initialMessage = isProofComputing 
+      ? 'Computing zero-knowledge proof...'
+      : 'Transaction pending. This page will refresh automatically when transaction succeeds.'
 
     container.innerHTML = `
       <a href="https://zkfold.io">
         <img src="logo-200x73.png" style="width:250px;height:100px;">
       </a>
       <br><br>
-      <h1 id="tx_status">Transaction pending. This page will refresh automatically when transaction succeeds.</h1>
+      <h1 id="tx_status">${initialMessage}</h1>
       <label name="txid_label">
           Transaction id: ${txId}
       </label>
@@ -155,8 +161,10 @@ export class Router extends EventEmitter {
       <button id="new_wallet" disabled>Initialise a new wallet</button>
     `
 
-    // Add script to check transaction status
-    this.addTransactionStatusScript(container, txId, recipient)
+    // If not computing proof, start transaction status checking immediately
+    if (!isProofComputing) {
+      this.addTransactionStatusScript(container, txId, recipient)
+    }
 
     return container
   }
@@ -234,6 +242,21 @@ export class Router extends EventEmitter {
       newWallet.disabled = false
       newTx.onclick = () => this.navigate('wallet')
       newWallet.onclick = () => this.navigate('init')
+    }
+  }
+
+  public updateProofComputationComplete(txId: string, recipient: string): void {
+    const txStatus = document.getElementById("tx_status")
+    const txIdLabel = document.querySelector('label[name="txid_label"]')
+    
+    if (txStatus) {
+      txStatus.innerHTML = "Transaction pending. This page will refresh automatically when transaction succeeds."
+      // Start transaction status checking now that proof is complete
+      this.startTransactionStatusChecking(txId, recipient)
+    }
+    
+    if (txIdLabel) {
+      txIdLabel.innerHTML = `Transaction id: ${txId}`
     }
   }
 }

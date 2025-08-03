@@ -36,6 +36,7 @@ export interface TransactionRequest {
 export interface TransactionResult {
   txId: string
   recipient: string
+  isProofComputing?: boolean
 }
 
 export type WalletMethod = 'Google Oauth'
