@@ -12,6 +12,7 @@ export class WalletManager extends EventEmitter {
   private googleAuth: GoogleAuth
   private wallet: Wallet | null = null
   private backend: Backend | null = null
+  private prover: Prover
   private currentWalletId: string | null = null
 
   constructor(config: AppConfig, storage: StorageManager) {
