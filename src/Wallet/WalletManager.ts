@@ -1,4 +1,4 @@
-import { Wallet, WalletType, SmartTxRecipient, Backend, BigIntWrap, Network } from 'zkfold-smart-wallet-api'
+import { Wallet, WalletType, SmartTxRecipient, Backend, BigIntWrap, Network, Prover } from 'zkfold-smart-wallet-api'
 import * as CSL from '@emurgo/cardano-serialization-lib-browser'
 import { AppConfig, WalletState, WalletInfo, TransactionRequest, TransactionResult } from '../Types'
 import { StorageManager } from '../Utils/Storage'
@@ -27,6 +27,8 @@ export class WalletManager extends EventEmitter {
       this.backend = this.config.backendApiKey
         ? new Backend(this.config.backendUrl, this.config.backendApiKey)
         : new Backend(this.config.backendUrl)
+
+      this.prover = new Prover(this.config.proverUrl);
 
       // Generate state for OAuth flow
       const state = this.generateOAuthState()
@@ -115,7 +117,7 @@ export class WalletManager extends EventEmitter {
     }
 
     // Create wallet instance
-    this.wallet = new Wallet(this.backend, initialiser, '', network)
+    this.wallet = new Wallet(this.backend, this.prover, initialiser, '', network)
 
     // Get wallet balance and address
     const balance = await this.wallet.getBalance()
@@ -154,7 +156,7 @@ export class WalletManager extends EventEmitter {
       this.currentWalletId = existingWallet.id
       
       // Recreate wallet instance with existing credential
-      this.wallet = new Wallet(this.backend!, existingWallet.credential, '', existingWallet.network!)
+      this.wallet = new Wallet(this.backend!, this.prover, existingWallet.credential, '', existingWallet.network!)
       
       // Emit wallet initialized event with updated state
       this.emit('walletInitialized', existingWallet.state)
@@ -208,7 +210,7 @@ export class WalletManager extends EventEmitter {
     if (activeWallet && activeWallet.credential && activeWallet.network) {
       try {
         // Recreate wallet instance using stored credential
-        this.wallet = new Wallet(this.backend, activeWallet.credential, '', activeWallet.network)
+        this.wallet = new Wallet(this.backend, this.prover, activeWallet.credential, '', activeWallet.network)
         this.currentWalletId = activeWallet.id
         console.log('Wallet instance restored from persistent storage')
         return
@@ -240,7 +242,7 @@ export class WalletManager extends EventEmitter {
       }
 
       // Create wallet instance
-      this.wallet = new Wallet(this.backend, walletInfo.credential, '', walletInfo.network)
+      this.wallet = new Wallet(this.backend, this.prover, walletInfo.credential, '', walletInfo.network)
       this.currentWalletId = walletId
       this.storage.setActiveWallet(walletId)
 
