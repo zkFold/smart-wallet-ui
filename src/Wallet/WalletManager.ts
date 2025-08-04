@@ -12,7 +12,7 @@ export class WalletManager extends EventEmitter {
   private googleAuth: GoogleAuth
   private wallet: Wallet | null = null
   private backend: Backend | null = null
-  private prover: Prover
+  private prover: Prover | null = null
   private currentWalletId: string | null = null
 
   constructor(config: AppConfig, storage: StorageManager) {
@@ -117,6 +117,10 @@ export class WalletManager extends EventEmitter {
       throw new Error('Backend not initialized')
     }
 
+    if (!this.prover) {
+      throw new Error('Prover not initialized')
+    }
+
     // Create wallet instance
     this.wallet = new Wallet(this.backend, this.prover, initialiser, '', network)
 
@@ -157,7 +161,7 @@ export class WalletManager extends EventEmitter {
       this.currentWalletId = existingWallet.id
       
       // Recreate wallet instance with existing credential
-      this.wallet = new Wallet(this.backend!, this.prover, existingWallet.credential, '', existingWallet.network!)
+      this.wallet = new Wallet(this.backend!, this.prover!, existingWallet.credential, '', existingWallet.network!)
       
       // Emit wallet initialized event with updated state
       this.emit('walletInitialized', existingWallet.state)
@@ -206,6 +210,8 @@ export class WalletManager extends EventEmitter {
       ? new Backend(this.config.backendUrl, this.config.backendApiKey)
       : new Backend(this.config.backendUrl)
 
+    this.prover = new Prover(this.config.proverUrl)
+
     // Restore from multi-wallet storage
     const activeWallet = this.storage.getActiveWallet()
     if (activeWallet && activeWallet.credential && activeWallet.network) {
@@ -240,6 +246,10 @@ export class WalletManager extends EventEmitter {
         this.backend = this.config.backendApiKey
           ? new Backend(this.config.backendUrl, this.config.backendApiKey)
           : new Backend(this.config.backendUrl)
+      }
+
+      if (!this.prover) {
+        this.prover = new Prover(this.config.proverUrl)
       }
 
       // Create wallet instance
