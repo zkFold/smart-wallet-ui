@@ -53,6 +53,8 @@ export class WalletManager extends EventEmitter {
         ? new Backend(this.config.backendUrl, this.config.backendApiKey)
         : new Backend(this.config.backendUrl)
 
+      this.prover = new Prover(this.config.proverUrl);
+
       // Parse URL parameters to get authorization code
       const params = new URLSearchParams(callbackData)
       const code = params.get('code')
