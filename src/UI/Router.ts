@@ -30,30 +30,33 @@ export class Router extends EventEmitter {
     container.className = 'container'
 
     container.innerHTML = `
-      <a href="https://zkfold.io">
-        <img src="logo-200x73.png" style="width:250px;height:100px;">
-      </a>
-      <br><br>
-      <h1 id="header">zkFold Smart Wallet</h1>
-      <form action="#" method="POST">
-        <fieldset>
-          <label id="network_selector" hidden>
-            Network type
-            <select name="network" id="network_option" aria-label="Select network" required>
-              <option>Preview</option>
-              <option selected="selected">Preprod</option>
-            </select>
-          </label>
-
-
-        </fieldset>
-        <input
-          id="submit"
-          type="submit"
-          value="Initialise wallet with Gmail"
-        />
-      </form>
-      <button class="outline secondary" id="show_controls">Show advanced controls</button>
+      <div class="logo-container">
+        <a href="https://zkfold.io">
+          <img src="logo-200x73.png" alt="zkFold">
+        </a>
+      </div>
+      <div class="content-center">
+        <h1 id="header">zkFold Smart Wallet</h1>
+        <p class="subtitle">Create your wallet with email</p>
+        <form action="#" method="POST">
+          <fieldset>
+            <label id="network_selector" hidden>
+              Network type
+              <select name="network" id="network_option" aria-label="Select network" required>
+                <option>Preview</option>
+                <option selected="selected">Preprod</option>
+              </select>
+            </label>
+          </fieldset>
+          <input
+            id="submit"
+            type="submit"
+            value="Create your wallet with email"
+            class="btn-primary"
+          />
+        </form>
+        <button class="outline secondary" id="show_controls">Show advanced controls</button>
+      </div>
     `
 
     return container
@@ -68,67 +71,78 @@ export class Router extends EventEmitter {
     const userEmail = walletState.userEmail || 'Unknown'
 
     container.innerHTML = `
-      <a href="https://zkfold.io">
-        <img src="logo-200x73.png" style="width:250px;height:100px;">
-      </a>
-      <br><br>
-      <h1>zkFold Smart Wallet</h1>
-      <label name="user_email">
-          User: <strong>${userEmail}</strong>
-      </label>
-      <br><br>
-      <label name="balance_label">
-          Wallet balance: 
-          <ul>
-              ${balanceHtml}
-          </ul>
-      </label>
-      <form action="#" method="POST">
-        <fieldset>
-          <label id="address_type" hidden>
-            Type of address 
-            <select name="recipient" aria-label="Select the type of address you want to send ADA to" required id="type_selector">
-              <option>Bech32</option>
-              <option selected="selected">Gmail</option>
-            </select>
-          </label>
-          <label>
-            Recipient's address
-            <input
-              name="zkfold_address" 
-              id="address_input" 
-              placeholder="example@gmail.com"
-              required
-            />
-          </label>
-          <label id="asset_name" hidden>
-            Asset name ('lovelace' for ADA or '{PolicyID}.{AssetName}' for other assets) 
-            <input
-              name="zkfold_asset" 
-              value="lovelace"
-            />
-          </label>
-          <label>
-            Amount 
-            <input
-              name="zkfold_amount"
-              type="number"
-              min="1"
-              required
-            />
-          </label>
-        </fieldset>
-        <input
-          type="submit"
-          value="Send"
-        />
-      </form>
+      <div class="logo-container">
+        <a href="https://zkfold.io">
+          <img src="logo-200x73.png" alt="zkFold">
+        </a>
+      </div>
+      <div class="wallet-header">
+        <h1>zkFold Smart Wallet</h1>
+      </div>
+      <div class="wallet-info">
+        <label name="user_email">
+            User: <strong>${userEmail}</strong>
+        </label>
+        <div class="balance-section">
+            <label name="balance_label">
+                Wallet balance: 
+                <ul>
+                    ${balanceHtml}
+                </ul>
+            </label>
+        </div>
+      </div>
+      <div class="transaction-form">
+        <form action="#" method="POST">
+          <fieldset>
+            <label id="address_type" hidden>
+              Type of address 
+              <select name="recipient" aria-label="Select the type of address you want to send ADA to" required id="type_selector">
+                <option>Bech32</option>
+                <option selected="selected">Gmail</option>
+              </select>
+            </label>
+            <label>
+              Recipient's address
+              <input
+                name="zkfold_address" 
+                id="address_input" 
+                placeholder="example@gmail.com"
+                required
+              />
+            </label>
+            <label id="asset_name" hidden>
+              Asset name ('lovelace' for ADA or '{PolicyID}.{AssetName}' for other assets) 
+              <input
+                name="zkfold_asset" 
+                value="lovelace"
+              />
+            </label>
+            <label>
+              Amount 
+              <input
+                name="zkfold_amount"
+                type="number"
+                min="1"
+                required
+              />
+            </label>
+          </fieldset>
+          <input
+            type="submit"
+            value="Send"
+            class="btn-primary"
+          />
+        </form>
+      </div>
       <label id="faucet_label" hidden>
         Use this address to receive funds from the <a href='https://docs.cardano.org/cardano-testnets/tools/faucet'>Faucet</a>: ${address}
       </label>
-      <button class="outline secondary" id="show_address">Show address</button>
-      <button class="outline secondary" id="show_selector">Show all controls</button>
-      <button class="outline" id="logout_button">Log out</button>
+      <div class="button-group">
+        <button class="outline secondary" id="show_address">Show address</button>
+        <button class="outline secondary" id="show_selector">Show all controls</button>
+        <button class="outline" id="logout_button">Log out</button>
+      </div>
     `
 
     return container
@@ -148,17 +162,21 @@ export class Router extends EventEmitter {
       : 'Transaction pending. This page will refresh automatically when transaction succeeds.'
 
     container.innerHTML = `
-      <a href="https://zkfold.io">
-        <img src="logo-200x73.png" style="width:250px;height:100px;">
-      </a>
-      <br><br>
-      <h1 id="tx_status">${initialMessage}</h1>
-      <label name="txid_label">
-          Transaction id: ${txId}
-      </label>
-      <br>
-      <button id="new_tx" disabled>Make another transaction</button>
-      <button id="new_wallet" disabled>Initialise a new wallet</button>
+      <div class="logo-container">
+        <a href="https://zkfold.io">
+          <img src="logo-200x73.png" alt="zkFold">
+        </a>
+      </div>
+      <div class="status-container">
+        <h1 id="tx_status">${initialMessage}</h1>
+        <label name="txid_label">
+            Transaction id: ${txId}
+        </label>
+        <div class="button-group">
+          <button id="new_tx" class="btn-primary" disabled>Make another transaction</button>
+          <button id="new_wallet" class="outline secondary" disabled>Initialise a new wallet</button>
+        </div>
+      </div>
     `
 
     // If not computing proof, start transaction status checking immediately
@@ -176,16 +194,21 @@ export class Router extends EventEmitter {
     const reason = data?.reason || 'Unknown error'
 
     container.innerHTML = `
-      <a href="https://zkfold.io">
-        <img src="logo-200x73.png" style="width:250px;height:100px;">
-      </a>
-      <br><br>
-      <h1>Transaction failed.</h1>
-      <label name="balance_label">
-          Reason: ${reason}
-      </label>
-      <button id="new_tx" disabled>Make another transaction</button>
-      <button id="new_wallet" disabled>Initialise a new wallet</button>
+      <div class="logo-container">
+        <a href="https://zkfold.io">
+          <img src="logo-200x73.png" alt="zkFold">
+        </a>
+      </div>
+      <div class="status-container">
+        <h1>Transaction failed.</h1>
+        <label name="balance_label">
+            Reason: ${reason}
+        </label>
+        <div class="button-group">
+          <button id="new_tx" class="btn-primary" disabled>Make another transaction</button>
+          <button id="new_wallet" class="outline secondary" disabled>Initialise a new wallet</button>
+        </div>
+      </div>
     `
 
     return container
