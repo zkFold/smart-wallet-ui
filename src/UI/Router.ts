@@ -36,7 +36,6 @@ export class Router extends EventEmitter {
         </a>
       </div>
       <div class="main-content">
-        <h1 id="header">zkFold Smart Wallet</h1>
         <div class="welcome-message">
           Create your wallet with email
         </div>
@@ -57,7 +56,6 @@ export class Router extends EventEmitter {
             class="primary-button"
           />
         </form>
-        <button class="outline secondary" id="show_controls">Show advanced controls</button>
       </div>
     `
 
@@ -79,7 +77,6 @@ export class Router extends EventEmitter {
         </a>
       </div>
       <div class="main-content">
-        <h1>zkFold Smart Wallet</h1>
         <div class="user-info">
           <strong>User:</strong> ${userEmail}
         </div>
