@@ -130,16 +130,13 @@ export class Router extends EventEmitter {
             />
           </label>
         </fieldset>
-        <input
-          type="submit"
-          value="Send"
-        />
+        <button type="submit">Send</button>
       </form>
       <label id="faucet_label" hidden>
         Use this address to receive funds from the <a href='https://docs.cardano.org/cardano-testnets/tools/faucet'>Faucet</a>: ${address}
       </label>
-      <button class="outline secondary" id="show_selector">Show all controls</button>
-      <button class="outline" id="logout_button">Log out</button>
+      <button id="show_selector">Show all controls</button>
+      <button id="logout_button">Log out</button>
     `
 
     return container
