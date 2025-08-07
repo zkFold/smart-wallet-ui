@@ -169,7 +169,7 @@ export class Router extends EventEmitter {
       </label>
       <br>
       <button id="new_tx" disabled>Make another transaction</button>
-      <button id="new_wallet" disabled>Initialise a new wallet</button>
+      <button id="new_wallet" disabled>Log out</button>
     `
 
     // If not computing proof, start transaction status checking immediately
@@ -196,7 +196,7 @@ export class Router extends EventEmitter {
           Reason: ${reason}
       </label>
       <button id="new_tx" disabled>Make another transaction</button>
-      <button id="new_wallet" disabled>Initialise a new wallet</button>
+      <button id="new_wallet" disabled>Log out</button>
     `
 
     return container
