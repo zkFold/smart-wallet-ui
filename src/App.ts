@@ -184,10 +184,14 @@ export class App {
         e.preventDefault()
         const formData = new FormData(form)
 
+        // Get the amount in ADA and convert to lovelace
+        const adaAmount = parseFloat(formData.get('zkfold_amount') as string)
+        const lovelaceAmount = Math.round(adaAmount * 1_000_000).toString()
+
         await this.walletManager.sendTransaction({
           recipient: formData.get('zkfold_address') as string,
           recipientType: formData.get('recipient') as any,
-          amount: formData.get('zkfold_amount') as string,
+          amount: lovelaceAmount,
           asset: formData.get('zkfold_asset') as string || 'lovelace'
         })
       })
