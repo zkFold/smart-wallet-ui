@@ -175,16 +175,6 @@ export class App {
         await this.walletManager.initializeWallet(network)
       })
     }
-
-    // Handle show controls button
-    const showControlsBtn = document.getElementById('show_controls')
-    if (showControlsBtn) {
-      showControlsBtn.addEventListener('click', () => {
-        this.toggleAdvancedControls()
-      })
-    }
-
-
   }
 
   private setupWalletHandlers(): void {
@@ -262,28 +252,6 @@ export class App {
   }
 
   // UI helper methods (keeping existing functionality)
-  private toggleAdvancedControls(): void {
-    const header = document.getElementById("header")
-    const networkSel = document.getElementById("network_selector")
-    const networkOpt = document.getElementById("network_option") as HTMLSelectElement
-    const button = document.getElementById("show_controls")
-
-    if (header && networkSel && button) {
-      if (networkSel.hidden) {
-        header.innerHTML = "zkFold Smart Wallet"
-        networkSel.hidden = false
-        button.innerHTML = "Hide advanced controls"
-      } else {
-        header.innerHTML = "zkFold Smart Wallet (Preprod)"
-        networkSel.hidden = true
-        if (networkOpt) networkOpt.value = "Preprod"
-        button.innerHTML = "Show advanced controls"
-      }
-    }
-  }
-
-
-
   private updateTypeUI(): void {
     const addressInput = document.getElementById("address_input") as HTMLInputElement
     const selector = document.getElementById("type_selector") as HTMLSelectElement

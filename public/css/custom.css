@@ -1,0 +1,205 @@
+/* Custom styles for zkFold Smart Wallet UI */
+
+/* Light and unintrusive gradient background */
+body {
+    background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.98) 0%,
+            rgba(248, 250, 252, 0.95) 25%,
+            rgba(241, 245, 249, 0.92) 50%,
+            rgba(248, 250, 252, 0.95) 75%,
+            rgba(255, 255, 255, 0.98) 100%);
+    /* Fallback for browsers that don't support gradients */
+    background-color: var(--pico-background-color);
+    /* Ensure the gradient covers the full viewport */
+    min-height: 100vh;
+}
+
+/* Dark theme gradient for automatic dark mode support */
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) body {
+        background: linear-gradient(135deg,
+                rgba(19, 23, 31, 0.98) 0%,
+                rgba(15, 19, 26, 0.95) 25%,
+                rgba(12, 15, 21, 0.92) 50%,
+                rgba(15, 19, 26, 0.95) 75%,
+                rgba(19, 23, 31, 0.98) 100%);
+        background-color: var(--pico-background-color);
+        min-height: 100vh;
+    }
+}
+
+/* Explicit dark theme support */
+[data-theme="dark"] body {
+    background: linear-gradient(135deg,
+            rgba(19, 23, 31, 0.98) 0%,
+            rgba(15, 19, 26, 0.95) 25%,
+            rgba(12, 15, 21, 0.92) 50%,
+            rgba(15, 19, 26, 0.95) 75%,
+            rgba(19, 23, 31, 0.98) 100%);
+    background-color: var(--pico-background-color);
+    min-height: 100vh;
+}
+
+/* Light theme support (explicit) */
+[data-theme="light"] body {
+    background: linear-gradient(135deg,
+            rgba(255, 255, 255, 0.98) 0%,
+            rgba(248, 250, 252, 0.95) 25%,
+            rgba(241, 245, 249, 0.92) 50%,
+            rgba(248, 250, 252, 0.95) 75%,
+            rgba(255, 255, 255, 0.98) 100%);
+    background-color: var(--pico-background-color);
+    min-height: 100vh;
+}
+
+/* Ensure the gradient doesn't interfere with Pico's container styles */
+.container,
+.container-fluid {
+    position: relative;
+    background: transparent;
+}
+
+/* Optional: Add a subtle texture overlay for additional depth (very light) */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.015;
+    background-image:
+        radial-gradient(circle at 25% 25%, rgba(0, 0, 0, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 75% 75%, rgba(0, 0, 0, 0.1) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Ensure main content area works well with the gradient */
+main {
+    position: relative;
+    z-index: 1;
+}
+
+/* Custom button styling - white with border and hover shadow */
+button,
+[type="button"],
+[type="submit"],
+[type="reset"],
+[role="button"] {
+    --pico-background-color: #ffffff;
+    --pico-border-color: #d1d5db;
+    --pico-color: #374151;
+    --pico-box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    border-width: 1px;
+    font-weight: 500;
+}
+
+button:hover,
+button:focus,
+[type="button"]:hover,
+[type="button"]:focus,
+[type="submit"]:hover,
+[type="submit"]:focus,
+[type="reset"]:hover,
+[type="reset"]:focus,
+[role="button"]:hover,
+[role="button"]:focus {
+    --pico-background-color: #f9fafb;
+    --pico-border-color: #9ca3af;
+    --pico-color: #1f2937;
+    --pico-box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    transform: translateY(-1px);
+    transition: all 0.2s ease-in-out;
+}
+
+button:active,
+[type="button"]:active,
+[type="submit"]:active,
+[type="reset"]:active,
+[role="button"]:active {
+    --pico-box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    transform: translateY(0);
+}
+
+/* Primary button variant (if you want to keep some buttons with the original primary styling) */
+button.primary,
+[type="button"].primary,
+[type="submit"].primary,
+[role="button"].primary {
+    --pico-background-color: var(--pico-primary-background);
+    --pico-border-color: var(--pico-primary-border);
+    --pico-color: var(--pico-primary-inverse);
+}
+
+button.primary:hover,
+button.primary:focus,
+[type="button"].primary:hover,
+[type="button"].primary:focus,
+[type="submit"].primary:hover,
+[type="submit"].primary:focus,
+[role="button"].primary:hover,
+[role="button"].primary:focus {
+    --pico-background-color: var(--pico-primary-hover-background);
+    --pico-border-color: var(--pico-primary-hover-border);
+    --pico-color: var(--pico-primary-inverse);
+    --pico-box-shadow: 0 4px 6px -1px rgba(1, 114, 173, 0.3), 0 2px 4px -1px rgba(1, 114, 173, 0.2);
+}
+
+/* Dark theme button adjustments */
+@media (prefers-color-scheme: dark) {
+
+    :root:not([data-theme]) button,
+    :root:not([data-theme]) [type="button"],
+    :root:not([data-theme]) [type="submit"],
+    :root:not([data-theme]) [type="reset"],
+    :root:not([data-theme]) [role="button"] {
+        --pico-background-color: #1f2937;
+        --pico-border-color: #374151;
+        --pico-color: #f9fafb;
+        --pico-box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    :root:not([data-theme]) button:hover,
+    :root:not([data-theme]) button:focus,
+    :root:not([data-theme]) [type="button"]:hover,
+    :root:not([data-theme]) [type="button"]:focus,
+    :root:not([data-theme]) [type="submit"]:hover,
+    :root:not([data-theme]) [type="submit"]:focus,
+    :root:not([data-theme]) [type="reset"]:hover,
+    :root:not([data-theme]) [type="reset"]:focus,
+    :root:not([data-theme]) [role="button"]:hover,
+    :root:not([data-theme]) [role="button"]:focus {
+        --pico-background-color: #374151;
+        --pico-border-color: #6b7280;
+        --pico-color: #ffffff;
+        --pico-box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+    }
+}
+
+[data-theme="dark"] button,
+[data-theme="dark"] [type="button"],
+[data-theme="dark"] [type="submit"],
+[data-theme="dark"] [type="reset"],
+[data-theme="dark"] [role="button"] {
+    --pico-background-color: #1f2937;
+    --pico-border-color: #374151;
+    --pico-color: #f9fafb;
+    --pico-box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] button:hover,
+[data-theme="dark"] button:focus,
+[data-theme="dark"] [type="button"]:hover,
+[data-theme="dark"] [type="button"]:focus,
+[data-theme="dark"] [type="submit"]:hover,
+[data-theme="dark"] [type="submit"]:focus,
+[data-theme="dark"] [type="reset"]:hover,
+[data-theme="dark"] [type="reset"]:focus,
+[data-theme="dark"] [role="button"]:hover,
+[data-theme="dark"] [role="button"]:focus {
+    --pico-background-color: #374151;
+    --pico-border-color: #6b7280;
+    --pico-color: #ffffff;
+    --pico-box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+}
