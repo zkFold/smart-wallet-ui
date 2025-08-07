@@ -125,7 +125,10 @@ export class Router extends EventEmitter {
             <input
               name="zkfold_amount"
               type="number"
-              min="1"
+              min="0.000001"
+              step="1"
+              placeholder="Enter amount in ADA"
+              style="-moz-appearance: textfield;"
               required
             />
           </label>
