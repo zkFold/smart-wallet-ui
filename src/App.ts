@@ -32,7 +32,8 @@ export class App {
       clientSecret: import.meta.env.VITE_CLIENT_SECRET || '',
       websiteUrl: import.meta.env.VITE_WEBSITE_URL || window.location.origin,
       backendUrl: import.meta.env.VITE_BACKEND_URL || '',
-      backendApiKey: import.meta.env.VITE_BACKEND_API_KEY
+      backendApiKey: import.meta.env.VITE_BACKEND_API_KEY,
+      proverUrl: import.meta.env.VITE_PROVER_URL || '',
     }
   }
 

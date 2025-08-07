@@ -50,6 +50,7 @@ export interface AppConfig {
   websiteUrl: string
   backendUrl: string
   backendApiKey?: string
+  proverUrl: string
 }
 
 // Events
