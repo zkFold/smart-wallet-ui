@@ -1,9 +1,8 @@
-import { AppConfig, AppView, WalletState } from './Types'
+import { AppConfig, AppView, Network, WalletState } from './Types'
 import { WalletManager } from './Wallet/WalletManager'
 import { Router } from './UI/Router'
 import { StorageManager } from './Utils/Storage'
 import { BackendService } from './Services/BackendService'
-import { Network } from 'zkfold-smart-wallet-api'
 
 export class App {
   private config: AppConfig
