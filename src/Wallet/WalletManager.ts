@@ -91,8 +91,8 @@ export class WalletManager extends EventEmitter {
         .derive(0)
 
       const initialiser = {
-        data: jwt,
-        rootKey: prvKey.to_hex()
+        jwt: jwt,
+        tokenSKey: prvKey.to_hex()
       }
 
       const network = this.storage.getSessionItem('network')
@@ -134,8 +134,8 @@ export class WalletManager extends EventEmitter {
 
     // Extract email from JWT token
     let userEmail: string | undefined
-    if (initialiser.data) {
-      const jwtPayload = decodeJWT(initialiser.data)
+    if (initialiser.jwt) {
+      const jwtPayload = decodeJWT(initialiser.jwt)
       if (jwtPayload && jwtPayload.email) {
         userEmail = jwtPayload.email
       }
