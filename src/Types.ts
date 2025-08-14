@@ -1,4 +1,6 @@
-import { Network } from 'zkfold-smart-wallet-api'
+import { AddressType } from 'zkfold-smart-wallet-api'
+
+export type Network = 'mainnet' | 'preprod' | 'preview'
 
 // Application types
 export interface WalletState {
@@ -28,7 +30,7 @@ export interface WalletBalance {
 
 export interface TransactionRequest {
   recipient: string
-  recipientType: RecipientType
+  recipientType: AddressType
   amount: string
   asset: string
 }
@@ -40,7 +42,6 @@ export interface TransactionResult {
 }
 
 export type WalletMethod = 'Google Oauth'
-export type RecipientType = 'Bech32' | 'Gmail'
 export type AppView = 'init' | 'wallet' | 'success' | 'failed'
 
 // Environment configuration
