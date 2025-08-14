@@ -189,7 +189,7 @@ export class App {
 
         await this.walletManager.sendTransaction({
           recipient: formData.get('zkfold_address') as string,
-          recipientType: formData.get('recipient') as any,
+          recipientType: parseInt(formData.get('recipient') as string),
           amount: lovelaceAmount,
           asset: formData.get('zkfold_asset') as string || 'lovelace'
         })
@@ -260,7 +260,7 @@ export class App {
     const selector = document.getElementById("type_selector") as HTMLSelectElement
 
     if (addressInput && selector) {
-      if (selector.value === "Gmail") {
+      if (selector.value === "1") { // AddressType.Email
         addressInput.placeholder = "example@gmail.com"
       } else {
         addressInput.placeholder = "addr_test1xyz...(Bech32)"
@@ -297,7 +297,7 @@ export class App {
       } else {
         label.hidden = true
         button.innerHTML = "Show all controls"
-        if (selector) selector.value = "Gmail"
+        if (selector) selector.value = "1" // AddressType.Email
         assetName.hidden = true
         this.updateTypeUI()
       }

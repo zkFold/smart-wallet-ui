@@ -4,7 +4,7 @@ import { AppConfig, WalletState, WalletInfo, TransactionRequest, TransactionResu
 import { StorageManager } from '../Utils/Storage'
 import { EventEmitter } from '../Utils/EventEmitter'
 import { GoogleAuth } from './GoogleAuth'
-import { harden, decodeJWT } from '../Utils/Helpers'
+import { decodeJWT } from '../Utils/Helpers'
 
 export class WalletManager extends EventEmitter {
   private config: AppConfig
@@ -81,18 +81,10 @@ export class WalletManager extends EventEmitter {
         throw new Error('Failed to get JWT from authorization code')
       }
 
-      // Generate root key for Google OAuth wallet
-      const prvKey = CSL.Bip32PrivateKey
-        .generate_ed25519_bip32()
-        .derive(harden(1852)) // purpose
-        .derive(harden(1815)) // coin type
-        .derive(harden(0)) // account #0
-        .derive(0)
-        .derive(0)
-
+      // Create initializer without tokenSKey for fresh wallet behavior
       const initialiser = {
         jwt: jwt,
-        tokenSKey: prvKey.to_hex()
+        // No tokenSKey - this tells the Wallet API to treat it as a fresh wallet
       }
 
       const network = this.storage.getSessionItem('network')

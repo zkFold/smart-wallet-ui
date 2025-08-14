@@ -2,6 +2,7 @@ import { AppView, WalletState } from '../Types'
 import { EventEmitter } from '../Utils/EventEmitter'
 import { formatBalance } from '../Utils/Helpers'
 import { BackendService } from '../Services/BackendService'
+import { AddressType } from 'zkfold-smart-wallet-api'
 
 export class Router extends EventEmitter {
   private currentViewData: any = null
@@ -112,8 +113,8 @@ export class Router extends EventEmitter {
           <label id="address_type" hidden>
             Type of address 
             <select name="recipient" aria-label="Select the type of address you want to send ADA to" required id="type_selector">
-              <option>Bech32</option>
-              <option selected="selected">Gmail</option>
+              <option value="${AddressType.Bech32}">Bech32</option>
+              <option value="${AddressType.Email}" selected="selected">Gmail</option>
             </select>
           </label>
           <label>
