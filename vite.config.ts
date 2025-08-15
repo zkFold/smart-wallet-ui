@@ -3,7 +3,6 @@ import wasm from 'vite-plugin-wasm'
 import topLevelAwait from 'vite-plugin-top-level-await'
 
 export default defineConfig({
-  base: '/smart-wallet-ui/',
   plugins: [
     wasm(),
     topLevelAwait()
