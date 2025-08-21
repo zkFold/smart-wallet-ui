@@ -458,6 +458,8 @@ export class WalletManager extends EventEmitter {
     this.wallet = null
     this.backend = null
     this.currentWalletId = null
+    // Clear the active wallet designation (but keep wallet data for multi-wallet support)
+    this.storage.clearActiveWallet()
     // Clear any session data
     sessionStorage.clear()
     // Emit logout event
