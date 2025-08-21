@@ -4,7 +4,7 @@ import { App } from './App'
 function initApp() {
   try {
     const app = new App()
-    app.init()
+    app.init("zkFold")
   } catch (error) {
     console.error('Failed to initialize app:', error)
   }

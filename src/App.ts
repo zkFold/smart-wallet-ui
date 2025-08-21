@@ -1,4 +1,5 @@
 import { AppConfig, AppView, Network, WalletState } from './Types'
+import { ClientCredentials } from 'zkfold-smart-wallet-api'
 import { WalletManager } from './Wallet/WalletManager'
 import { Router } from './UI/Router'
 import { StorageManager } from './Utils/Storage'
@@ -15,14 +16,10 @@ export class App {
 
   constructor() {
     // Load configuration from environment or defaults
-    this.config = this.loadConfig()
-    this.storage = new StorageManager()
-    this.backendService = new BackendService(this.config)
-    this.walletManager = new WalletManager(this.config, this.storage)
-    this.router = new Router(this.backendService)
-
-    // Set up event listeners
-    this.setupEventListeners()
+    this.config = this.loadConfig();
+    this.storage = new StorageManager();
+    this.backendService = new BackendService(this.config);
+    this.router = new Router(this.backendService);
   }
 
   private loadConfig(): AppConfig {
@@ -69,6 +66,7 @@ export class App {
     // Listen for refresh and navigate events
     this.router.on('refreshAndNavigate', async (event: any) => {
       const targetView = event.data
+      console.log(`TARGET VIEW: ${targetView}`)
       if (targetView === 'wallet') {
         try {
           // Refresh wallet state before navigating
@@ -86,8 +84,20 @@ export class App {
     })
   }
 
-  public async init(): Promise<void> {
+  public async init(clientName: string): Promise<void> {
     try {
+      const credentials = await this.backendService.credentials(clientName);
+
+      if (this.config.clientId === '' || this.config.clientSecret === '') {
+        this.config.clientId = credentials.client_id;
+        this.config.clientSecret = credentials.client_secret;
+      }
+
+      this.walletManager = new WalletManager(this.config, this.storage);
+
+      // Set up event listeners
+      this.setupEventListeners();
+
       // Check for OAuth callback first
       const params = new URLSearchParams(window.location.search)
       if (params.has('code')) {
