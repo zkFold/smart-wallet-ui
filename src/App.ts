@@ -167,8 +167,11 @@ export class App {
       case 'wallet':
         this.setupWalletHandlers()
         break
+      case 'success':
+        this.setupPostTxHandlers()
+        break
       case 'failed':
-        this.setupFailedHandlers()
+        this.setupPostTxHandlers()
         break
     }
   }
@@ -236,7 +239,7 @@ export class App {
     }
   }
 
-  private setupFailedHandlers(): void {
+  private setupPostTxHandlers(): void {
     const retryBtn = document.getElementById('new_tx')
     const newWalletBtn = document.getElementById('new_wallet')
 
@@ -259,6 +262,7 @@ export class App {
     if (newWalletBtn) {
       newWalletBtn.removeAttribute('disabled')
       newWalletBtn.addEventListener('click', () => {
+        this.walletManager.logout()
         this.router.navigate('init')
       })
     }
