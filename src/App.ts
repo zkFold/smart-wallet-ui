@@ -1,5 +1,4 @@
 import { AppConfig, AppView, Network, WalletState } from './Types'
-import { ClientCredentials } from 'zkfold-smart-wallet-api'
 import { WalletManager } from './Wallet/WalletManager'
 import { Router } from './UI/Router'
 import { StorageManager } from './Utils/Storage'
@@ -7,7 +6,7 @@ import { BackendService } from './Services/BackendService'
 
 export class App {
   private config: AppConfig
-  private walletManager: WalletManager
+  private walletManager!: WalletManager
   private router: Router
   private storage: StorageManager
   private backendService: BackendService
@@ -87,6 +86,9 @@ export class App {
   public async init(clientName: string): Promise<void> {
     try {
       const credentials = await this.backendService.credentials(clientName);
+      if (!credentials) {
+        throw new Error("Google Client credentials are bull")
+      }
 
       if (this.config.clientId === '' || this.config.clientSecret === '') {
         this.config.clientId = credentials.client_id;

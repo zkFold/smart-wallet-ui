@@ -61,7 +61,7 @@ export function validateBech32Address(address: string): boolean {
 }
 
 export function sanitizeInput(input: string): string {
-  return input.trim().replace(/[<>\"'&]/g, '')
+  return input.trim().replace(/[<>\\"'&]/g, '')
 }
 
 export function decodeJWT(token: string): any {
