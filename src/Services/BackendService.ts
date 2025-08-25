@@ -1,4 +1,4 @@
-import { Backend } from 'zkfold-smart-wallet-api'
+import { Backend, ClientCredentials } from 'zkfold-smart-wallet-api'
 import * as CSL from '@emurgo/cardano-serialization-lib-browser'
 import { AppConfig } from '../Types'
 
@@ -26,6 +26,16 @@ export class BackendService {
     } catch (error) {
       console.error('Failed to check transaction status:', error)
       return { outcome: "failure", reason: error }
+    }
+  }
+
+  public async credentials(clientName: string): Promise<ClientCredentials | null> {
+    try {
+      const cc = await this.backend.credentials(clientName);
+      return cc 
+    } catch (error) {
+      console.error('Failed to check transaction status:', error)
+      return null 
     }
   }
 }

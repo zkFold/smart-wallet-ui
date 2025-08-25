@@ -81,6 +81,16 @@ export class StorageManager {
     }
   }
 
+  public clearActiveWallet(): void {
+    try {
+      const multiWallet = this.getMultiWalletStorage()
+      multiWallet.activeWalletId = undefined
+      localStorage.setItem(this.MULTI_WALLET_KEY, serialize(multiWallet))
+    } catch (error) {
+      console.warn('Failed to clear active wallet:', error)
+    }
+  }
+
   public clearWalletState(): void {
     try {
       localStorage.removeItem(this.MULTI_WALLET_KEY)
