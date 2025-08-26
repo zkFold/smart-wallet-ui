@@ -334,8 +334,17 @@ export class WalletManager extends EventEmitter {
       this.emit('transactionComplete', initialResult)
 
       // Send transaction (this includes the proof computation)
-      const txId = await this.wallet.sendTo(recipient)
+      const txResponse = await this.wallet.sendTo(recipient)
+      const txId = txResponse.tx_id; 
+      const failedEmails = txResponse.notifier_errors;
       console.log(`Transaction ID: ${txId}`)
+      if (failedEmails) {
+        let message = "";
+        for (let i = 0; i < failedEmails.length; i++) {
+            message += `Failed to notify recipient ${failedEmails[i][0]}: ${failedEmails[i][1]}\n`
+        }
+        alert(message);
+      }
 
       // Emit proof computation complete event
       const finalResult: TransactionResult = {
@@ -455,9 +464,12 @@ export class WalletManager extends EventEmitter {
 
   public logout(): void {
     // Clear the current session without deleting wallet data from localStorage
+    console.log("LOGGING OUT")
     this.wallet = null
     this.backend = null
     this.currentWalletId = null
+    // Clear the active wallet designation (but keep wallet data for multi-wallet support)
+    this.storage.clearActiveWallet()
     // Clear any session data
     sessionStorage.clear()
     // Emit logout event
