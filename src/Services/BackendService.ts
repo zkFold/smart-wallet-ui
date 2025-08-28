@@ -29,13 +29,13 @@ export class BackendService {
     }
   }
 
-  public async credentials(clientName: string): Promise<ClientCredentials | null> {
+  public async credentials(): Promise<ClientCredentials | null> {
     try {
-      const cc = await this.backend.credentials(clientName);
-      return cc 
+      const cc = await this.backend.credentials();
+      return cc
     } catch (error) {
       console.error('Failed to check transaction status:', error)
-      return null 
+      return null
     }
   }
 }

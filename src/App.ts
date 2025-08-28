@@ -83,9 +83,9 @@ export class App {
     })
   }
 
-  public async init(clientName: string): Promise<void> {
+  public async init(): Promise<void> {
     try {
-      const credentials = await this.backendService.credentials(clientName);
+      const credentials = await this.backendService.credentials();
       if (!credentials) {
         throw new Error("Google Client credentials are bull")
       }
