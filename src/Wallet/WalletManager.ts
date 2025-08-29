@@ -335,13 +335,14 @@ export class WalletManager extends EventEmitter {
 
       // Send transaction (this includes the proof computation)
       const txResponse = await this.wallet.sendTo(recipient)
-      const txId = txResponse.tx_id;
+      const txId = txResponse.transaction_id;
       const failedEmails = txResponse.notifier_errors;
       console.log(`Transaction ID: ${txId}`)
       if (failedEmails && failedEmails.length > 0) {
         console.error('Notifier errors occurred:');
         for (let i = 0; i < failedEmails.length; i++) {
-          console.error(`Failed to notify recipient ${failedEmails[i][0]}: ${failedEmails[i][1]}`);
+          const failedNotification = failedEmails[i];
+          console.error(`Failed to notify recipient ${failedNotification.email}: ${failedNotification.error}`);
         }
       }
 
