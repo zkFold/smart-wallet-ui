@@ -15,6 +15,7 @@ Edit `.env`:
 - `VITE_CLIENT_SECRET`: Google OAuth client secret
 - `VITE_WEBSITE_URL`: Base URL for your website (default: http://localhost:8080)
 - `VITE_BACKEND_URL`: URL for the zkFold Smart Wallet backend server
+- `VITE_BACKEND_API_KEY`: an API key to access the Smart Wallet backend server
 - `VITE_PROVER_URL`: URL for the prover server
 
 3. **Run the application:**
