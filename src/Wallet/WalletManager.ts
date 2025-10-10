@@ -22,7 +22,7 @@ export class WalletManager extends EventEmitter {
     this.prover = new Prover(this.config.proverUrl)
   }
 
-  public initiateLogin(): void {
+  public login(): void {
     try {
       // Generate state for OAuth flow
       const state = this.generateOAuthState()
@@ -33,12 +33,11 @@ export class WalletManager extends EventEmitter {
       window.location.href = authUrl
     } catch (error) {
       console.error('Failed to initiate user login:', error)
-      this.emit('walletInitializationFailed', error)
       throw error
     }
   }
 
-  public async handleOAuthCallback(callbackData: string): Promise<void> {
+  public async oauthCallback(callbackData: string): Promise<void> {
     try {
       // Parse URL parameters to get authorization code
       const params = new URLSearchParams(callbackData)
@@ -73,44 +72,37 @@ export class WalletManager extends EventEmitter {
         // No tokenSKey - this tells the Wallet API to treat it as a fresh wallet
       }
 
-      await this.completeLogin(initialiser)
+      // Create wallet instance
+      this.wallet = new Wallet(this.backend, this.prover, initialiser)
 
-      // Redirect to root address after successful OAuth callback
-      window.history.replaceState({}, '', '/')
+      // Check if there is an existing wallet for the same Cardano address
+      const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
+      const existingWallet = this.storage.getWallet(address)
+      if (existingWallet) {
+        // TODO: check if we have a UTxO with the token matching the existing wallet's tokenSKey
+
+        // Reuse existing wallet credential to avoid expensive proof recomputation
+        console.log(`Found an existing wallet. Reusing credentials.`)
+
+        this.wallet = existingWallet
+        this.wallet.updateBackend(this.backend)
+        this.wallet.updateProver(this.prover)
+      }
+      else {
+        // Create new wallet as no existing wallet found for this email
+        console.log(`No existing wallet found for the given userId. Creating new wallet.`)
+      }
+
+      // Emit wallet initialized event with updated state
+      this.emit('walletInitialized')
 
     } catch (error) {
       console.error('OAuth callback failed:', error)
-      this.emit('walletInitializationFailed', error)
-      // Redirect to home page on error
-      window.history.replaceState({}, '', '/')
       throw error
     }
-  }
 
-  private async completeLogin(initialiser: any): Promise<void> {
-    // Create wallet instance
-    this.wallet = new Wallet(this.backend, this.prover, initialiser)
-
-    // Check if there is an existing wallet for the same Cardano address
-    const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
-    const existingWallet = this.storage.getWallet(address)
-    if (existingWallet) {
-      // TODO: check if we have a UTxO with the token matching the existing wallet's tokenSKey
-
-      // Reuse existing wallet credential to avoid expensive proof recomputation
-      console.log(`Found an existing wallet. Reusing credentials.`)
-
-      this.wallet = existingWallet
-      this.wallet.updateBackend(this.backend)
-      this.wallet.updateProver(this.prover)
-    }
-    else {
-      // Create new wallet as no existing wallet found for this email
-      console.log(`No existing wallet found for the given userId. Creating new wallet.`)
-    }
-
-    // Emit wallet initialized event with updated state
-    this.emit('walletInitialized')
+    // Redirect to root address
+    window.history.replaceState({}, '', '/')
   }
 
   public async sendTransaction(request: TransactionRequest): Promise<void> {

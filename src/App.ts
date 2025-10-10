@@ -81,7 +81,7 @@ export class App {
       // Check for OAuth callback first
       const params = new URLSearchParams(window.location.search)
       if (params.has('code')) {
-        await this.walletManager.handleOAuthCallback(window.location.search)
+        await this.walletManager.oauthCallback(window.location.search)
         return
       }
 
@@ -160,7 +160,7 @@ export class App {
     if (form) {
       form.addEventListener('submit', async (e) => {
         e.preventDefault()
-        this.walletManager.initiateLogin()
+        this.walletManager.login()
       })
     }
   }
