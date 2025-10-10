@@ -1,11 +1,11 @@
 import { Wallet, SmartTxRecipient, Backend, BigIntWrap, Prover, AddressType } from 'zkfold-smart-wallet-api'
 import * as CSL from '@emurgo/cardano-serialization-lib-browser'
-import { AppConfig, TransactionRequest, TransactionResult } from '../Types'
+import { AppConfig, TransactionRequest, TransactionResult, WalletEvent } from '../Types'
 import { StorageManager } from '../Utils/Storage'
 import { EventEmitter } from '../Utils/EventEmitter'
 import { GoogleAuth } from './GoogleAuth'
 
-export class WalletManager extends EventEmitter {
+export class WalletManager extends EventEmitter<WalletEvent> {
   private config: AppConfig
   private storage: StorageManager
   private googleAuth: GoogleAuth

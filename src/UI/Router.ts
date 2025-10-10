@@ -1,10 +1,10 @@
-import { AppView, WalletBalance } from '../Types'
+import { AppView, RouterEvent, WalletBalance } from '../Types'
 import { EventEmitter } from '../Utils/EventEmitter'
 import { formatBalance } from '../Utils/Helpers'
 import { BackendService } from '../Services/BackendService'
 import { AddressType } from 'zkfold-smart-wallet-api'
 
-export class Router extends EventEmitter {
+export class Router extends EventEmitter<RouterEvent> {
   private currentViewData: any = null
   private backendService?: BackendService
 

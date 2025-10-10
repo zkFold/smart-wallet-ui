@@ -36,11 +36,20 @@ export interface AppConfig {
 }
 
 // Events
-export interface AppEvent {
-  type: string
+export interface AppEvent<E> {
+  id: E
   data?: any
 }
 
-export interface EventListener {
-  (event: AppEvent): void
+export interface EventListener<E> {
+  (event: AppEvent<E>): void
 }
+
+export type WalletEvent =
+    'walletInitialized'
+  | 'proofComputationComplete'
+  | 'transactionComplete'
+  | 'transactionFailed'
+  | 'walletLoggedOut'
+
+export type RouterEvent = 'navigate'
