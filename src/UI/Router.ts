@@ -1,4 +1,4 @@
-import { AppView, WalletState } from '../Types'
+import { AppView, WalletBalance } from '../Types'
 import { EventEmitter } from '../Utils/EventEmitter'
 import { formatBalance } from '../Utils/Helpers'
 import { BackendService } from '../Services/BackendService'
@@ -69,13 +69,13 @@ export class Router extends EventEmitter {
     return container
   }
 
-  public renderWalletView(walletState: WalletState): HTMLElement {
+  public renderWalletView(userId: string, address: string, balance: WalletBalance): HTMLElement {
     const container = document.createElement('main')
     container.className = 'container'
 
-    const balanceHtml = walletState.balance ? formatBalance(walletState.balance) : '<li>Loading...</li>'
-    const address = walletState.address || 'Loading...'
-    const userEmail = walletState.userEmail || 'Unknown'
+    const userIdHtml = userId || 'Unknown'
+    const addressHtml = address || 'Loading...'
+    const balanceHtml = balance ? formatBalance(balance) : '<li>Loading...</li>'
 
     container.innerHTML = `
       <a href="https://zkfold.io">
@@ -84,7 +84,7 @@ export class Router extends EventEmitter {
       <br><br>
       <div style="display: flex; align-items: center;">
         <label name="user_email">
-            User: <strong>${userEmail}</strong>
+            User: <strong>${userIdHtml}</strong>
         </label>
         <button type="button" id="copy_email" style="background: none; border: none; cursor: pointer; padding: 0.25rem;" title="Copy email">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -94,7 +94,7 @@ export class Router extends EventEmitter {
       </div>
       <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
         <label name="wallet_address">
-            Address: <strong>${address}</strong>
+            Address: <strong>${addressHtml}</strong>
         </label>
         <button type="button" id="copy_address" style="background: none; border: none; cursor: pointer; padding: 0.25rem;" title="Copy address">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -162,7 +162,7 @@ export class Router extends EventEmitter {
 
       if (copyEmailBtn) {
         copyEmailBtn.addEventListener('click', () => {
-          this.copyToClipboard(userEmail, 'Email copied!', copyEmailBtn)
+          this.copyToClipboard(userIdHtml, 'Email copied!', copyEmailBtn)
         })
       }
 
@@ -363,14 +363,10 @@ export class Router extends EventEmitter {
       txStatus.innerHTML = "Transaction successful!"
       newTx.disabled = false
       newWallet.disabled = false
-      newTx.onclick = () => this.emit('refreshAndNavigate', 'wallet')
-      newWallet.onclick = () => this.navigate('init')
     } else {
       txStatus.innerHTML = "Transaction failed: " + (reason || "Unknown error")
       newTx.disabled = false
       newWallet.disabled = false
-      newTx.onclick = () => this.emit('refreshAndNavigate', 'wallet')
-      newWallet.onclick = () => this.navigate('init')
     }
   }
 

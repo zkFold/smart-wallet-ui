@@ -1,27 +1,12 @@
-import { AddressType } from 'zkfold-smart-wallet-api'
+import { AddressType, Wallet } from 'zkfold-smart-wallet-api'
 
 export type Network = 'mainnet' | 'preprod' | 'preview'
 
 // Application types
-export interface WalletState {
-  isInitialized: boolean
-  address?: string
-  balance?: WalletBalance
-  network?: Network
-  method?: WalletMethod
-  userEmail?: string
-}
 
-export interface WalletInfo {
-  id: string
-  state: WalletState
-  network?: Network
-  credential?: any
-}
-
+// Activated wallets
 export interface MultiWalletStorage {
-  wallets: { [id: string]: WalletInfo }
-  activeWalletId?: string
+  wallets: { [addr: string]: Wallet }
 }
 
 export interface WalletBalance {

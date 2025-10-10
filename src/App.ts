@@ -1,4 +1,4 @@
-import { AppConfig, AppView, Network, WalletState } from './Types'
+import { AppConfig, AppView } from './Types'
 import { WalletManager } from './Wallet/WalletManager'
 import { Router } from './UI/Router'
 import { StorageManager } from './Utils/Storage'
@@ -11,7 +11,6 @@ export class App {
   private storage: StorageManager
   private backendService: BackendService
   private currentView: AppView = 'init'
-  private walletState: WalletState = { isInitialized: false }
 
   constructor() {
     // Load configuration from environment or defaults
@@ -34,8 +33,7 @@ export class App {
 
   private setupEventListeners(): void {
     // Listen for wallet state changes
-    this.walletManager.on('walletInitialized', (event: any) => {
-      this.walletState = event.data
+    this.walletManager.on('walletInitialized', () => {
       this.router.navigate('wallet')
     })
 
@@ -60,26 +58,6 @@ export class App {
     this.router.on('navigate', (event: any) => {
       this.currentView = event.data.view
       this.render()
-    })
-
-    // Listen for refresh and navigate events
-    this.router.on('refreshAndNavigate', async (event: any) => {
-      const targetView = event.data
-      console.log(`TARGET VIEW: ${targetView}`)
-      if (targetView === 'wallet') {
-        try {
-          // Refresh wallet state before navigating
-          this.walletState = await this.walletManager.refreshWalletState()
-          this.currentView = 'wallet'
-          this.render()
-        } catch (error) {
-          console.error('Failed to refresh wallet state:', error)
-          // Fallback to regular navigation
-          this.router.navigate('wallet')
-        }
-      } else {
-        this.router.navigate(targetView)
-      }
     })
   }
 
@@ -107,11 +85,7 @@ export class App {
         return
       }
 
-      // Try to restore wallet state from active wallet in storage
-      const activeWallet = this.storage.getActiveWallet()
-      if (activeWallet && activeWallet.state.isInitialized) {
-        this.walletState = activeWallet.state
-        await this.walletManager.restoreWallet(activeWallet.state)
+      if (this.walletManager.isLoggedIn()) {
         this.router.navigate('wallet')
       } else {
         this.router.navigate('init')
@@ -125,7 +99,7 @@ export class App {
     }
   }
 
-  private render(): void {
+  private async render(): Promise<void> {
     const appElement = document.getElementById('app')
     if (!appElement) {
       console.error('App element not found')
@@ -142,7 +116,10 @@ export class App {
         viewElement = this.router.renderInitView()
         break
       case 'wallet':
-        viewElement = this.router.renderWalletView(this.walletState)
+        const userId = await this.walletManager.getUserId();
+        const address = await this.walletManager.getWalletAddress();
+        const balance = await this.walletManager.getWalletBalance();
+        viewElement = this.router.renderWalletView(userId, address, balance)
         break
       case 'success':
         viewElement = this.router.renderSuccessView(this.router.getViewData())
@@ -183,10 +160,7 @@ export class App {
     if (form) {
       form.addEventListener('submit', async (e) => {
         e.preventDefault()
-        const formData = new FormData(form)
-        const network = formData.get('network') as Network
-
-        await this.walletManager.initializeWallet(network)
+        this.walletManager.initiateLogin()
       })
     }
   }
@@ -247,26 +221,19 @@ export class App {
 
     if (retryBtn) {
       retryBtn.removeAttribute('disabled')
-      retryBtn.addEventListener('click', async () => {
-        try {
-          // Refresh wallet state before navigating
-          this.walletState = await this.walletManager.refreshWalletState()
-          this.currentView = 'wallet'
-          this.render()
-        } catch (error) {
-          console.error('Failed to refresh wallet state:', error)
-          // Fallback to regular navigation
-          this.router.navigate('wallet')
-        }
-      })
+      retryBtn.onclick = async () => {
+        retryBtn.setAttribute('disabled', 'true')
+        this.router.navigate('wallet')
+      }
     }
 
     if (newWalletBtn) {
       newWalletBtn.removeAttribute('disabled')
-      newWalletBtn.addEventListener('click', () => {
+      newWalletBtn.onclick = () => {
+        newWalletBtn.setAttribute('disabled', 'true')
         this.walletManager.logout()
         this.router.navigate('init')
-      })
+      }
     }
   }
 

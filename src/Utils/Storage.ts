@@ -1,32 +1,32 @@
-import { WalletInfo, MultiWalletStorage } from '../Types'
-import { serialize, deserialize } from 'zkfold-smart-wallet-api'
+import { MultiWalletStorage } from '../Types'
+import { serialize, deserialize, Wallet } from 'zkfold-smart-wallet-api'
 
 export class StorageManager {
   private readonly MULTI_WALLET_KEY = 'smart-wallets'
   private readonly SESSION_KEY = 'smart-wallet-session'
 
   // Multi-wallet support with persistent credentials
-  public saveWallet(walletInfo: WalletInfo): void {
+  public saveWallet(addr: string, wallet: Wallet): void {
     try {
       const multiWallet = this.getMultiWalletStorage()
-      multiWallet.wallets[walletInfo.id] = walletInfo
+      multiWallet.wallets[addr] = wallet
       localStorage.setItem(this.MULTI_WALLET_KEY, serialize(multiWallet))
     } catch (error) {
       console.warn('Failed to save wallet to localStorage:', error)
     }
   }
 
-  public getWallet(walletId: string): WalletInfo | null {
+  public getWallet(addr: string): Wallet | null {
     try {
       const multiWallet = this.getMultiWalletStorage()
-      return multiWallet.wallets[walletId] || null
+      return multiWallet.wallets[addr] || null
     } catch (error) {
       console.warn('Failed to retrieve wallet from localStorage:', error)
       return null
     }
   }
 
-  public getAllWallets(): WalletInfo[] {
+  public getAllWallets(): Wallet[] {
     try {
       const multiWallet = this.getMultiWalletStorage()
       return Object.values(multiWallet.wallets)
@@ -36,66 +36,21 @@ export class StorageManager {
     }
   }
 
-  public findWalletByEmail(email: string): WalletInfo | null {
-    try {
-      const allWallets = this.getAllWallets()
-      return allWallets.find(wallet => wallet.state.userEmail === email) || null
-    } catch (error) {
-      console.warn('Failed to find wallet by email:', error)
-      return null
-    }
-  }
-
-  public removeWallet(walletId: string): void {
+  public removeWallet(addr: string): void {
     try {
       const multiWallet = this.getMultiWalletStorage()
-      delete multiWallet.wallets[walletId]
-      if (multiWallet.activeWalletId === walletId) {
-        multiWallet.activeWalletId = undefined
-      }
+      delete multiWallet.wallets[addr]
       localStorage.setItem(this.MULTI_WALLET_KEY, serialize(multiWallet))
     } catch (error) {
       console.warn('Failed to remove wallet from localStorage:', error)
     }
   }
 
-  public setActiveWallet(walletId: string): void {
-    try {
-      const multiWallet = this.getMultiWalletStorage()
-      if (multiWallet.wallets[walletId]) {
-        multiWallet.activeWalletId = walletId
-        localStorage.setItem(this.MULTI_WALLET_KEY, serialize(multiWallet))
-      }
-    } catch (error) {
-      console.warn('Failed to set active wallet:', error)
-    }
-  }
-
-  public getActiveWallet(): WalletInfo | null {
-    try {
-      const multiWallet = this.getMultiWalletStorage()
-      return multiWallet.activeWalletId ? multiWallet.wallets[multiWallet.activeWalletId] || null : null
-    } catch (error) {
-      console.warn('Failed to get active wallet:', error)
-      return null
-    }
-  }
-
-  public clearActiveWallet(): void {
-    try {
-      const multiWallet = this.getMultiWalletStorage()
-      multiWallet.activeWalletId = undefined
-      localStorage.setItem(this.MULTI_WALLET_KEY, serialize(multiWallet))
-    } catch (error) {
-      console.warn('Failed to clear active wallet:', error)
-    }
-  }
-
-  public clearWalletState(): void {
+  public removeAllWallets(): void {
     try {
       localStorage.removeItem(this.MULTI_WALLET_KEY)
     } catch (error) {
-      console.warn('Failed to clear wallet state from localStorage:', error)
+      console.warn('Failed to remove all wallets from localStorage:', error)
     }
   }
 
