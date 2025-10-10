@@ -1,9 +1,5 @@
 import { AddressType, Wallet } from 'zkfold-smart-wallet-api'
 
-export type Network = 'mainnet' | 'preprod' | 'preview'
-
-// Application types
-
 // Activated wallets
 export interface MultiWalletStorage {
   wallets: { [addr: string]: Wallet }
@@ -16,8 +12,8 @@ export interface WalletBalance {
 export interface TransactionRequest {
   recipient: string
   recipientType: AddressType
-  amount: string
   asset: string
+  amount: string
 }
 
 export interface TransactionResult {
