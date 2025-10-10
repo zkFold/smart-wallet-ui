@@ -1,5 +1,5 @@
 // Policy ID for Smart Wallet utility tokens that should be hidden
-const HIDDEN_POLICY_ID = '10a01cd6ba666b392ef1967c7af500377d9241d5414b2d658f2179aa'
+const HIDDEN_POLICY_ID = '31afd09d5c4ba63898e726f345cfa1c6fe33e2fe07f9845288ef8c4d'
 
 export function formatBalance(balance: { [asset: string]: bigint }): string {
   let assets = ""
