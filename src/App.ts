@@ -1,7 +1,6 @@
 import { AppConfig, AppView } from './Types'
 import { WalletManager } from './Wallet/WalletManager'
 import { StorageManager } from './Utils/Storage'
-import { BackendService } from './Services/BackendService'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { renderFailedView } from './UI/Failed'
@@ -11,13 +10,11 @@ export class App {
   private config: AppConfig
   private walletManager!: WalletManager
   private storage: StorageManager
-  private backendService: BackendService
 
   constructor() {
     // Load configuration from environment or defaults
     this.config = this.loadConfig()
     this.storage = new StorageManager()
-    this.backendService = new BackendService(this.config)
   }
 
   private loadConfig(): AppConfig {
@@ -56,17 +53,8 @@ export class App {
 
   public async init(): Promise<void> {
     try {
-      const credentials = await this.backendService.credentials()
-      if (!credentials) {
-        throw new Error("Google Client credentials are bull")
-      }
-
-      if (this.config.clientId === '' || this.config.clientSecret === '') {
-        this.config.clientId = credentials.client_id
-        this.config.clientSecret = credentials.client_secret
-      }
-
       this.walletManager = new WalletManager(this.config, this.storage)
+      await this.walletManager.init()
 
       // Set up event listeners
       this.setupNavigation()

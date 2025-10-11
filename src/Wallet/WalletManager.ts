@@ -22,6 +22,23 @@ export class WalletManager extends EventEmitter<WalletEvent> {
     this.prover = new Prover(this.config.proverUrl)
   }
 
+  public async init(): Promise<void> {
+    try {
+      const credentials = await this.backend.credentials()
+      if (!credentials) {
+        throw new Error("Google Client credentials are missing")
+      }
+
+      if (this.config.clientId === '' || this.config.clientSecret === '') {
+        this.config.clientId = credentials.client_id
+        this.config.clientSecret = credentials.client_secret
+      }
+    } catch (error) {
+      console.error('Failed to initialize WalletManager:', error)
+      throw error
+    }
+  }
+
   public login(): void {
     try {
       // Generate state for OAuth flow
