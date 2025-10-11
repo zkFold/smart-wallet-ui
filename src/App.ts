@@ -1,16 +1,15 @@
 import { AppConfig, AppView } from './Types'
 import { WalletManager } from './Wallet/WalletManager'
-import { Router } from './UI/Router'
 import { StorageManager } from './Utils/Storage'
 import { BackendService } from './Services/BackendService'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { renderFailedView } from './UI/Failed'
+import { renderSuccessView } from './UI/Success'
 
 export class App {
   private config: AppConfig
   private walletManager!: WalletManager
-  private router: Router
   private storage: StorageManager
   private backendService: BackendService
 
@@ -19,7 +18,6 @@ export class App {
     this.config = this.loadConfig()
     this.storage = new StorageManager()
     this.backendService = new BackendService(this.config)
-    this.router = new Router(this.backendService)
   }
 
   private loadConfig(): AppConfig {
@@ -117,7 +115,7 @@ export class App {
         viewElement = renderWalletView(userId, address, balance)
         break
       case 'success':
-        viewElement = this.router.renderSuccessView(data)
+        viewElement = renderSuccessView(this.walletManager, data)
         break
       case 'failed':
         viewElement = renderFailedView(data)
