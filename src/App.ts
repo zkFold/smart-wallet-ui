@@ -13,7 +13,6 @@ export class App {
   private router: Router
   private storage: StorageManager
   private backendService: BackendService
-  private currentView: AppView = 'init'
 
   constructor() {
     // Load configuration from environment or defaults
@@ -44,9 +43,8 @@ export class App {
       await this.render('success', event.data)
     })
 
-    this.walletManager.on('proofComputationComplete', (event: any) => {
-      // Update the success view to show transaction pending instead of proof computing
-      this.router.updateProofComputationComplete(event.data.txId, event.data.recipient)
+    this.walletManager.on('proofComputationComplete', async (event: any) => {
+      await this.render('success', event.data)
     })
 
     this.walletManager.on('transactionFailed', async (event: any) => {
@@ -131,12 +129,12 @@ export class App {
     appElement.appendChild(viewElement)
 
     // Set up event handlers for the current view
-    this.setupViewEventHandlers()
+    this.setupViewEventHandlers(view)
   }
 
-  private setupViewEventHandlers(): void {
+  private setupViewEventHandlers(view: AppView): void {
     // Handle form submissions and button clicks based on current view
-    switch (this.currentView) {
+    switch (view) {
       case 'init':
         this.setupInitHandlers()
         break
