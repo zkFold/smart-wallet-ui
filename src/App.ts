@@ -3,6 +3,8 @@ import { WalletManager } from './Wallet/WalletManager'
 import { Router } from './UI/Router'
 import { StorageManager } from './Utils/Storage'
 import { BackendService } from './Services/BackendService'
+import { renderInitView } from './UI/Init'
+import { renderWalletView } from './UI/Wallet'
 
 export class App {
   private config: AppConfig
@@ -31,7 +33,7 @@ export class App {
     }
   }
 
-  private async setupEventListeners(): Promise<void> {
+  private async setupNavigation(): Promise<void> {
     // Listen for wallet state changes
     this.walletManager.on('walletInitialized', async () => {
       await this.render('wallet')
@@ -41,9 +43,9 @@ export class App {
       await this.render('success', event.data)
     })
 
-    this.walletManager.on('proofComputationComplete', async (event: any) => {
+    this.walletManager.on('proofComputationComplete', (event: any) => {
       // Update the success view to show transaction pending instead of proof computing
-      await this.router.updateProofComputationComplete(event.data.txId, event.data.recipient)
+      this.router.updateProofComputationComplete(event.data.txId, event.data.recipient)
     })
 
     this.walletManager.on('transactionFailed', async (event: any) => {
@@ -70,7 +72,7 @@ export class App {
       this.walletManager = new WalletManager(this.config, this.storage)
 
       // Set up event listeners
-      this.setupEventListeners()
+      this.setupNavigation()
 
       // Check for OAuth callback first
       const params = new URLSearchParams(window.location.search)
@@ -107,13 +109,13 @@ export class App {
     let viewElement: HTMLElement
     switch (view) {
       case 'init':
-        viewElement = this.router.renderInitView()
+        viewElement = renderInitView()
         break
       case 'wallet':
         const userId = await this.walletManager.getUserId()
         const address = await this.walletManager.getWalletAddress()
         const balance = await this.walletManager.getWalletBalance()
-        viewElement = this.router.renderWalletView(userId, address, balance)
+        viewElement = renderWalletView(userId, address, balance)
         break
       case 'success':
         viewElement = this.router.renderSuccessView(data)
@@ -122,7 +124,7 @@ export class App {
         viewElement = this.router.renderFailedView(data)
         break
       default:
-        viewElement = this.router.renderInitView()
+        viewElement = renderInitView()
     }
 
     appElement.appendChild(viewElement)
