@@ -5,6 +5,7 @@ import { StorageManager } from './Utils/Storage'
 import { BackendService } from './Services/BackendService'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
+import { renderFailedView } from './UI/Failed'
 
 export class App {
   private config: AppConfig
@@ -121,7 +122,7 @@ export class App {
         viewElement = this.router.renderSuccessView(data)
         break
       case 'failed':
-        viewElement = this.router.renderFailedView(data)
+        viewElement = renderFailedView(data)
         break
       default:
         viewElement = renderInitView()
