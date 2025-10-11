@@ -14,10 +14,10 @@ export class App {
 
   constructor() {
     // Load configuration from environment or defaults
-    this.config = this.loadConfig();
-    this.storage = new StorageManager();
-    this.backendService = new BackendService(this.config);
-    this.router = new Router(this.backendService);
+    this.config = this.loadConfig()
+    this.storage = new StorageManager()
+    this.backendService = new BackendService(this.config)
+    this.router = new Router(this.backendService)
   }
 
   private loadConfig(): AppConfig {
@@ -31,52 +31,46 @@ export class App {
     }
   }
 
-  private setupEventListeners(): void {
+  private async setupEventListeners(): Promise<void> {
     // Listen for wallet state changes
-    this.walletManager.on('walletInitialized', () => {
-      this.router.navigate('wallet')
+    this.walletManager.on('walletInitialized', async () => {
+      await this.render('wallet')
     })
 
-    this.walletManager.on('transactionComplete', (event: any) => {
-      this.router.navigate('success', event.data)
+    this.walletManager.on('transactionComplete', async (event: any) => {
+      await this.render('success', event.data)
     })
 
-    this.walletManager.on('proofComputationComplete', (event: any) => {
+    this.walletManager.on('proofComputationComplete', async (event: any) => {
       // Update the success view to show transaction pending instead of proof computing
-      this.router.updateProofComputationComplete(event.data.txId, event.data.recipient)
+      await this.router.updateProofComputationComplete(event.data.txId, event.data.recipient)
     })
 
-    this.walletManager.on('transactionFailed', (event: any) => {
-      this.router.navigate('failed', { reason: event.data.message })
+    this.walletManager.on('transactionFailed', async (event: any) => {
+      await this.render('failed', { reason: event.data.message })
     })
 
-    this.walletManager.on('walletLoggedOut', () => {
-      this.router.navigate('init')
-    })
-
-    // Listen for router navigation
-    this.router.on('navigate', (event: any) => {
-      this.currentView = event.data.view
-      this.render()
+    this.walletManager.on('walletLoggedOut', async () => {
+      await this.render('init')
     })
   }
 
   public async init(): Promise<void> {
     try {
-      const credentials = await this.backendService.credentials();
+      const credentials = await this.backendService.credentials()
       if (!credentials) {
         throw new Error("Google Client credentials are bull")
       }
 
       if (this.config.clientId === '' || this.config.clientSecret === '') {
-        this.config.clientId = credentials.client_id;
-        this.config.clientSecret = credentials.client_secret;
+        this.config.clientId = credentials.client_id
+        this.config.clientSecret = credentials.client_secret
       }
 
-      this.walletManager = new WalletManager(this.config, this.storage);
+      this.walletManager = new WalletManager(this.config, this.storage)
 
       // Set up event listeners
-      this.setupEventListeners();
+      this.setupEventListeners()
 
       // Check for OAuth callback first
       const params = new URLSearchParams(window.location.search)
@@ -86,20 +80,20 @@ export class App {
       }
 
       if (this.walletManager.isLoggedIn()) {
-        this.router.navigate('wallet')
+        await this.render('wallet')
       } else {
-        this.router.navigate('init')
+        await this.render('init')
       }
 
       // Initial render
-      this.render()
+      await this.render('init')
     } catch (error) {
       console.error('Failed to initialize app:', error)
-      this.router.navigate('init')
+      await this.render('init')
     }
   }
 
-  private async render(): Promise<void> {
+  private async render(view: AppView, data?: any): Promise<void> {
     const appElement = document.getElementById('app')
     if (!appElement) {
       console.error('App element not found')
@@ -111,21 +105,21 @@ export class App {
 
     // Render current view
     let viewElement: HTMLElement
-    switch (this.currentView) {
+    switch (view) {
       case 'init':
         viewElement = this.router.renderInitView()
         break
       case 'wallet':
-        const userId = await this.walletManager.getUserId();
-        const address = await this.walletManager.getWalletAddress();
-        const balance = await this.walletManager.getWalletBalance();
+        const userId = await this.walletManager.getUserId()
+        const address = await this.walletManager.getWalletAddress()
+        const balance = await this.walletManager.getWalletBalance()
         viewElement = this.router.renderWalletView(userId, address, balance)
         break
       case 'success':
-        viewElement = this.router.renderSuccessView(this.router.getViewData())
+        viewElement = this.router.renderSuccessView(data)
         break
       case 'failed':
-        viewElement = this.router.renderFailedView(this.router.getViewData())
+        viewElement = this.router.renderFailedView(data)
         break
       default:
         viewElement = this.router.renderInitView()
@@ -223,16 +217,16 @@ export class App {
       retryBtn.removeAttribute('disabled')
       retryBtn.onclick = async () => {
         retryBtn.setAttribute('disabled', 'true')
-        this.router.navigate('wallet')
+        await this.render('wallet')
       }
     }
 
     if (newWalletBtn) {
       newWalletBtn.removeAttribute('disabled')
-      newWalletBtn.onclick = () => {
+      newWalletBtn.onclick = async () => {
         newWalletBtn.setAttribute('disabled', 'true')
         this.walletManager.logout()
-        this.router.navigate('init')
+        await this.render('init')
       }
     }
   }

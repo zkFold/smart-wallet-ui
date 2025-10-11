@@ -1,29 +1,17 @@
-import { AppView, RouterEvent, WalletBalance } from '../Types'
-import { EventEmitter } from '../Utils/EventEmitter'
+import { WalletBalance } from '../Types'
 import { formatBalance } from '../Utils/Helpers'
 import { BackendService } from '../Services/BackendService'
 import { AddressType } from 'zkfold-smart-wallet-api'
 
-export class Router extends EventEmitter<RouterEvent> {
-  private currentViewData: any = null
+export class Router {
   private backendService?: BackendService
 
   constructor(backendService?: BackendService) {
-    super()
     this.backendService = backendService
   }
 
   public setBackendService(backendService: BackendService): void {
     this.backendService = backendService
-  }
-
-  public navigate(view: AppView, data?: any): void {
-    this.currentViewData = data
-    this.emit('navigate', { view, data })
-  }
-
-  public getViewData(): any {
-    return this.currentViewData
   }
 
   public renderInitView(): HTMLElement {

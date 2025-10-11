@@ -51,5 +51,3 @@ export type WalletEvent =
   | 'transactionComplete'
   | 'transactionFailed'
   | 'walletLoggedOut'
-
-export type RouterEvent = 'navigate'
