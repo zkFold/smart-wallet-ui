@@ -5,37 +5,28 @@ import { StorageManager } from './Utils/Storage'
 import { EventEmitter } from './Utils/EventEmitter'
 
 export class WalletManager extends EventEmitter<WalletEvent> {
-  private config: AppConfig
   private storage: StorageManager
   private googleApi: GoogleApi
   private backend: Backend
   private prover: Prover
   private wallet: Wallet | null = null
 
-  constructor(config: AppConfig, storage: StorageManager) {
+  constructor(storage: StorageManager) {
     super()
-    this.config = config
+
+    const config: AppConfig = {
+        clientId: import.meta.env.VITE_CLIENT_ID,
+        clientSecret: import.meta.env.VITE_CLIENT_SECRET,
+        websiteUrl: import.meta.env.VITE_WEBSITE_URL,
+        backendUrl: import.meta.env.VITE_BACKEND_URL,
+        backendApiKey: import.meta.env.VITE_BACKEND_API_KEY,
+        proverUrl: import.meta.env.VITE_PROVER_URL,
+      }
+    
     this.storage = storage
     this.googleApi = new GoogleApi(config.clientId, config.clientSecret, `${config.websiteUrl}/oauth2callback`)
-    this.backend = new Backend(this.config.backendUrl, this.config.backendApiKey)
-    this.prover = new Prover(this.config.proverUrl)
-  }
-
-  public async init(): Promise<void> {
-    try {
-      const credentials = await this.backend.credentials()
-      if (!credentials) {
-        throw new Error("Google Client credentials are missing")
-      }
-
-      if (this.config.clientId === '' || this.config.clientSecret === '') {
-        this.config.clientId = credentials.client_id
-        this.config.clientSecret = credentials.client_secret
-      }
-    } catch (error) {
-      console.error('Failed to initialize WalletManager:', error)
-      throw error
-    }
+    this.backend = new Backend(config.backendUrl, config.backendApiKey)
+    this.prover = new Prover(config.proverUrl)
   }
 
   public login(): void {

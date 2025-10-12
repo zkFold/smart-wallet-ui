@@ -1,4 +1,4 @@
-import { AppConfig, AppView } from './Types'
+import { AppView } from './Types'
 import { WalletManager } from './WalletManager'
 import { StorageManager } from './Utils/Storage'
 import { renderInitView } from './UI/Init'
@@ -7,25 +7,11 @@ import { renderFailedView } from './UI/Failed'
 import { renderSuccessView } from './UI/Success'
 
 export class App {
-  private config: AppConfig
   private walletManager!: WalletManager
   private storage: StorageManager
 
   constructor() {
-    // Load configuration from environment or defaults
-    this.config = this.loadConfig()
     this.storage = new StorageManager()
-  }
-
-  private loadConfig(): AppConfig {
-    return {
-      clientId: import.meta.env.VITE_CLIENT_ID || '',
-      clientSecret: import.meta.env.VITE_CLIENT_SECRET || '',
-      websiteUrl: import.meta.env.VITE_WEBSITE_URL || window.location.origin,
-      backendUrl: import.meta.env.VITE_BACKEND_URL || '',
-      backendApiKey: import.meta.env.VITE_BACKEND_API_KEY,
-      proverUrl: import.meta.env.VITE_PROVER_URL || '',
-    }
   }
 
   private async setupNavigation(): Promise<void> {
@@ -53,8 +39,7 @@ export class App {
 
   public async init(): Promise<void> {
     try {
-      this.walletManager = new WalletManager(this.config, this.storage)
-      await this.walletManager.init()
+      this.walletManager = new WalletManager(this.storage)
 
       // Set up event listeners
       this.setupNavigation()
