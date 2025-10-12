@@ -1,6 +1,5 @@
 import { AppView } from './Types'
 import { WalletManager } from './WalletManager'
-import { StorageManager } from './Utils/Storage'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { renderFailedView } from './UI/Failed'
@@ -8,10 +7,9 @@ import { renderSuccessView } from './UI/Success'
 
 export class App {
   private walletManager!: WalletManager
-  private storage: StorageManager
 
   constructor() {
-    this.storage = new StorageManager()
+    this.walletManager = new WalletManager()
   }
 
   private async setupNavigation(): Promise<void> {
@@ -39,8 +37,6 @@ export class App {
 
   public async init(): Promise<void> {
     try {
-      this.walletManager = new WalletManager(this.storage)
-
       // Set up event listeners
       this.setupNavigation()
 

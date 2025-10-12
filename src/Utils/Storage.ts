@@ -1,7 +1,7 @@
 import { MultiWalletStorage } from '../Types'
 import { serialize, deserialize, Wallet } from 'zkfold-smart-wallet-api'
 
-export class StorageManager {
+export class Storage {
   private readonly MULTI_WALLET_KEY = 'smart-wallets'
   private readonly SESSION_KEY = 'smart-wallet-session'
 

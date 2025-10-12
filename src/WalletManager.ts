@@ -1,17 +1,17 @@
 import { Wallet, SmartTxRecipient, Backend, BigIntWrap, Prover, AddressType, GoogleApi } from 'zkfold-smart-wallet-api'
 import * as CSL from '@emurgo/cardano-serialization-lib-browser'
 import { AppConfig, TransactionRequest, TransactionResult, WalletEvent } from './Types'
-import { StorageManager } from './Utils/Storage'
+import { Storage } from './Utils/Storage'
 import { EventEmitter } from './Utils/EventEmitter'
 
 export class WalletManager extends EventEmitter<WalletEvent> {
-  private storage: StorageManager
+  private storage: Storage
   private googleApi: GoogleApi
   private backend: Backend
   private prover: Prover
   private wallet: Wallet | null = null
 
-  constructor(storage: StorageManager) {
+  constructor() {
     super()
 
     const config: AppConfig = {
@@ -23,7 +23,7 @@ export class WalletManager extends EventEmitter<WalletEvent> {
         proverUrl: import.meta.env.VITE_PROVER_URL,
       }
     
-    this.storage = storage
+    this.storage = new Storage()
     this.googleApi = new GoogleApi(config.clientId, config.clientSecret, `${config.websiteUrl}/oauth2callback`)
     this.backend = new Backend(config.backendUrl, config.backendApiKey)
     this.prover = new Prover(config.proverUrl)
