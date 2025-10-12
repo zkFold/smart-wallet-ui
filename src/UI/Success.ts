@@ -1,4 +1,4 @@
-import { WalletManager } from '../Wallet/WalletManager'
+import { WalletManager } from '../WalletManager'
 
 export function renderSuccessView(wm: WalletManager, data: { txId: string, recipient: string, isProofComputing?: boolean }): HTMLElement {
   const container = document.createElement('main')

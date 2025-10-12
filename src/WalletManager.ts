@@ -1,14 +1,13 @@
-import { Wallet, SmartTxRecipient, Backend, BigIntWrap, Prover, AddressType } from 'zkfold-smart-wallet-api'
+import { Wallet, SmartTxRecipient, Backend, BigIntWrap, Prover, AddressType, GoogleApi } from 'zkfold-smart-wallet-api'
 import * as CSL from '@emurgo/cardano-serialization-lib-browser'
-import { AppConfig, TransactionRequest, TransactionResult, WalletEvent } from '../Types'
-import { StorageManager } from '../Utils/Storage'
-import { EventEmitter } from '../Utils/EventEmitter'
-import { GoogleAuth } from './GoogleAuth'
+import { AppConfig, TransactionRequest, TransactionResult, WalletEvent } from './Types'
+import { StorageManager } from './Utils/Storage'
+import { EventEmitter } from './Utils/EventEmitter'
 
 export class WalletManager extends EventEmitter<WalletEvent> {
   private config: AppConfig
   private storage: StorageManager
-  private googleAuth: GoogleAuth
+  private googleApi: GoogleApi
   private backend: Backend
   private prover: Prover
   private wallet: Wallet | null = null
@@ -17,7 +16,7 @@ export class WalletManager extends EventEmitter<WalletEvent> {
     super()
     this.config = config
     this.storage = storage
-    this.googleAuth = new GoogleAuth(config)
+    this.googleApi = new GoogleApi(config.clientId, config.clientSecret, `${config.websiteUrl}/oauth2callback`)
     this.backend = new Backend(this.config.backendUrl, this.config.backendApiKey)
     this.prover = new Prover(this.config.proverUrl)
   }
@@ -46,7 +45,7 @@ export class WalletManager extends EventEmitter<WalletEvent> {
       this.storage.saveSessionData('oauth_state', state)
 
       // Redirect to Google OAuth
-      const authUrl = this.googleAuth.getAuthUrl(state)
+      const authUrl = this.googleApi.getAuthUrl(state)
       window.location.href = authUrl
     } catch (error) {
       console.error('Failed to initiate user login:', error)
@@ -77,7 +76,7 @@ export class WalletManager extends EventEmitter<WalletEvent> {
       }
 
       // Get JWT token using authorization code (now async)
-      const jwt = await this.googleAuth.getJWT(code)
+      const jwt = await this.googleApi.getJWT(code)
 
       if (!jwt) {
         throw new Error('Failed to get JWT from authorization code')

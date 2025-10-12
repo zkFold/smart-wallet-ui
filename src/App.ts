@@ -1,5 +1,5 @@
 import { AppConfig, AppView } from './Types'
-import { WalletManager } from './Wallet/WalletManager'
+import { WalletManager } from './WalletManager'
 import { StorageManager } from './Utils/Storage'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
