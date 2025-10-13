@@ -81,8 +81,7 @@ export class WalletManager extends EventEmitter<WalletEvent> {
 
       // Create wallet instance
       this.wallet = new Wallet(this.backend, this.prover, initialiser)
-      this.wallet.getProof();
-
+      
       // Check if there is an existing wallet for the same Cardano address
       const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
       const existingWallet = this.storage.getWallet(address)
@@ -99,6 +98,7 @@ export class WalletManager extends EventEmitter<WalletEvent> {
       else {
         // Create new wallet as no existing wallet found for this email
         console.log(`No existing wallet found for the given userId. Creating new wallet.`)
+        this.wallet.getProof();
       }
 
       // Emit wallet initialized event with updated state
@@ -173,6 +173,7 @@ export class WalletManager extends EventEmitter<WalletEvent> {
         recipient: recipientAddress,
         isProofComputing: false
       }
+      this.storage.saveWallet(await this.wallet.getAddress().then((x: any) => x.to_bech32()), this.wallet)
       this.emit('proofComputationComplete', finalResult)
 
     } catch (error) {

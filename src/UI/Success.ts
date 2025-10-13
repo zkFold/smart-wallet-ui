@@ -57,9 +57,9 @@ async function startTransactionStatusChecking(wm: WalletManager, txId: string, r
 }
 
 function updateTransactionStatus(outcome: string, reason?: string): void {
-const txStatus = document.getElementById("tx_status")
-const newTx = document.getElementById("new_tx") as HTMLButtonElement
-const newWallet = document.getElementById("new_wallet") as HTMLButtonElement
+  const txStatus = document.getElementById("tx_status")
+  const newTx = document.getElementById("new_tx") as HTMLButtonElement
+  const newWallet = document.getElementById("new_wallet") as HTMLButtonElement
 
   if (!txStatus || !newTx || !newWallet) return
 
