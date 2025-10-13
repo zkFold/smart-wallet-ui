@@ -84,16 +84,14 @@ export class WalletManager extends EventEmitter<WalletEvent> {
       
       // Check if there is an existing wallet for the same Cardano address
       const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
-      const existingWallet = this.storage.getWallet(address)
-      if (existingWallet) {
+      const exitingWalletInit = this.storage.getWallet(address)
+      if (exitingWalletInit) {
         // TODO: check if we have a UTxO with the token matching the existing wallet's tokenSKey
 
         // Reuse existing wallet credential to avoid expensive proof recomputation
         console.log(`Found an existing wallet. Reusing credentials.`)
 
-        this.wallet = existingWallet
-        this.wallet.updateBackend(this.backend)
-        this.wallet.updateProver(this.prover)
+        this.wallet = new Wallet(this.backend, this.prover, exitingWalletInit)
       }
       else {
         // Create new wallet as no existing wallet found for this email
@@ -173,7 +171,7 @@ export class WalletManager extends EventEmitter<WalletEvent> {
         recipient: recipientAddress,
         isProofComputing: false
       }
-      this.storage.saveWallet(await this.wallet.getAddress().then((x: any) => x.to_bech32()), this.wallet)
+      this.storage.saveWallet(await this.wallet.getAddress().then((x: any) => x.to_bech32()), this.wallet.toWalletInitialiser())
       this.emit('proofComputationComplete', finalResult)
 
     } catch (error) {

@@ -1,8 +1,8 @@
-import { AddressType, Wallet } from 'zkfold-smart-wallet-api'
+import { AddressType, WalletInitialiser } from 'zkfold-smart-wallet-api'
 
 // Activated wallets
 export interface MultiWalletStorage {
-  wallets: { [addr: string]: Wallet }
+  wallets: { [addr: string]: WalletInitialiser }
 }
 
 export interface WalletBalance {

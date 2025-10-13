@@ -1,12 +1,12 @@
 import { MultiWalletStorage } from '../Types'
-import { serialize, deserialize, Wallet } from 'zkfold-smart-wallet-api'
+import { serialize, deserialize, WalletInitialiser } from 'zkfold-smart-wallet-api'
 
 export class Storage {
   private readonly MULTI_WALLET_KEY = 'smart-wallets'
   private readonly SESSION_KEY = 'smart-wallet-session'
 
   // Multi-wallet support with persistent credentials
-  public saveWallet(addr: string, wallet: Wallet): void {
+  public saveWallet(addr: string, wallet: WalletInitialiser): void {
     try {
       const multiWallet = this.getMultiWalletStorage()
       multiWallet.wallets[addr] = wallet
@@ -16,7 +16,7 @@ export class Storage {
     }
   }
 
-  public getWallet(addr: string): Wallet | null {
+  public getWallet(addr: string): WalletInitialiser | null {
     try {
       const multiWallet = this.getMultiWalletStorage()
       return multiWallet.wallets[addr] || null
@@ -26,7 +26,7 @@ export class Storage {
     }
   }
 
-  public getAllWallets(): Wallet[] {
+  public getAllWallets(): WalletInitialiser[] {
     try {
       const multiWallet = this.getMultiWalletStorage()
       return Object.values(multiWallet.wallets)
