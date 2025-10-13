@@ -81,6 +81,7 @@ export class WalletManager extends EventEmitter<WalletEvent> {
 
       // Create wallet instance
       this.wallet = new Wallet(this.backend, this.prover, initialiser)
+      this.wallet.getProof();
 
       // Check if there is an existing wallet for the same Cardano address
       const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
