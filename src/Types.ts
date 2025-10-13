@@ -1,27 +1,8 @@
-import { AddressType } from 'zkfold-smart-wallet-api'
+import { AddressType, WalletInitialiser } from 'zkfold-smart-wallet-api'
 
-export type Network = 'mainnet' | 'preprod' | 'preview'
-
-// Application types
-export interface WalletState {
-  isInitialized: boolean
-  address?: string
-  balance?: WalletBalance
-  network?: Network
-  method?: WalletMethod
-  userEmail?: string
-}
-
-export interface WalletInfo {
-  id: string
-  state: WalletState
-  network?: Network
-  credential?: any
-}
-
+// Activated wallets
 export interface MultiWalletStorage {
-  wallets: { [id: string]: WalletInfo }
-  activeWalletId?: string
+  wallets: { [addr: string]: WalletInitialiser }
 }
 
 export interface WalletBalance {
@@ -31,8 +12,8 @@ export interface WalletBalance {
 export interface TransactionRequest {
   recipient: string
   recipientType: AddressType
-  amount: string
   asset: string
+  amount: string
 }
 
 export interface TransactionResult {
@@ -55,11 +36,18 @@ export interface AppConfig {
 }
 
 // Events
-export interface AppEvent {
-  type: string
+export interface AppEvent<E> {
+  id: E
   data?: any
 }
 
-export interface EventListener {
-  (event: AppEvent): void
+export interface EventListener<E> {
+  (event: AppEvent<E>): void
 }
+
+export type WalletEvent =
+    'walletInitialized'
+  | 'proofComputationComplete'
+  | 'transactionComplete'
+  | 'transactionFailed'
+  | 'walletLoggedOut'
