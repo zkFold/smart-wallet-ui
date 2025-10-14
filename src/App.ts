@@ -59,16 +59,10 @@ export class App {
       if (params.has('code')) {
         await this.wallet.oauthCallback(window.location.search)
         return
-      }
-
-      if (this.wallet.isLoggedIn()) {
-        await this.render('wallet')
       } else {
+        // Initial render
         await this.render('init')
       }
-
-      // Initial render
-      await this.render('init')
     } catch (error) {
       console.error('Failed to initialize app:', error)
       await this.render('init')
@@ -208,7 +202,6 @@ export class App {
       newWalletBtn.onclick = async () => {
         newWalletBtn.setAttribute('disabled', 'true')
         this.wallet.logout()
-        await this.render('init')
       }
     }
   }
