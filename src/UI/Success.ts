@@ -2,7 +2,7 @@ import { Wallet } from "zkfold-smart-wallet-api"
 
 export function renderSuccessView(wallet: Wallet, data: { txId: string, recipient: string, isProofComputing?: boolean }): HTMLElement {
   const container = document.createElement('main')
-  container.className = 'container'
+  container.className = 'container app-container'
 
   const txId = data?.txId || 'Unknown'
   const recipient = data?.recipient || 'Unknown'
@@ -14,17 +14,42 @@ export function renderSuccessView(wallet: Wallet, data: { txId: string, recipien
     : 'Transaction pending. This page will refresh automatically when transaction succeeds.'
 
   container.innerHTML = `
-    <a href="https://zkfold.io">
-      <img src="logo-200x73.png" style="width:250px;height:100px;">
-    </a>
-    <br><br>
-    <h1 id="tx_status">${message}</h1>
-    <label name="txid_label">
-        Transaction id: ${txId}
-    </label>
-    <br>
-    <button id="new_tx" disabled>Make another transaction</button>
-    <button id="new_wallet" disabled>Log out</button>
+    <section class="app-shell status-shell">
+      <header class="app-header">
+        <div class="app-brand">
+          <a href="https://zkfold.io" class="app-logo-link">
+            <img src="logo-200x73.png" alt="zkFold logo" class="app-logo">
+          </a>
+          <div class="app-brand-copy">
+            <h1>Transaction center</h1>
+            <p>Keep this page open while we process your zkFold transaction.</p>
+          </div>
+        </div>
+      </header>
+      <article class="info-card status-card pending" id="tx_card">
+        <div class="card-header">
+          <span class="card-title">Status</span>
+        </div>
+        <div class="card-body column">
+          <p class="status-message" id="tx_status">${message}</p>
+          <p class="status-detail" id="tx_reason" hidden></p>
+          <div class="status-meta">
+            <div class="status-meta-item">
+              <span class="status-meta-label">Transaction id</span>
+              <span class="status-meta-value">${txId}</span>
+            </div>
+            <div class="status-meta-item">
+              <span class="status-meta-label">Recipient</span>
+              <span class="status-meta-value">${recipient}</span>
+            </div>
+          </div>
+        </div>
+        <div class="status-actions">
+          <button id="new_tx" disabled class="primary-action">Make another transaction</button>
+          <button id="new_wallet" disabled class="ghost-button">Log out</button>
+        </div>
+      </article>
+    </section>
   `
 
   // If not computing proof, start transaction status checking immediately
@@ -60,16 +85,31 @@ function updateTransactionStatus(outcome: string, reason?: string): void {
   const txStatus = document.getElementById("tx_status")
   const newTx = document.getElementById("new_tx") as HTMLButtonElement
   const newWallet = document.getElementById("new_wallet") as HTMLButtonElement
+  const statusCard = document.getElementById("tx_card")
+  const reasonElement = document.getElementById("tx_reason")
 
   if (!txStatus || !newTx || !newWallet) return
 
-  if (outcome === "success") {
-    txStatus.innerHTML = "Transaction successful!"
-    newTx.disabled = false
-    newWallet.disabled = false
-  } else {
-    txStatus.innerHTML = "Transaction failed: " + (reason || "Unknown error")
-    newTx.disabled = false
-    newWallet.disabled = false
+  if (statusCard) {
+    statusCard.classList.remove("pending", "success", "failure")
   }
+
+  if (outcome === "success") {
+    txStatus.textContent = "Transaction successful!"
+    if (statusCard) statusCard.classList.add("success")
+    if (reasonElement) {
+      reasonElement.textContent = "Your funds are on their way."
+      reasonElement.hidden = false
+    }
+  } else {
+    txStatus.textContent = "Transaction failed"
+    if (statusCard) statusCard.classList.add("failure")
+    if (reasonElement) {
+      reasonElement.textContent = reason || "Unknown error"
+      reasonElement.hidden = false
+    }
+  }
+
+  newTx.disabled = false
+  newWallet.disabled = false
 }

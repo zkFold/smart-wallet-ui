@@ -93,5 +93,564 @@ input[type="number"]::-webkit-inner-spin-button {
 
 /* For Firefox */
 input[type="number"] {
+    appearance: textfield;
     -moz-appearance: textfield;
+}
+
+/* Wallet dashboard layout */
+
+.app-container,
+.wallet-container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: clamp(2rem, 5vw, 4rem) 0;
+}
+
+.app-shell,
+.wallet-shell {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1.5rem, 4vw, 2.5rem);
+    background: rgba(255, 255, 255, 0.88);
+    border-radius: 24px;
+    border: 1px solid rgba(99, 102, 241, 0.16);
+    box-shadow: 0 30px 80px -32px rgba(79, 70, 229, 0.42);
+    padding: clamp(1.75rem, 4vw, 2.75rem);
+    backdrop-filter: blur(12px);
+}
+
+.app-header,
+.wallet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.app-brand,
+.wallet-brand {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.app-logo-link,
+.wallet-logo-link {
+    display: inline-flex;
+    align-items: center;
+}
+
+.app-logo,
+.wallet-logo {
+    width: clamp(140px, 20vw, 200px);
+    height: auto;
+}
+
+.app-brand-copy h1,
+.wallet-brand-copy h1 {
+    margin: 0;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 600;
+}
+
+.app-brand-copy p,
+.wallet-brand-copy p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.95rem;
+}
+
+.app-logout-button,
+.logout-button {
+    --pico-background-color: transparent;
+    --pico-border-color: transparent;
+    --pico-color: #ffffff;
+    align-self: flex-start;
+    padding-inline: 1.35rem;
+    border-radius: 999px;
+    background-image: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    color: #ffffff;
+    border: none;
+    box-shadow: 0 12px 30px -18px rgba(99, 102, 241, 0.6);
+}
+
+.app-grid,
+.wallet-grid {
+    display: grid;
+    gap: clamp(1rem, 3vw, 1.75rem);
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.info-card {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 20px;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    padding: 1.5rem;
+    box-shadow: 0 16px 40px -28px rgba(15, 23, 42, 0.45);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.info-card.user-card {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.16) 0%, rgba(129, 140, 248, 0.08) 100%);
+}
+
+.info-card.highlight-card {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(14, 165, 233, 0.12) 100%);
+}
+
+.info-card.status-card {
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    gap: 1.25rem;
+}
+
+.info-card.status-card.success {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.14) 0%, rgba(22, 163, 74, 0.09) 100%);
+    border-color: rgba(34, 197, 94, 0.2);
+}
+
+.info-card.status-card.failure {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.16) 0%, rgba(248, 113, 113, 0.1) 100%);
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
+.info-card.status-card.pending {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.14) 0%, rgba(129, 140, 248, 0.08) 100%);
+    border-color: rgba(99, 102, 241, 0.22);
+}
+
+.card-body.column {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.card-body.column > *:not(:last-child) {
+    margin-bottom: 0.75rem;
+}
+
+.card-body.centered {
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.card-description {
+    margin: 0;
+    color: #4b5563;
+    font-size: 0.98rem;
+    line-height: 1.5;
+}
+
+.hero-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.hero-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #1f2937;
+    font-weight: 500;
+}
+
+.hero-list li::before {
+    content: "";
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+}
+
+.auth-grid {
+    display: grid;
+    gap: clamp(1.5rem, 4vw, 2.5rem);
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    align-items: start;
+}
+
+.auth-card fieldset {
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.primary-action.primary-action--google {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    background-image: linear-gradient(135deg, #ea4335 0%, #fbbc04 35%, #34a853 68%, #4285f4 100%);
+    padding: 0.85rem 1.9rem;
+    font-size: 1rem;
+}
+
+.primary-action.primary-action--google svg {
+    background: white;
+    border-radius: 999px;
+    padding: 0.28rem;
+    width: 26px;
+    height: 26px;
+}
+
+.ghost-button.ghost-button--link {
+    border-style: solid;
+    border-color: transparent;
+    color: #4f46e5;
+    background: transparent;
+    padding-inline: 0.5rem;
+    text-decoration: underline;
+}
+
+.ghost-button.ghost-button--link:hover,
+.ghost-button.ghost-button--link:focus {
+    text-decoration: none;
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.status-shell {
+    gap: clamp(2rem, 5vw, 3rem);
+}
+
+.status-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.status-header .app-brand-copy p {
+    max-width: 580px;
+}
+
+.status-message {
+    font-size: clamp(1.25rem, 3vw, 1.6rem);
+    font-weight: 600;
+    margin: 0;
+    color: #111827;
+}
+
+.status-detail {
+    margin: 0;
+    color: #1f2937;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.status-meta {
+    display: grid;
+    gap: 0.5rem 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.status-meta-item {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    padding: 0.85rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.status-meta-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #6b7280;
+}
+
+.status-meta-value {
+    font-family: "JetBrains Mono", "Fira Code", "Roboto Mono", monospace;
+    font-size: 0.9rem;
+    color: #1f2937;
+    word-break: break-all;
+}
+
+.status-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.status-actions .ghost-button {
+    padding-inline: 1.5rem;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.card-title {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.78rem;
+    color: #6366f1;
+    font-weight: 600;
+}
+
+.card-subtitle {
+    margin: 0;
+    color: #6b7280;
+    font-size: 0.95rem;
+}
+
+.card-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.address-body {
+    align-items: flex-start;
+}
+
+.balance-body {
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.card-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #0f172a;
+    word-break: break-word;
+}
+
+.card-value.monospace {
+    font-family: "JetBrains Mono", "Fira Code", "Roboto Mono", monospace;
+    font-size: 0.95rem;
+}
+
+.card-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.icon-button {
+    --pico-background-color: transparent;
+    --pico-border-color: rgba(99, 102, 241, 0.24);
+    --pico-color: #4f46e5;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid rgba(99, 102, 241, 0.24);
+    background: rgba(99, 102, 241, 0.08);
+    transition: all 0.2s ease-in-out;
+    padding: 0;
+}
+
+.icon-button:hover,
+.icon-button:focus {
+    background: rgba(99, 102, 241, 0.16);
+    border-color: rgba(99, 102, 241, 0.36);
+    transform: translateY(-1px);
+}
+
+.icon-button:active {
+    transform: translateY(0);
+}
+
+.ghost-button {
+    --pico-background-color: transparent;
+    --pico-border-color: rgba(99, 102, 241, 0.38);
+    --pico-color: #4f46e5;
+    border-radius: 999px;
+    padding: 0.45rem 1.15rem;
+    border: 1px dashed rgba(99, 102, 241, 0.38);
+    background: transparent;
+    font-weight: 500;
+}
+
+.ghost-button:hover,
+.ghost-button:focus {
+    background: rgba(99, 102, 241, 0.08);
+    border-style: solid;
+}
+
+.balance-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.balance-list li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 1rem;
+}
+
+.balance-list li b {
+    font-size: 1.1rem;
+}
+
+.balance-list li i {
+    color: #6b7280;
+    font-style: normal;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+}
+
+.send-card {
+    background: rgba(15, 23, 42, 0.03);
+    border: 1px solid rgba(99, 102, 241, 0.18);
+}
+
+.send-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-grid {
+    border: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.form-control input,
+.advanced-fields input,
+.advanced-fields select {
+    margin-top: 0.5rem;
+}
+
+.form-control input {
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+}
+
+.form-control input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+}
+
+.advanced-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.advanced-fields {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.advanced-fields label {
+    flex: 1 1 220px;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.3);
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.82);
+}
+
+.advanced-fields label select,
+.advanced-fields label input {
+    border-radius: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    padding: 0.6rem 0.75rem;
+    font-size: 0.95rem;
+}
+
+.advanced-fields label select:focus,
+.advanced-fields label input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.primary-action {
+    --pico-background-color: transparent;
+    --pico-border-color: transparent;
+    --pico-color: #ffffff;
+    border-radius: 999px;
+    padding: 0.75rem 1.75rem;
+    border: none;
+    background-image: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 18px 40px -24px rgba(99, 102, 241, 0.8);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.primary-action:hover,
+.primary-action:focus {
+    transform: translateY(-1px);
+    box-shadow: 0 22px 48px -20px rgba(99, 102, 241, 0.9);
+}
+
+.faucet-hint {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #4b5563;
+}
+
+.faucet-hint a {
+    color: #4f46e5;
+    font-weight: 500;
+}
+
+.faucet-hint .monospace {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+    word-break: break-all;
+}
+
+@media (max-width: 640px) {
+    .app-shell,
+    .wallet-shell {
+        padding: 1.5rem;
+    }
+
+    .card-body {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .app-logout-button,
+    .logout-button {
+        width: 100%;
+        text-align: center;
+    }
+
+    .form-actions {
+        width: 100%;
+    }
+
+    .primary-action {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .status-actions {
+        width: 100%;
+        flex-direction: column;
+    }
 }
