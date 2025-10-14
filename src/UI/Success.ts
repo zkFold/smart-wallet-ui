@@ -1,6 +1,6 @@
-import { WalletManager } from '../WalletManager'
+import { Wallet } from "zkfold-smart-wallet-api"
 
-export function renderSuccessView(wm: WalletManager, data: { txId: string, recipient: string, isProofComputing?: boolean }): HTMLElement {
+export function renderSuccessView(wallet: Wallet, data: { txId: string, recipient: string, isProofComputing?: boolean }): HTMLElement {
   const container = document.createElement('main')
   container.className = 'container'
 
@@ -29,24 +29,24 @@ export function renderSuccessView(wm: WalletManager, data: { txId: string, recip
 
   // If not computing proof, start transaction status checking immediately
   if (!isProofComputing) {
-    startTransactionStatusChecking(wm, txId, recipient)
+    startTransactionStatusChecking(wallet, txId, recipient)
   }
 
   return container
 }
 
-async function startTransactionStatusChecking(wm: WalletManager, txId: string, recipient: string): Promise<void> {
+async function startTransactionStatusChecking(wallet: Wallet, txId: string, recipient: string): Promise<void> {
   console.log('Starting transaction status checking:', txId, recipient)
 
   const sleep = (delay: number) => new Promise((resolve) => setTimeout(resolve, delay))
 
   try {
-    let response = await wm.checkTransactionStatus(txId, recipient)
+    let response = await wallet.checkTransactionStatus(txId, recipient)
 
     while (response.outcome !== "success" && response.outcome !== "failure") {
       console.log('Transaction status:', response)
       await sleep(10000) // Wait 10 seconds
-      response = await wm.checkTransactionStatus(txId, recipient)
+      response = await wallet.checkTransactionStatus(txId, recipient)
     }
 
     updateTransactionStatus(response.outcome, response.reason)

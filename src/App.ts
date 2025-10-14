@@ -1,36 +1,50 @@
-import { AppView } from './Types'
-import { WalletManager } from './WalletManager'
+import { AppConfig, AppView } from './Types'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { renderFailedView } from './UI/Failed'
 import { renderSuccessView } from './UI/Success'
+import { Backend, GoogleApi, Prover, Wallet } from 'zkfold-smart-wallet-api'
 
 export class App {
-  private walletManager!: WalletManager
+  private wallet!: Wallet
 
   constructor() {
-    this.walletManager = new WalletManager()
+    const config: AppConfig = {
+        clientId: import.meta.env.VITE_CLIENT_ID,
+        clientSecret: import.meta.env.VITE_CLIENT_SECRET,
+        websiteUrl: import.meta.env.VITE_WEBSITE_URL,
+        backendUrl: import.meta.env.VITE_BACKEND_URL,
+        backendApiKey: import.meta.env.VITE_BACKEND_API_KEY,
+        proverUrl: import.meta.env.VITE_PROVER_URL,
+      }
+
+    const googleApi = new GoogleApi(config.clientId, config.clientSecret, `${config.websiteUrl}/oauth2callback`)
+    const backend = new Backend(config.backendUrl, config.backendApiKey)
+    const prover = new Prover(config.proverUrl)
+
+    this.wallet = new Wallet(googleApi, backend, prover)
   }
 
   private async setupNavigation(): Promise<void> {
     // Listen for wallet state changes
-    this.walletManager.on('walletInitialized', async () => {
+    this.wallet.addEventListener('walletInitialized', async () => {
       await this.render('wallet')
     })
 
-    this.walletManager.on('transactionComplete', async (event: any) => {
-      await this.render('success', event.data)
+    this.wallet.addEventListener('transactionComplete', async (event: Event) => {
+      await this.render('success', (event as CustomEvent).detail)
     })
 
-    this.walletManager.on('proofComputationComplete', async (event: any) => {
-      await this.render('success', event.data)
+    this.wallet.addEventListener('proofComputationComplete', async (event: Event) => {
+      await this.render('success', (event as CustomEvent).detail)
     })
 
-    this.walletManager.on('transactionFailed', async (event: any) => {
-      await this.render('failed', { reason: event.data.message })
+    this.wallet.addEventListener('transactionFailed', async (event: Event) => {
+      const detail = (event as CustomEvent).detail
+      await this.render('failed', { reason: detail?.message ?? detail })
     })
 
-    this.walletManager.on('walletLoggedOut', async () => {
+    this.wallet.addEventListener('walletLoggedOut', async () => {
       await this.render('init')
     })
   }
@@ -43,11 +57,11 @@ export class App {
       // Check for OAuth callback first
       const params = new URLSearchParams(window.location.search)
       if (params.has('code')) {
-        await this.walletManager.oauthCallback(window.location.search)
+        await this.wallet.oauthCallback(window.location.search)
         return
       }
 
-      if (this.walletManager.isLoggedIn()) {
+      if (this.wallet.isLoggedIn()) {
         await this.render('wallet')
       } else {
         await this.render('init')
@@ -78,13 +92,13 @@ export class App {
         viewElement = renderInitView()
         break
       case 'wallet':
-        const userId = await this.walletManager.getUserId()
-        const address = await this.walletManager.getWalletAddress()
-        const balance = await this.walletManager.getWalletBalance()
+        const userId = await this.wallet.getUserId()
+        const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
+        const balance = await this.wallet.getBalance()
         viewElement = renderWalletView(userId, address, balance)
         break
       case 'success':
-        viewElement = renderSuccessView(this.walletManager, data)
+        viewElement = renderSuccessView(this.wallet, data)
         break
       case 'failed':
         viewElement = renderFailedView(data)
@@ -122,7 +136,7 @@ export class App {
     if (form) {
       form.addEventListener('submit', async (e) => {
         e.preventDefault()
-        this.walletManager.login()
+        this.wallet.login()
       })
     }
   }
@@ -138,7 +152,7 @@ export class App {
         const adaAmount = parseFloat(formData.get('zkfold_amount') as string)
         const lovelaceAmount = Math.round(adaAmount * 1_000_000).toString()
 
-        await this.walletManager.sendTransaction({
+        await this.wallet.sendTransaction({
           recipient: formData.get('zkfold_address') as string,
           recipientType: parseInt(formData.get('recipient') as string),
           amount: lovelaceAmount,
@@ -172,7 +186,7 @@ export class App {
     const logoutBtn = document.getElementById('logout_button')
     if (logoutBtn) {
       logoutBtn.addEventListener('click', () => {
-        this.walletManager.logout()
+        this.wallet.logout()
       })
     }
   }
@@ -193,7 +207,7 @@ export class App {
       newWalletBtn.removeAttribute('disabled')
       newWalletBtn.onclick = async () => {
         newWalletBtn.setAttribute('disabled', 'true')
-        this.walletManager.logout()
+        this.wallet.logout()
         await this.render('init')
       }
     }
