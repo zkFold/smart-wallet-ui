@@ -1,5 +1,5 @@
 import { WalletBalance } from "../Types"
-import { formatBalance } from "../Utils/Helpers"
+import { formatBalance } from "../Utils/Assets"
 import { AddressType } from "zkfold-smart-wallet-api"
 
 export function renderWalletView(userId: string, address: string, balance: WalletBalance): HTMLElement {
