@@ -7,7 +7,7 @@ export function renderInitView(): HTMLElement {
       <img src="logo-200x73.png" style="width:250px;height:100px;">
     </a>
     <br><br>
-    <h3 id="header" style="text-align: center; font-weight: 400;">Create your wallet with email</h3>
+    <h3 id="header" style="text-align: center; font-weight: 400;">zkFold Smart Wallet</h3>
     <form action="#" method="POST">
       <fieldset>
         <label id="network_selector" hidden>
