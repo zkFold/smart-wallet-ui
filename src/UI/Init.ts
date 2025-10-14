@@ -4,46 +4,24 @@ export function renderInitView(): HTMLElement {
 
   container.innerHTML = `
     <section class="app-shell intro-shell">
-      <header class="app-header">
+  <header class="app-header app-header--centered">
         <div class="app-brand">
           <a href="https://zkfold.io" class="app-logo-link">
             <img src="logo-200x73.png" alt="zkFold logo" class="app-logo">
           </a>
           <div class="app-brand-copy">
-            <h1>zkFold Smart Wallet</h1>
-            <p>Your secure companion for private Cardano transactions.</p>
+            <h1>Smart Wallet</h1>
+            <p>Your gateway to crypto and Web3</p>
           </div>
         </div>
       </header>
-      <div class="auth-grid">
-        <article class="info-card highlight-card">
-          <div class="card-header">
-            <span class="card-title">Why zkFold</span>
-          </div>
-          <div class="card-body column">
-            <p class="card-description">Log in with Google to set up your smart wallet and start sending shielded ADA in minutes.</p>
-            <ul class="hero-list">
-              <li>Zero-knowledge powered privacy</li>
-              <li>Instant wallet provisioning</li>
-              <li>Secure top-up address management</li>
-            </ul>
-          </div>
-        </article>
-        <form action="#" method="POST" class="info-card auth-card">
+      <div class="auth-shell">
+        <form action="#" method="POST" class="info-card auth-card auth-card--centered">
           <div class="card-header">
             <span class="card-title">Sign in</span>
           </div>
           <div class="card-body column">
-            <p class="card-description">Continue with Google to connect your zkFold smart wallet.</p>
-            <fieldset>
-              <label id="network_selector" hidden>
-                Network type
-                <select name="network" id="network_option" aria-label="Select network" required>
-                  <option>Preview</option>
-                  <option selected="selected">Preprod</option>
-                </select>
-              </label>
-            </fieldset>
+            <p class="card-description">Continue with Google to access your zkFold Smart Wallet.</p>
             <button
               id="submit"
               type="submit"
