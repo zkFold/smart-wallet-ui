@@ -1,5 +1,31 @@
 // Policy ID for Smart Wallet utility tokens that should be hidden
 const HIDDEN_POLICY_ID = '31afd09d5c4ba63898e726f345cfa1c6fe33e2fe07f9845288ef8c4d'
+const DEFAULT_ASSET = 'lovelace'
+
+export function getVisibleAssetKeys(balance: { [asset: string]: any } | null | undefined): string[] {
+  const visibleAssets = new Set<string>([DEFAULT_ASSET])
+
+  if (!balance) {
+    return Array.from(visibleAssets)
+  }
+
+  for (const key of Object.keys(balance)) {
+    if (!key) continue
+    if (key.startsWith(HIDDEN_POLICY_ID)) continue
+
+    visibleAssets.add(key)
+  }
+
+  return Array.from(visibleAssets)
+}
+
+export function getAssetLabel(assetKey: string): string {
+  if (assetKey === DEFAULT_ASSET) {
+    return 'ADA'
+  }
+
+  return assetKey
+}
 
 export function formatBalance(balance: { [asset: string]: bigint }): string {
   let assets = ""
@@ -9,7 +35,7 @@ export function formatBalance(balance: { [asset: string]: bigint }): string {
       continue
     }
     
-    if (key === 'lovelace') {
+    if (key === DEFAULT_ASSET) {
       // Convert lovelaces to ADA (1 ADA = 1,000,000 lovelaces)
       const adaValue = Number(value) / 1_000_000
       assets += `<li><b>${adaValue.toFixed(6)}</b> <i>ada</i></li>`
