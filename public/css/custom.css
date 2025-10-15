@@ -528,8 +528,7 @@ input[type="number"] {
 }
 
 .form-control input,
-.advanced-fields input,
-.advanced-fields select {
+.form-control select {
     margin-top: 0.5rem;
 }
 
@@ -545,38 +544,43 @@ input[type="number"] {
     box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
 }
 
-.advanced-controls {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.advanced-fields {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.advanced-fields label {
-    flex: 1 1 220px;
+.form-control select {
     border-radius: 14px;
-    border: 1px solid rgba(148, 163, 184, 0.3);
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    background-color: rgba(255, 255, 255, 0.9);
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%234b5563' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1.5 6 6.5 11 1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 12px 8px;
+    padding-right: 2.75rem;
+    cursor: pointer;
 }
 
-.advanced-fields label select,
-.advanced-fields label input {
-    border-radius: 12px;
-    border: 1px solid rgba(148, 163, 184, 0.45);
-    padding: 0.6rem 0.75rem;
-    font-size: 0.95rem;
-}
-
-.advanced-fields label select:focus,
-.advanced-fields label input:focus {
+.form-control select:focus {
     border-color: #6366f1;
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+}
+
+
+.form-grid--send {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.form-control--send-to {
+    grid-column: 1 / -1;
+}
+
+.form-control--send-to input {
+    width: 100%;
+}
+
+.form-grid--send .form-control {
+    height: 100%;
 }
 
 .form-actions {

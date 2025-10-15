@@ -3,7 +3,7 @@ import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { renderFailedView } from './UI/Failed'
 import { renderSuccessView } from './UI/Success'
-import { Backend, GoogleApi, Prover, Wallet } from 'zkfold-smart-wallet-api'
+import { AddressType, Backend, GoogleApi, Prover, Wallet } from 'zkfold-smart-wallet-api'
 
 export class App {
   private wallet!: Wallet
@@ -144,28 +144,22 @@ export class App {
 
         // Get the amount in ADA and convert to lovelace
         const adaAmount = parseFloat(formData.get('zkfold_amount') as string)
+        if (Number.isNaN(adaAmount)) {
+          console.error('Invalid amount provided')
+          return
+        }
         const lovelaceAmount = Math.round(adaAmount * 1_000_000).toString()
 
+        const recipient = (formData.get('zkfold_address') as string).trim()
+        const recipientType = this.detectRecipientType(recipient)
+        const asset = (formData.get('zkfold_asset') as string)?.trim() || 'lovelace'
+
         await this.wallet.sendTransaction({
-          recipient: formData.get('zkfold_address') as string,
-          recipientType: parseInt(formData.get('recipient') as string),
+          recipient,
+          recipientType,
           amount: lovelaceAmount,
-          asset: formData.get('zkfold_asset') as string || 'lovelace'
+          asset
         })
-      })
-    }
-
-    const showSelectorBtn = document.getElementById('show_selector')
-    if (showSelectorBtn) {
-      showSelectorBtn.addEventListener('click', () => {
-        this.toggleSelector()
-      })
-    }
-
-    const typeSelect = document.getElementById('type_selector')
-    if (typeSelect) {
-      typeSelect.addEventListener('change', () => {
-        this.updateTypeUI()
       })
     }
 
@@ -199,37 +193,17 @@ export class App {
   }
 
   // UI helper methods (keeping existing functionality)
-  private updateTypeUI(): void {
-    const addressInput = document.getElementById("address_input") as HTMLInputElement
-    const selector = document.getElementById("type_selector") as HTMLSelectElement
+  private detectRecipientType(address: string): AddressType {
+    const value = address.trim()
 
-    if (addressInput && selector) {
-      if (selector.value === "1") { // AddressType.Email
-        addressInput.placeholder = "example@gmail.com"
-      } else {
-        addressInput.placeholder = "addr_test1xyz...(Bech32)"
-      }
+    if (!value) {
+      return AddressType.Email
     }
-  }
 
-  private toggleSelector(): void {
-    const label = document.getElementById("address_type")
-    const button = document.getElementById("show_selector")
-    const selector = document.getElementById("type_selector") as HTMLSelectElement
-    const assetName = document.getElementById("asset_name")
-
-    if (label && button && assetName) {
-      if (label.hidden) {
-        label.hidden = false
-        button.innerHTML = "Hide address selector"
-        assetName.hidden = false
-      } else {
-        label.hidden = true
-        button.innerHTML = "Show all controls"
-        if (selector) selector.value = "1" // AddressType.Email
-        assetName.hidden = true
-        this.updateTypeUI()
-      }
+    if (value.includes('@')) {
+      return AddressType.Email
     }
+
+    return AddressType.Bech32
   }
 }

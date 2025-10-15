@@ -1,6 +1,5 @@
 import { WalletBalance } from "../Types"
-import { formatBalance } from "../Utils/Assets"
-import { AddressType } from "zkfold-smart-wallet-api"
+import { formatBalance, getVisibleAssetKeys, getAssetLabel } from "../Utils/Assets"
 import { renderAppHeader } from "./Header"
 
 export function renderWalletView(userId: string, address: string, balance: WalletBalance): HTMLElement {
@@ -10,6 +9,13 @@ export function renderWalletView(userId: string, address: string, balance: Walle
   const userIdHtml = userId || 'Unknown'
   const addressHtml = address || 'Loading...'
   const balanceHtml = balance ? formatBalance(balance) : '<li>Loading...</li>'
+  const visibleAssetKeys = getVisibleAssetKeys(balance)
+  const assetOptionsHtml = visibleAssetKeys
+    .map((assetKey, index) => {
+      const selectedAttribute = index === 0 ? ' selected' : ''
+      return `<option value="${assetKey}"${selectedAttribute}>${getAssetLabel(assetKey)}</option>`
+    })
+    .join('')
 
   container.innerHTML = `
     <section class="app-shell wallet-shell">
@@ -58,13 +64,13 @@ export function renderWalletView(userId: string, address: string, balance: Walle
           <p class="card-subtitle">Transfers are denominated in ADA by default.</p>
         </div>
         <form action="#" method="POST" class="send-form">
-          <fieldset class="form-grid">
-            <label class="form-control">
-              Recipient's address
+          <fieldset class="form-grid form-grid--send">
+            <label class="form-control form-control--send-to">
+              Send to
               <input
                 name="zkfold_address"
                 id="address_input"
-                placeholder="example@gmail.com"
+                placeholder="friend@gmail.com or addr_test1xyz..."
                 required
               />
             </label>
@@ -75,30 +81,21 @@ export function renderWalletView(userId: string, address: string, balance: Walle
                 type="number"
                 min="0.000001"
                 step="0.000001"
-                placeholder="Enter amount in ADA"
+                placeholder="Enter amount"
                 required
               />
             </label>
+            <label class="form-control">
+              Asset
+              <select
+                name="zkfold_asset"
+                id="asset_select"
+                required
+              >
+                ${assetOptionsHtml}
+              </select>
+            </label>
           </fieldset>
-          <div class="advanced-controls">
-            <button type="button" id="show_selector" class="ghost-button">Show all controls</button>
-            <div class="advanced-fields">
-              <label id="address_type" hidden>
-                Type of address
-                <select name="recipient" aria-label="Select the type of address you want to send ADA to" required id="type_selector">
-                  <option value="${AddressType.Bech32}">Bech32</option>
-                  <option value="${AddressType.Email}" selected="selected">Gmail</option>
-                </select>
-              </label>
-              <label id="asset_name" hidden>
-                Asset name ('lovelace' for ADA or '{PolicyID}.{AssetName}' for other assets)
-                <input
-                  name="zkfold_asset"
-                  value="lovelace"
-                />
-              </label>
-            </div>
-          </div>
           <div class="form-actions">
             <button type="submit" class="primary-action">Send</button>
             <button type="button" id="logout_button" class="primary-action">Log out</button>
@@ -107,7 +104,6 @@ export function renderWalletView(userId: string, address: string, balance: Walle
       </section>
     </section>
   `
-
   // Add copy functionality
   setTimeout(() => {
     const copyEmailBtn = document.getElementById('copy_email')
