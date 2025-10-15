@@ -155,14 +155,6 @@ export class App {
       })
     }
 
-    // Handle UI toggle buttons
-    const showAddressBtn = document.getElementById('show_address')
-    if (showAddressBtn) {
-      showAddressBtn.addEventListener('click', () => {
-        this.toggleAddressDisplay()
-      })
-    }
-
     const showSelectorBtn = document.getElementById('show_selector')
     if (showSelectorBtn) {
       showSelectorBtn.addEventListener('click', () => {
@@ -216,21 +208,6 @@ export class App {
         addressInput.placeholder = "example@gmail.com"
       } else {
         addressInput.placeholder = "addr_test1xyz...(Bech32)"
-      }
-    }
-  }
-
-  private toggleAddressDisplay(): void {
-    const label = document.getElementById("faucet_label")
-    const button = document.getElementById("show_address")
-
-    if (label && button) {
-      if (label.hidden) {
-        label.hidden = false
-        button.innerHTML = "Hide address"
-      } else {
-        label.hidden = true
-        button.innerHTML = "Show address"
       }
     }
   }

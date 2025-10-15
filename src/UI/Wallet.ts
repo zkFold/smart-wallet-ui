@@ -32,20 +32,14 @@ export function renderWalletView(userId: string, address: string, balance: Walle
           <div class="card-header">
             <span class="card-title">Top up address</span>
           </div>
-          <div class="card-body address-body">
+          <div class="card-body">
             <span class="card-value monospace" data-testid="wallet-address">${addressHtml}</span>
-            <div class="card-actions">
-              <button type="button" id="copy_address" class="icon-button" title="Copy address">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="currentColor"/>
-                </svg>
-              </button>
-              <button type="button" id="show_address" class="ghost-button ghost-button--link">Show address</button>
-            </div>
+            <button type="button" id="copy_address" class="icon-button" title="Copy address">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+                <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="currentColor"/>
+              </svg>
+            </button>
           </div>
-          <p class="faucet-hint" id="faucet_label" hidden>
-            Use this address to receive funds from the <a href='https://docs.cardano.org/cardano-testnets/tools/faucet' target="_blank" rel="noreferrer">Faucet</a>: <span class="monospace">${address || addressHtml}</span>
-          </p>
         </article>
         <article class="info-card balance-card">
           <div class="card-header">
