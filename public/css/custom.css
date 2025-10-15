@@ -126,27 +126,6 @@ input[type="number"] {
     width: 100%;
 }
 
-.view-intro {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    color: #374151;
-}
-
-.view-intro h2 {
-    margin: 0;
-    font-size: clamp(1.2rem, 3vw, 1.6rem);
-    font-weight: 600;
-    color: #111827;
-}
-
-.view-intro p {
-    margin: 0;
-    color: #4b5563;
-    font-size: 0.98rem;
-    line-height: 1.5;
-}
-
 .app-brand {
     display: flex;
     align-items: center;

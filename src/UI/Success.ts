@@ -17,10 +17,6 @@ export function renderSuccessView(wallet: Wallet, data: { txId: string, recipien
   container.innerHTML = `
     <section class="app-shell status-shell">
       ${renderAppHeader()}
-      <div class="view-intro">
-        <h2>Transaction center</h2>
-        <p>Keep this page open while we process your zkFold transaction.</p>
-      </div>
       <article class="info-card status-card pending" id="tx_card">
         <div class="card-header">
           <span class="card-title">Status</span>
@@ -40,7 +36,7 @@ export function renderSuccessView(wallet: Wallet, data: { txId: string, recipien
           </div>
         </div>
         <div class="status-actions">
-          <button id="new_tx" disabled class="primary-action">Make another transaction</button>
+          <button type="button" id="new_tx" disabled class="primary-action">Make another transaction</button>
           <button type="button" id="logout_button" disabled class="primary-action">Log out</button>
         </div>
       </article>

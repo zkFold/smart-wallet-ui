@@ -61,7 +61,6 @@ export function renderWalletView(userId: string, address: string, balance: Walle
       <section class="info-card send-card">
         <div class="card-header">
           <span class="card-title">Send funds</span>
-          <p class="card-subtitle">Transfers are denominated in ADA by default.</p>
         </div>
         <form action="#" method="POST" class="send-form">
           <fieldset class="form-grid form-grid--send">
