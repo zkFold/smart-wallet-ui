@@ -1,3 +1,5 @@
+import { renderAppHeader } from "./Header"
+
 export function renderFailedView(data: { reason: string }): HTMLElement {
   const container = document.createElement('main')
   container.className = 'container app-container'
@@ -6,17 +8,11 @@ export function renderFailedView(data: { reason: string }): HTMLElement {
 
   container.innerHTML = `
     <section class="app-shell status-shell">
-      <header class="app-header">
-        <div class="app-brand">
-          <a href="https://zkfold.io" class="app-logo-link">
-            <img src="logo-200x73.png" alt="zkFold logo" class="app-logo">
-          </a>
-          <div class="app-brand-copy">
-            <h1>Something went wrong</h1>
-            <p>We couldn’t complete your transaction. Review the details below and try again.</p>
-          </div>
-        </div>
-      </header>
+      ${renderAppHeader()}
+      <div class="view-intro">
+        <h2>Something went wrong</h2>
+        <p>We couldn’t complete your transaction. Review the details below and try again.</p>
+      </div>
       <article class="info-card status-card failure">
         <div class="card-header">
           <span class="card-title">Transaction failed</span>
@@ -27,7 +23,7 @@ export function renderFailedView(data: { reason: string }): HTMLElement {
         </div>
         <div class="status-actions">
           <button id="new_tx" disabled class="primary-action">Make another transaction</button>
-          <button id="new_wallet" disabled class="ghost-button">Log out</button>
+          <button type="button" id="logout_button" disabled class="primary-action">Log out</button>
         </div>
       </article>
     </section>

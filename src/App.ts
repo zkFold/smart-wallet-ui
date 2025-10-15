@@ -187,7 +187,7 @@ export class App {
 
   private setupPostTxHandlers(): void {
     const retryBtn = document.getElementById('new_tx')
-    const newWalletBtn = document.getElementById('new_wallet')
+    const logoutBtn = document.getElementById('logout_button') as HTMLButtonElement | null
 
     if (retryBtn) {
       retryBtn.removeAttribute('disabled')
@@ -197,10 +197,10 @@ export class App {
       }
     }
 
-    if (newWalletBtn) {
-      newWalletBtn.removeAttribute('disabled')
-      newWalletBtn.onclick = async () => {
-        newWalletBtn.setAttribute('disabled', 'true')
+    if (logoutBtn) {
+      logoutBtn.removeAttribute('disabled')
+      logoutBtn.onclick = async () => {
+        logoutBtn.setAttribute('disabled', 'true')
         this.wallet.logout()
       }
     }

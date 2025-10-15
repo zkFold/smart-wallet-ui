@@ -1,20 +1,12 @@
+import { renderAppHeader } from "./Header"
+
 export function renderInitView(): HTMLElement {
   const container = document.createElement('main')
   container.className = 'container app-container'
 
   container.innerHTML = `
     <section class="app-shell intro-shell">
-  <header class="app-header app-header--centered">
-        <div class="app-brand">
-          <a href="https://zkfold.io" class="app-logo-link">
-            <img src="logo-200x73.png" alt="zkFold logo" class="app-logo">
-          </a>
-          <div class="app-brand-copy">
-            <h1>Smart Wallet</h1>
-            <p>Your gateway to crypto and Web3</p>
-          </div>
-        </div>
-      </header>
+  ${renderAppHeader()}
       <div class="auth-shell">
         <form action="#" method="POST" class="info-card auth-card auth-card--centered">
           <div class="card-header">

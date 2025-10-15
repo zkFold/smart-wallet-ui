@@ -1,4 +1,5 @@
 import { Wallet } from "zkfold-smart-wallet-api"
+import { renderAppHeader } from "./Header"
 
 export function renderSuccessView(wallet: Wallet, data: { txId: string, recipient: string, isProofComputing?: boolean }): HTMLElement {
   const container = document.createElement('main')
@@ -15,17 +16,11 @@ export function renderSuccessView(wallet: Wallet, data: { txId: string, recipien
 
   container.innerHTML = `
     <section class="app-shell status-shell">
-      <header class="app-header">
-        <div class="app-brand">
-          <a href="https://zkfold.io" class="app-logo-link">
-            <img src="logo-200x73.png" alt="zkFold logo" class="app-logo">
-          </a>
-          <div class="app-brand-copy">
-            <h1>Transaction center</h1>
-            <p>Keep this page open while we process your zkFold transaction.</p>
-          </div>
-        </div>
-      </header>
+      ${renderAppHeader()}
+      <div class="view-intro">
+        <h2>Transaction center</h2>
+        <p>Keep this page open while we process your zkFold transaction.</p>
+      </div>
       <article class="info-card status-card pending" id="tx_card">
         <div class="card-header">
           <span class="card-title">Status</span>
@@ -46,7 +41,7 @@ export function renderSuccessView(wallet: Wallet, data: { txId: string, recipien
         </div>
         <div class="status-actions">
           <button id="new_tx" disabled class="primary-action">Make another transaction</button>
-          <button id="new_wallet" disabled class="ghost-button">Log out</button>
+          <button type="button" id="logout_button" disabled class="primary-action">Log out</button>
         </div>
       </article>
     </section>
@@ -84,11 +79,11 @@ async function startTransactionStatusChecking(wallet: Wallet, txId: string, reci
 function updateTransactionStatus(outcome: string, reason?: string): void {
   const txStatus = document.getElementById("tx_status")
   const newTx = document.getElementById("new_tx") as HTMLButtonElement
-  const newWallet = document.getElementById("new_wallet") as HTMLButtonElement
+  const logoutButton = document.getElementById("logout_button") as HTMLButtonElement
   const statusCard = document.getElementById("tx_card")
   const reasonElement = document.getElementById("tx_reason")
 
-  if (!txStatus || !newTx || !newWallet) return
+  if (!txStatus || !newTx || !logoutButton) return
 
   if (statusCard) {
     statusCard.classList.remove("pending", "success", "failure")
@@ -111,5 +106,5 @@ function updateTransactionStatus(outcome: string, reason?: string): void {
   }
 
   newTx.disabled = false
-  newWallet.disabled = false
+  logoutButton.disabled = false
 }

@@ -119,76 +119,78 @@ input[type="number"] {
     backdrop-filter: blur(12px);
 }
 
-.app-header,
-.wallet-header {
+.app-header {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 1.5rem;
+    justify-content: center;
+    width: 100%;
+}
+
+.view-intro {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    color: #374151;
+}
+
+.view-intro h2 {
+    margin: 0;
+    font-size: clamp(1.2rem, 3vw, 1.6rem);
+    font-weight: 600;
+    color: #111827;
+}
+
+.view-intro p {
+    margin: 0;
+    color: #4b5563;
+    font-size: 0.98rem;
+    line-height: 1.5;
+}
+
+.app-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
     flex-wrap: wrap;
 }
 
-.app-header--centered {
-    justify-content: center;
-}
-
-.app-header--centered .app-brand {
-    justify-content: center;
-    text-align: left;
-}
-
-.app-brand,
-.wallet-brand {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-}
-
-.app-logo-link,
-.wallet-logo-link {
+.app-logo-link {
     display: inline-flex;
     align-items: center;
 }
 
-.app-logo,
-.wallet-logo {
+.app-logo {
     width: clamp(140px, 20vw, 200px);
     height: auto;
 }
 
-.app-brand-copy h1,
-.wallet-brand-copy h1 {
+.app-brand-copy h1 {
     margin: 0;
     font-size: clamp(1.5rem, 3vw, 2rem);
     font-weight: 600;
 }
 
-.app-brand-copy p,
-.wallet-brand-copy p {
+.app-brand-copy p {
     margin: 0;
     color: #6b7280;
     font-size: 0.95rem;
 }
 
-.app-logout-button,
-.logout-button {
-    --pico-background-color: transparent;
-    --pico-border-color: transparent;
-    --pico-color: #ffffff;
-    align-self: flex-start;
-    padding-inline: 1.35rem;
-    border-radius: 999px;
-    background-image: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    color: #ffffff;
-    border: none;
-    box-shadow: 0 12px 30px -18px rgba(99, 102, 241, 0.6);
-}
-
-.app-grid,
-.wallet-grid {
+.app-grid {
     display: grid;
     gap: clamp(1rem, 3vw, 1.75rem);
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.wallet-grid {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(1rem, 3vw, 1.75rem);
+}
+
+.wallet-grid .info-card {
+    width: 100%;
 }
 
 .info-card {
@@ -574,7 +576,22 @@ input[type="number"] {
 
 .form-actions {
     display: flex;
+    align-items: center;
     justify-content: flex-start;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.form-actions > button,
+.form-actions > [type="button"],
+.form-actions > [type="submit"],
+.form-actions > [role="button"] {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-width: 140px;
+    flex: 0 0 auto;
 }
 
 .primary-action {
@@ -626,14 +643,19 @@ input[type="number"] {
         align-items: flex-start;
     }
 
-    .app-logout-button,
-    .logout-button {
-        width: 100%;
-        text-align: center;
-    }
-
     .form-actions {
         width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.6rem;
+    }
+
+    .form-actions > button,
+    .form-actions > [type="button"],
+    .form-actions > [type="submit"],
+    .form-actions > [role="button"] {
+        width: 100%;
+        min-width: 0;
     }
 
     .primary-action {

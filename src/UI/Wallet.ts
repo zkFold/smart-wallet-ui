@@ -1,6 +1,7 @@
 import { WalletBalance } from "../Types"
 import { formatBalance } from "../Utils/Assets"
 import { AddressType } from "zkfold-smart-wallet-api"
+import { renderAppHeader } from "./Header"
 
 export function renderWalletView(userId: string, address: string, balance: WalletBalance): HTMLElement {
   const container = document.createElement('main')
@@ -12,18 +13,7 @@ export function renderWalletView(userId: string, address: string, balance: Walle
 
   container.innerHTML = `
     <section class="app-shell wallet-shell">
-      <header class="app-header wallet-header">
-        <div class="app-brand wallet-brand">
-          <a href="https://zkfold.io" class="app-logo-link wallet-logo-link">
-            <img src="logo-200x73.png" alt="zkFold logo" class="app-logo wallet-logo">
-          </a>
-          <div class="app-brand-copy wallet-brand-copy">
-            <h1>zkFold Smart Wallet</h1>
-            <p>Monitor your zkFold balance and move funds with confidence.</p>
-          </div>
-        </div>
-        <button type="button" id="logout_button" class="app-logout-button logout-button">Log out</button>
-      </header>
+      ${renderAppHeader()}
       <div class="wallet-grid app-grid">
         <article class="info-card user-card">
           <div class="card-header">
@@ -117,6 +107,7 @@ export function renderWalletView(userId: string, address: string, balance: Walle
           </div>
           <div class="form-actions">
             <button type="submit" class="primary-action">Send</button>
+            <button type="button" id="logout_button" class="primary-action">Log out</button>
           </div>
         </form>
       </section>
