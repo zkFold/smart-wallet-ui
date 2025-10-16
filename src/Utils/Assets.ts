@@ -1,16 +1,15 @@
+import { WalletBalance } from "@/Types"
+
+// This module handles how assets are displayed in the UI
+
 // Policy ID for Smart Wallet utility tokens that should be hidden
 const HIDDEN_POLICY_ID = '31afd09d5c4ba63898e726f345cfa1c6fe33e2fe07f9845288ef8c4d'
 const DEFAULT_ASSET = 'lovelace'
 
-export function getVisibleAssetKeys(balance: { [asset: string]: any } | null | undefined): string[] {
+export function getVisibleAssetKeys(balance: WalletBalance): string[] {
   const visibleAssets = new Set<string>([DEFAULT_ASSET])
 
-  if (!balance) {
-    return Array.from(visibleAssets)
-  }
-
   for (const key of Object.keys(balance)) {
-    if (!key) continue
     if (key.startsWith(HIDDEN_POLICY_ID)) continue
 
     visibleAssets.add(key)

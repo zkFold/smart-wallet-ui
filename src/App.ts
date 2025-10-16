@@ -6,6 +6,7 @@ import { renderSuccessView } from './UI/Success'
 import { AddressType, Backend, GoogleApi, Prover, Wallet } from 'zkfold-smart-wallet-api'
 
 export class App {
+  private appElement!: HTMLElement
   private wallet!: Wallet
 
   constructor() {
@@ -22,39 +23,35 @@ export class App {
     const backend = new Backend(config.backendUrl, config.backendApiKey)
     const prover = new Prover(config.proverUrl)
 
+    this.appElement = document.getElementById('app') as HTMLElement
     this.wallet = new Wallet(googleApi, backend, prover)
-  }
-
-  private async setupNavigation(): Promise<void> {
-    // Listen for wallet state changes
-    this.wallet.addEventListener('walletInitialized', async () => {
-      await this.render('wallet')
-    })
-
-    this.wallet.addEventListener('transactionComplete', async (event: Event) => {
-      await this.render('success', (event as CustomEvent).detail)
-    })
-
-    this.wallet.addEventListener('proofComputationComplete', async (event: Event) => {
-      await this.render('success', (event as CustomEvent).detail)
-    })
-
-    this.wallet.addEventListener('transactionFailed', async (event: Event) => {
-      const detail = (event as CustomEvent).detail
-      await this.render('failed', { reason: detail?.message ?? detail })
-    })
-
-    this.wallet.addEventListener('walletLoggedOut', async () => {
-      await this.render('init')
-    })
   }
 
   public async init(): Promise<void> {
     try {
       // Set up event listeners
-      this.setupNavigation()
+      this.wallet.addEventListener('walletInitialized', async () => {
+        await this.render('wallet')
+      })
 
-      // Check for OAuth callback first
+      this.wallet.addEventListener('transactionComplete', async (event: Event) => {
+        await this.render('success', (event as CustomEvent).detail)
+      })
+
+      this.wallet.addEventListener('proofComputationComplete', async (event: Event) => {
+        await this.render('success', (event as CustomEvent).detail)
+      })
+
+      this.wallet.addEventListener('transactionFailed', async (event: Event) => {
+        const detail = (event as CustomEvent).detail
+        await this.render('failed', { reason: detail?.message ?? detail })
+      })
+
+      this.wallet.addEventListener('walletLoggedOut', async () => {
+        await this.render('init')
+      })
+
+      // Check for OAuth callback
       const params = new URLSearchParams(window.location.search)
       if (params.has('code')) {
         await this.wallet.oauthCallback(window.location.search)
@@ -64,64 +61,41 @@ export class App {
         await this.render('init')
       }
     } catch (error) {
+      // TODO: We should have an error view to render here
       console.error('Failed to initialize app:', error)
       await this.render('init')
     }
   }
 
   private async render(view: AppView, data?: any): Promise<void> {
-    const appElement = document.getElementById('app')
-    if (!appElement) {
-      console.error('App element not found')
-      throw new Error('App element not found')
-    }
-
     // Clear previous content
-    appElement.innerHTML = ''
+    this.appElement.innerHTML = ''
 
     // Render current view
     let viewElement: HTMLElement
     switch (view) {
-      case 'init':
-        viewElement = renderInitView()
-        break
       case 'wallet':
-        const userId = await this.wallet.getUserId()
+        const userId = this.wallet.getUserId()
         const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
         const balance = await this.wallet.getBalance()
         viewElement = renderWalletView(userId, address, balance)
-        break
-      case 'success':
-        viewElement = renderSuccessView(this.wallet, data)
-        break
-      case 'failed':
-        viewElement = renderFailedView(data)
-        break
-      default:
-        viewElement = renderInitView()
-    }
-
-    appElement.appendChild(viewElement)
-
-    // Set up event handlers for the current view
-    this.setupViewEventHandlers(view)
-  }
-
-  private setupViewEventHandlers(view: AppView): void {
-    // Handle form submissions and button clicks based on current view
-    switch (view) {
-      case 'init':
-        this.setupInitHandlers()
-        break
-      case 'wallet':
+        this.appElement.appendChild(viewElement)
         this.setupWalletHandlers()
         break
       case 'success':
+        viewElement = renderSuccessView(this.wallet, data)
+        this.appElement.appendChild(viewElement)
         this.setupPostTxHandlers()
         break
       case 'failed':
+        viewElement = renderFailedView(data)
+        this.appElement.appendChild(viewElement)
         this.setupPostTxHandlers()
         break
+      default:
+        viewElement = renderInitView()
+        this.appElement.appendChild(viewElement)
+        this.setupInitHandlers()
     }
   }
 
@@ -171,6 +145,21 @@ export class App {
     }
   }
 
+  // UI helper methods (keeping existing functionality)
+  private detectRecipientType(address: string): AddressType {
+    const value = address.trim()
+
+    if (!value) {
+      return AddressType.Email
+    }
+
+    if (value.includes('@')) {
+      return AddressType.Email
+    }
+
+    return AddressType.Bech32
+  }
+
   private setupPostTxHandlers(): void {
     const retryBtn = document.getElementById('new_tx')
     const logoutBtn = document.getElementById('logout_button') as HTMLButtonElement | null
@@ -190,20 +179,5 @@ export class App {
         this.wallet.logout()
       }
     }
-  }
-
-  // UI helper methods (keeping existing functionality)
-  private detectRecipientType(address: string): AddressType {
-    const value = address.trim()
-
-    if (!value) {
-      return AddressType.Email
-    }
-
-    if (value.includes('@')) {
-      return AddressType.Email
-    }
-
-    return AddressType.Bech32
   }
 }
