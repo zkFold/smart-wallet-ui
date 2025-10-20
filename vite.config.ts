@@ -28,5 +28,8 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['@emurgo/cardano-serialization-lib-browser']
-  }
+  },
+  preview: {
+    allowedHosts: ['wallet.zkfold.io', 'wallet.zkfold.ch'],
+  },
 })
