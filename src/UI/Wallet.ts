@@ -66,7 +66,7 @@ export function renderWalletView(userId: string, address: string, balance: Walle
               <input
                 name="zkfold_address"
                 id="address_input"
-                placeholder="friend@gmail.com or addr_test1xyz..."
+                placeholder="friend@gmail.com or addr1xyz..."
                 required
               />
             </label>

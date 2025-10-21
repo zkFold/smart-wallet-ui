@@ -1,4 +1,4 @@
-import { AppConfig, AppView } from './Types'
+import { AppView } from './Types'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { renderFailedView } from './UI/Failed'
@@ -9,22 +9,9 @@ export class App {
   private appElement!: HTMLElement
   private wallet!: Wallet
 
-  constructor() {
-    const config: AppConfig = {
-        clientId: import.meta.env.VITE_CLIENT_ID,
-        clientSecret: import.meta.env.VITE_CLIENT_SECRET,
-        websiteUrl: import.meta.env.VITE_WEBSITE_URL,
-        backendUrl: import.meta.env.VITE_BACKEND_URL,
-        backendApiKey: import.meta.env.VITE_BACKEND_API_KEY,
-        proverUrl: import.meta.env.VITE_PROVER_URL,
-      }
-
-    const googleApi = new GoogleApi(config.clientId, config.clientSecret, `${config.websiteUrl}/oauth2callback`)
-    const backend = new Backend(config.backendUrl, config.backendApiKey)
-    const prover = new Prover(config.proverUrl)
-
+  constructor(backend: Backend, prover: Prover, googleApi: GoogleApi) {
     this.appElement = document.getElementById('app') as HTMLElement
-    this.wallet = new Wallet(googleApi, backend, prover)
+    this.wallet = new Wallet(backend, prover, googleApi)
   }
 
   public async init(): Promise<void> {
