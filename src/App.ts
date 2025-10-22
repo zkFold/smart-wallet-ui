@@ -129,6 +129,23 @@ export class App {
         this.wallet.logout()
       })
     }
+
+    for (const showBtn of Array.from(document.querySelectorAll(".wallet_sec .toggle_btn"))) {
+      showBtn.addEventListener('click', () => {
+        const walletBox = showBtn.closest('.wallet_box')
+        walletBox?.classList.toggle('active')
+      })
+    }
+
+    for (const listItem of Array.from(document.querySelectorAll('.wallet_sec .price_list .price_list_item_btn'))) {
+      listItem.addEventListener('click', () => {
+        const item = listItem.closest('.price_list_item')
+        const content = item?.querySelector('.price_list_item_value') as HTMLElement | null
+        if (content) {
+          content.style.display = content.style.display === 'none' ? 'block' : 'none'
+        }
+      })
+    }
   }
 
   // UI helper methods (keeping existing functionality)
