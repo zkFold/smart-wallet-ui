@@ -15,105 +15,205 @@ export function renderWalletView(userId: string, address: string, balance: Walle
     .join('')
 
   container.innerHTML = `
-    <section class="app-shell wallet-shell">
-      ${renderAppHeader()}
-      <div class="wallet-grid app-grid">
-        <article class="info-card user-card">
-          <div class="card-header">
-            <span class="card-title">User</span>
+    <section class="wallet_sec">
+      <div class="wallet_container">
+        <form class="wallet_form">
+          <div class="form_header">
+            <div class="form_col">
+              <img class="form_logo" src="assets/img/zkfold-logo.png" alt="zkfold">
+            </div>
+            <div class="form_col btn_col">
+              <button class="wallet_btn exit_btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out h-4 w-4" data-lov-id="src/pages/Dashboard.tsx:88:16" data-lov-name="LogOut" data-component-path="src/pages/Dashboard.tsx" data-component-line="88" data-component-file="Dashboard.tsx" data-component-name="LogOut" data-component-content="%7B%22className%22%3A%22h-4%20w-4%22%7D"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
+              </button>
+            </div>
           </div>
-          <div class="card-body">
-            <span class="card-value" data-testid="wallet-user">${userId}</span>
-            <button type="button" id="copy_email" class="icon-button" title="Copy email">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-                <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="currentColor"/>
-              </svg>
-            </button>
+          <div class="wallet_box_cont">
+            <div class="wallet_box">
+              <label class="form_label text_center">User</label>
+              <div class="copy_cont">
+                <p id="user_email">${userId}</p>
+                <button id="copy_email" class="wallet_btn copy_btn">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy h-4 w-4" data-lov-id="src/pages/Dashboard.tsx:105:18" data-lov-name="Copy" data-component-path="src/pages/Dashboard.tsx" data-component-line="105" data-component-file="Dashboard.tsx" data-component-name="Copy" data-component-content="%7B%22className%22%3A%22h-4%20w-4%22%7D"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+                </button>
+              </div>
+            </div>
+            <div class="wallet_box">
+              <label class="form_label text_center">Top up address</label>
+              <div class="copy_cont">
+                <p id="user_topup_adress">0x1234567890abcdef...</p>
+                <button id="copy_topup_adress" class="wallet_btn copy_btn">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy h-4 w-4" data-lov-id="src/pages/Dashboard.tsx:105:18" data-lov-name="Copy" data-component-path="src/pages/Dashboard.tsx" data-component-line="105" data-component-file="Dashboard.tsx" data-component-name="Copy" data-component-content="%7B%22className%22%3A%22h-4%20w-4%22%7D"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
+                </button>
+              </div>
+            </div>
+            <div class="wallet_box">
+              <div class="wallet_box_header">
+                <label class="form_label">Wallet Balance</label>
+                <button class="wallet_btn toggle_btn">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down h-4 w-4 transition-transform" data-lov-id="src/pages/Dashboard.tsx:126:22" data-lov-name="ChevronDown" data-component-path="src/pages/Dashboard.tsx" data-component-line="126" data-component-file="Dashboard.tsx" data-component-name="ChevronDown" data-component-content="%7B%7D"><path d="m6 9 6 6 6-6"></path></svg>
+                </button>
+              </div>
+              <h3 class="price text_center">$0.00</h3>
+              <ul class="price_list">
+                <li class="price_list_item">
+                  <label class="price_label">ADA</label>
+                  <label class="price_label price_label_quentity">1,250.45</label>
+                </li>
+                <li class="price_list_item">
+                  <label class="price_label">SNEK</label>
+                  <label class="price_label price_label_quentity">50,000</label>
+                </li>
+                <li class="price_list_item">
+                  <label class="price_label">DJED</label>
+                  <label class="price_label price_label_quentity">320.75</label>
+                </li>
+                <li class="price_list_item">
+                  <label class="price_label">MIN</label>
+                  <label class="price_label price_label_quentity">8,500.2</label>
+                </li>
+              </ul>
+            </div>
+            <div class="wallet_box">
+              <div class="wallet_box_header">
+                <label class="form_label">Transactions</label>
+                <button class="wallet_btn toggle_btn">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down h-4 w-4 transition-transform" data-lov-id="src/pages/Dashboard.tsx:126:22" data-lov-name="ChevronDown" data-component-path="src/pages/Dashboard.tsx" data-component-line="126" data-component-file="Dashboard.tsx" data-component-name="ChevronDown" data-component-content="%7B%7D"><path d="m6 9 6 6 6-6"></path></svg>
+                </button>
+              </div>
+              <ul class="price_list price_list_2">
+                <li class="price_list_item">
+                  <button class="price_list_item_btn">
+                    <label class="price_label text_red">-10 ADA</label>
+                    <label class="status completed">Completed</label>
+                  </button>
+                  <div class="price_list_item_value" style="display: none;">
+                    <p>2025-10-14 14:32</p>
+                    <p>To: addr1qxy...abc123</p>
+                  </div>
+                </li>
+                <li class="price_list_item">
+                  <button class="price_list_item_btn">
+                    <label class="price_label text_green">+250 SNEK</label>
+                    <label class="status">In process</label>
+                  </button>
+                  <div class="price_list_item_value" style="display: none;">
+                    <p>2025-10-15 09:15</p>
+                    <p>From: addr1wxz...def456</p>
+                  </div>
+                </li>
+                <li class="price_list_item">
+                  <button class="price_list_item_btn">
+                    <label class="price_label text_green">+15.5 DJED</label>
+                    <label class="status completed">Completed</label>
+                  </button>
+                  <div class="price_list_item_value" style="display: none;">
+                    <p>2025-10-13 18:45</p>
+                    <p>From: addr1pqr...ghi789</p>
+                  </div>
+                </li>
+                <li class="price_list_item">
+                  <button class="price_list_item_btn">
+                    <label class="price_label text_red">-100 MIN</label>
+                    <label class="status completed">Completed</label>
+                  </button>
+                  <div class="price_list_item_value" style="display: none;">
+                    <p>2025-10-12 11:20</p>
+                    <p>To: addr1rst...jkl012</p>
+                  </div>
+                </li>
+                <li class="price_list_item">
+                  <button class="price_list_item_btn">
+                    <label class="price_label text_green">+50 ADA</label>
+                    <label class="status">In process</label>
+                  </button>
+                  <div class="price_list_item_value" style="display: none;">
+                    <p>2025-10-16 08:00</p>
+                    <p>From: addr1uvw...mno345</p>
+                  </div>
+                </li>
+                <li class="price_list_item">
+                  <button class="price_list_item_btn">
+                    <label class="price_label text_red">-25.75 DJED</label>
+                    <label class="status completed">Completed</label>
+                  </button>
+                  <div class="price_list_item_value" style="display: none;">
+                    <p>2025-10-11 16:30</p>
+                    <p>To: addr1xyz...pqr678</p>
+                  </div>
+                </li>
+                <li class="price_list_item">
+                  <button class="price_list_item_btn">
+                    <label class="price_label text_green">+300 SNEK</label>
+                    <label class="status completed">Completed</label>
+                  </button>
+                  <div class="price_list_item_value" style="display: none;">
+                    <p>2025-10-10 12:10</p>
+                    <p>From: addr1abc...stu901</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
           </div>
-        </article>
-        <article class="info-card address-card">
-          <div class="card-header">
-            <span class="card-title">Top up address</span>
-          </div>
-          <div class="card-body">
-            <span class="card-value monospace" data-testid="wallet-address">${address}</span>
-            <button type="button" id="copy_address" class="icon-button" title="Copy address">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-                <path d="M16 1H4C2.9 1 2 1.9 2 3V17H4V3H16V1ZM19 5H8C6.9 5 6 5.9 6 7V21C6 22.1 6.9 23 8 23H19C20.1 23 21 22.1 21 21V7C21 5.9 20.1 5 19 5ZM19 21H8V7H19V21Z" fill="currentColor"/>
-              </svg>
-            </button>
-          </div>
-        </article>
-        <article class="info-card balance-card">
-          <div class="card-header">
-            <span class="card-title">Wallet balance</span>
-          </div>
-          <div class="card-body balance-body">
-            <ul class="balance-list">
-              ${formatBalance(balance)}
-            </ul>
-          </div>
-        </article>
-      </div>
-      <section class="info-card send-card">
-        <div class="card-header">
-          <span class="card-title">Send funds</span>
-        </div>
-        <form action="#" method="POST" class="send-form">
-          <fieldset class="form-grid form-grid--send">
-            <label class="form-control form-control--send-to">
-              Send to
-              <input
-                name="zkfold_address"
-                id="address_input"
-                placeholder="friend@gmail.com or addr1xyz..."
-                required
-              />
-            </label>
-            <label class="form-control">
-              Amount
-              <input
-                name="zkfold_amount"
-                type="number"
-                min="0.000001"
-                step="0.000001"
-                placeholder="Enter amount"
-                required
-              />
-            </label>
-            <label class="form-control">
-              Asset
-              <select
-                name="zkfold_asset"
-                id="asset_select"
-                required
-              >
-                ${assetOptionsHtml}
-              </select>
-            </label>
-          </fieldset>
-          <div class="form-actions">
-            <button type="submit" class="primary-action">Send</button>
-            <button type="button" id="logout_button" class="primary-action">Log out</button>
+          <div class="form_fields">
+            <div class="form_field_cont">
+              <label for="sendTo">Send to</label>
+              <input type="text" name="sendTo" id="sendTo" class="input_field" placeholder="friend@gmail.com or 0x123456...">
+            </div>
+            <div class="form_fields_row">
+              <div class="col_1">
+                <div class="form_field_cont">
+                  <label for="amount">Amount</label>
+                  <input type="number" name="amount" id="amount" class="input_field" placeholder="0.00">
+                </div>
+              </div>
+              <div class="col_2">
+                <div class="form_field_cont">
+                  <label for="sendTo">Asset</label>
+                  <select name="asset" id="asset" class="input_field select_field">
+                    <option value="ADA">ADA</option>
+                    <option value="SNEK">SNEK</option>
+                    <option value="DJED">DJED</option>
+                    <option value="MIN">MIN</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <input type="submit" name="submit" class="submit_btn" value="Send">
           </div>
         </form>
-      </section>
+      </div>
     </section>
+    <div id="notification" class="notice_box">
+      <h3 class="notice_head">Copied!</h3>
+      <p id="notification_body" class="notice_body">Email copied to clipboard</p>
+      <input id="notification_timeout_id" type="hidden">
+      <svg id="notification_close_icon" class="close_icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x h-4 w-4" data-lov-id="src/components/ui/toast.tsx:76:4" data-lov-name="X" data-component-path="src/components/ui/toast.tsx" data-component-line="76" data-component-file="toast.tsx" data-component-name="X" data-component-content="%7B%22className%22%3A%22h-4%20w-4%22%7D"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+    </div>
   `
   // Add copy functionality
   setTimeout(() => {
     const copyEmailBtn = document.getElementById('copy_email')
-    const copyAddressBtn = document.getElementById('copy_address')
-
     if (copyEmailBtn) {
       copyEmailBtn.addEventListener('click', () => {
-        copyToClipboard(userId, 'Email copied!', copyEmailBtn)
+        copyToClipboard(userId, 'Email copied to clipboard')
       })
     }
 
-    if (copyAddressBtn) {
-      copyAddressBtn.addEventListener('click', () => {
-        copyToClipboard(address, 'Address copied!', copyAddressBtn)
+    const copyTopupAddressBtn = document.getElementById('copy_topup_adress')
+    if (copyTopupAddressBtn) {
+      copyTopupAddressBtn.addEventListener('click', () => {
+        copyToClipboard(address, 'Address copied to clipboard')
+      })
+    }
+
+    const copyCloseIcon = document.getElementById('notification_close_icon')
+    if (copyCloseIcon) {
+      copyCloseIcon.addEventListener('click', () => {
+        const notification = document.getElementById('notification')
+        if (notification) {
+          notification.classList.remove('active')
+        }
       })
     }
   }, 0)
@@ -121,89 +221,37 @@ export function renderWalletView(userId: string, address: string, balance: Walle
   return container
 }
 
-async function copyToClipboard(text: string, successMessage: string, buttonElement?: HTMLElement): Promise<void> {
-  try {
-    await navigator.clipboard.writeText(text)
-    showCopyNotification(successMessage, buttonElement)
-  } catch (err) {
-    console.error('Failed to copy text: ', err)
-    // Fallback for older browsers
-    fallbackCopyTextToClipboard(text, successMessage, buttonElement)
-  }
-}
+async function copyToClipboard(text: string, message: string): Promise<void> {
+  await navigator.clipboard.writeText(text)
 
-function fallbackCopyTextToClipboard(text: string, successMessage: string, buttonElement?: HTMLElement): void {
-  const textArea = document.createElement("textarea")
-  textArea.value = text
-  textArea.style.top = "0"
-  textArea.style.left = "0"
-  textArea.style.position = "fixed"
-  textArea.style.opacity = "0"
+  const notification = document.getElementById('notification')
+  const notificationBody = document.getElementById('notification_body')
+  const notificationTimeoutId = document.getElementById('notification_timeout_id') as HTMLInputElement
 
-  document.body.appendChild(textArea)
-  textArea.focus()
-  textArea.select()
+  if (notification && notificationBody && notificationTimeoutId) {
+    // Clear any existing timeout
+    const existingTimeoutId = notificationTimeoutId.value
+    clearTimeout(existingTimeoutId)
 
-  try {
-    const successful = document.execCommand('copy')
-    if (successful) {
-      showCopyNotification(successMessage, buttonElement)
+    // Update message
+    notificationBody.textContent = message
+
+    // Show notification
+    if (notification.classList.contains('active')) {
+      notification.classList.remove('active')
+      setTimeout(() => {
+        notification.classList.add('active')
+      }, 100)
     } else {
-      showCopyNotification('Failed to copy text', buttonElement)
+      notification.classList.add('active')
     }
-  } catch (err) {
-    console.error('Fallback: Oops, unable to copy', err)
-    showCopyNotification('Failed to copy text', buttonElement)
+
+    // Hide after 7 seconds
+    const newTimeoutId = setTimeout(() => {
+      notification.classList.remove('active')
+    }, 7000)
+
+    // Store new timeout ID
+    notificationTimeoutId.value = newTimeoutId.toString()
   }
-
-  document.body.removeChild(textArea)
-}
-
-function showCopyNotification(message: string, buttonElement?: HTMLElement): void {
-  // Create a temporary notification
-  const notification = document.createElement('div')
-  notification.textContent = message
-
-  let positionStyle = `
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-    color: white;
-    padding: 8px 14px;
-    border-radius: 999px;
-    z-index: 1000;
-    font-size: 14px;
-    box-shadow: 0 16px 40px -28px rgba(99, 102, 241, 0.75);
-    white-space: nowrap;
-  `
-
-  // If button element is provided, position the notification relative to it
-  if (buttonElement) {
-    const rect = buttonElement.getBoundingClientRect()
-    positionStyle = `
-      position: fixed;
-      top: ${rect.top + window.scrollY}px;
-      left: ${rect.right + 10}px;
-      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-      color: white;
-      padding: 6px 12px;
-      border-radius: 999px;
-      z-index: 1000;
-      font-size: 12px;
-      box-shadow: 0 16px 40px -28px rgba(99, 102, 241, 0.75);
-      white-space: nowrap;
-    `
-  }
-
-  notification.style.cssText = positionStyle
-
-  document.body.appendChild(notification)
-
-  // Remove notification after 2 seconds
-  setTimeout(() => {
-    if (notification.parentNode) {
-      notification.parentNode.removeChild(notification)
-    }
-  }, 2000)
 }

@@ -6,11 +6,9 @@ import { renderSuccessView } from './UI/Success'
 import { AddressType, Backend, GoogleApi, Prover, Wallet } from 'zkfold-smart-wallet-api'
 
 export class App {
-  private appElement!: HTMLElement
   private wallet!: Wallet
 
   constructor(backend: Backend, prover: Prover, googleApi: GoogleApi) {
-    this.appElement = document.getElementById('app') as HTMLElement
     this.wallet = new Wallet(backend, prover, googleApi)
   }
 
@@ -56,7 +54,8 @@ export class App {
 
   private async render(view: AppView, data?: any): Promise<void> {
     // Clear previous content
-    this.appElement.innerHTML = ''
+    const app = document.getElementById('app') as HTMLElement
+    app.innerHTML = ''
 
     // Render current view
     let viewElement: HTMLElement
@@ -66,22 +65,22 @@ export class App {
         const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
         const balance = await this.wallet.getBalance()
         viewElement = renderWalletView(userId, address, balance)
-        this.appElement.appendChild(viewElement)
+        app.appendChild(viewElement)
         this.setupWalletHandlers()
         break
       case 'success':
         viewElement = renderSuccessView(this.wallet, data)
-        this.appElement.appendChild(viewElement)
+        app.appendChild(viewElement)
         this.setupPostTxHandlers()
         break
       case 'failed':
         viewElement = renderFailedView(data)
-        this.appElement.appendChild(viewElement)
+        app.appendChild(viewElement)
         this.setupPostTxHandlers()
         break
       default:
         viewElement = renderInitView()
-        this.appElement.appendChild(viewElement)
+        app.appendChild(viewElement)
         this.setupInitHandlers()
     }
   }
