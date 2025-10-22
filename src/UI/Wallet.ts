@@ -20,10 +20,10 @@ export function renderWalletView(userId: string, address: string, balance: Walle
         <form class="wallet_form">
           <div class="form_header">
             <div class="form_col">
-              <img class="form_logo" src="assets/img/zkfold-logo.png" alt="zkfold">
+              <img class="form_logo" src="logo.svg" alt="zkFold logo">
             </div>
             <div class="form_col btn_col">
-              <button class="wallet_btn exit_btn">
+              <button id="logout_button" class="wallet_btn">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-log-out h-4 w-4" data-lov-id="src/pages/Dashboard.tsx:88:16" data-lov-name="LogOut" data-component-path="src/pages/Dashboard.tsx" data-component-line="88" data-component-file="Dashboard.tsx" data-component-name="LogOut" data-component-content="%7B%22className%22%3A%22h-4%20w-4%22%7D"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" x2="9" y1="12" y2="12"></line></svg>
               </button>
             </div>
@@ -41,7 +41,7 @@ export function renderWalletView(userId: string, address: string, balance: Walle
             <div class="wallet_box">
               <label class="form_label text_center">Top up address</label>
               <div class="copy_cont">
-                <p id="user_topup_adress">0x1234567890abcdef...</p>
+                <p id="user_topup_adress">${address}</p>
                 <button id="copy_topup_adress" class="wallet_btn copy_btn">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-copy h-4 w-4" data-lov-id="src/pages/Dashboard.tsx:105:18" data-lov-name="Copy" data-component-path="src/pages/Dashboard.tsx" data-component-line="105" data-component-file="Dashboard.tsx" data-component-name="Copy" data-component-content="%7B%22className%22%3A%22h-4%20w-4%22%7D"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>
                 </button>
@@ -158,19 +158,19 @@ export function renderWalletView(userId: string, address: string, balance: Walle
           <div class="form_fields">
             <div class="form_field_cont">
               <label for="sendTo">Send to</label>
-              <input type="text" name="sendTo" id="sendTo" class="input_field" placeholder="friend@gmail.com or 0x123456...">
+              <input type="text" name="zkfold_address" class="input_field" placeholder="friend@gmail.com or addr1xyz...">
             </div>
             <div class="form_fields_row">
               <div class="col_1">
                 <div class="form_field_cont">
                   <label for="amount">Amount</label>
-                  <input type="number" name="amount" id="amount" class="input_field" placeholder="0.00">
+                  <input type="number" name="zkfold_amount" class="input_field" placeholder="0.00" required>
                 </div>
               </div>
               <div class="col_2">
                 <div class="form_field_cont">
                   <label for="sendTo">Asset</label>
-                  <select name="asset" id="asset" class="input_field select_field">
+                  <select name="zkfold_asset" class="input_field select_field">
                     <option value="ADA">ADA</option>
                     <option value="SNEK">SNEK</option>
                     <option value="DJED">DJED</option>
@@ -179,7 +179,7 @@ export function renderWalletView(userId: string, address: string, balance: Walle
                 </div>
               </div>
             </div>
-            <input type="submit" name="submit" class="submit_btn" value="Send">
+            <input type="submit" name="submit" class="send_btn" value="Send">
           </div>
         </form>
       </div>
