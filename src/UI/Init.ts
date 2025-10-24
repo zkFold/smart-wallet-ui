@@ -6,7 +6,7 @@ export function renderInitView(): HTMLElement {
     <button
       id="google_login_button"
       type="submit"
-      class="send_btn"
+      class="submit_btn altered"
     >
       <svg width="16" height="16" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <g fill="none" fill-rule="evenodd">

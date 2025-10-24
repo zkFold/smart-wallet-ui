@@ -133,13 +133,13 @@ export function renderWalletView(userId: string, address: string, balance: Value
     <div class="form_fields">
       <div class="form_field_cont">
         <label for="sendTo">Send to</label>
-        <input type="text" name="zkfold_address" class="input_field" placeholder="friend@gmail.com or addr1abc...xyz">
+        <input type="text" name="zkfold_address" class="input_field" placeholder="friend@gmail.com or addr1abc...xyz" autocomplete="off" required>
       </div>
       <div class="form_fields_row">
         <div class="col_1">
           <div class="form_field_cont">
             <label for="amount">Amount</label>
-            <input type="number" name="zkfold_amount" class="input_field" placeholder="0.00" required>
+            <input type="number" name="zkfold_amount" class="input_field" placeholder="0.00" autocomplete="off" required>
           </div>
         </div>
         <div class="col_2">
@@ -151,7 +151,7 @@ export function renderWalletView(userId: string, address: string, balance: Value
           </div>
         </div>
       </div>
-      <input type="submit" name="submit" class="send_btn" value="Send">
+      <input type="submit" name="submit" class="submit_btn" value="Send">
     </div>
   `
 
