@@ -41,13 +41,12 @@ export function renderWalletView(userId: string, address: string, balance: Value
         </button>
       </div>
       <h3 class="price text_center">$0.00</h3>
-      ${hasAssets ? `
-        <ul class="price_list">
-          ${balanceHtml}
+      <div class="wallet_assets">
+        <ul id="wallet_assets_list" class="price_list" style="display: ${hasAssets ? 'block' : 'none'};">
+          ${hasAssets ? balanceHtml : ''}
         </ul>
-      ` : `
-        <div class="empty_assets">No assets yet. Top up your wallet to get started.</div>
-      `}
+        <div id="wallet_empty_assets" class="empty_assets" style="display: ${hasAssets ? 'none' : 'block'};">No assets yet. Top up your wallet to get started.</div>
+      </div>
     </div>
   `
 
@@ -150,7 +149,7 @@ export function renderWalletView(userId: string, address: string, balance: Value
         <div class="col_2">
           <div class="form_field_cont">
             <label for="sendTo">Asset</label>
-            <select name="zkfold_asset" class="input_field">
+            <select id="sendto_asset_select" name="zkfold_asset" class="input_field">
               ${assetOptionsHtml}
             </select>
           </div>

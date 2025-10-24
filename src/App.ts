@@ -2,7 +2,7 @@ import { AppView } from './Types'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { AddressType, Backend, GoogleApi, Prover, Wallet } from 'zkfold-smart-wallet-api'
-import { getAssetAmount, getAssetLabel } from './Utils/Assets'
+import { getAssetAmount, getAssetLabel, formatAssetOptions, formatBalance } from './Utils/Assets'
 
 export class App {
   private wallet!: Wallet
@@ -130,6 +130,41 @@ export class App {
       setSendLoading(false)
       const error = (event as CustomEvent).detail
       this.showNotification("Failed!", `Transaction failed: ${error}`, 'error')
+    })
+
+    // Update balance when a transaction is confirmed
+    this.wallet.addEventListener('transaction_confirmed', async (_event: Event) => {
+      try {
+        const newBalance = await this.wallet.getBalance()
+        const hasAssets = Object.keys(newBalance).length > 0
+
+        // Update assets list vs empty state
+        const assetsList = document.getElementById('wallet_assets_list') as HTMLUListElement | null
+        const emptyDiv = document.getElementById('wallet_empty_assets') as HTMLElement | null
+        if (assetsList && emptyDiv) {
+          if (hasAssets) {
+            assetsList.innerHTML = formatBalance(newBalance)
+            assetsList.style.display = 'block'
+            emptyDiv.style.display = 'none'
+          } else {
+            assetsList.innerHTML = ''
+            assetsList.style.display = 'none'
+            emptyDiv.style.display = 'block'
+          }
+        }
+
+        // Update asset select options
+        const select = document.getElementById('sendto_asset_select') as HTMLSelectElement | null
+        if (select) {
+          const selectedBefore = select.value
+          select.innerHTML = formatAssetOptions(newBalance)
+          // Preserve selection if still present
+          const stillExists = Array.from(select.options).some(o => o.value === selectedBefore)
+          if (stillExists) select.value = selectedBefore
+        }
+      } catch (err) {
+        console.error('Failed to update balance after confirmation:', err)
+      }
     })
 
     const logoutBtn = document.getElementById('logout_button')
