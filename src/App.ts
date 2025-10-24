@@ -115,9 +115,10 @@ export class App {
       })
     }
 
-    for (const showBtn of Array.from(document.querySelectorAll(".wallet_sec .toggle_btn"))) {
-      showBtn.addEventListener('click', () => {
-        const walletBox = showBtn.closest('.wallet_box')
+    // Make the entire header clickable to toggle the panel
+    for (const header of Array.from(document.querySelectorAll('.wallet_sec .wallet_box .wallet_box_header'))) {
+      header.addEventListener('click', () => {
+        const walletBox = header.closest('.wallet_box')
         walletBox?.classList.toggle('active')
       })
     }
