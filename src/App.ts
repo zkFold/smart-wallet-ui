@@ -1,8 +1,6 @@
 import { AppView } from './Types'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
-import { renderFailedView } from './UI/Failed'
-import { renderSuccessView } from './UI/Success'
 import { AddressType, Backend, GoogleApi, Prover, Wallet } from 'zkfold-smart-wallet-api'
 
 export class App {
@@ -15,24 +13,11 @@ export class App {
   public async init(): Promise<void> {
     try {
       // Set up event listeners
-      this.wallet.addEventListener('walletInitialized', async () => {
+      this.wallet.addEventListener('initialized', async () => {
         await this.render('wallet')
       })
 
-      this.wallet.addEventListener('transactionComplete', async (event: Event) => {
-        await this.render('success', (event as CustomEvent).detail)
-      })
-
-      this.wallet.addEventListener('proofComputationComplete', async (event: Event) => {
-        await this.render('success', (event as CustomEvent).detail)
-      })
-
-      this.wallet.addEventListener('transactionFailed', async (event: Event) => {
-        const detail = (event as CustomEvent).detail
-        await this.render('failed', { reason: detail?.message ?? detail })
-      })
-
-      this.wallet.addEventListener('walletLoggedOut', async () => {
+      this.wallet.addEventListener('logged_out', async () => {
         await this.render('init')
       })
 
@@ -52,7 +37,7 @@ export class App {
     }
   }
 
-  private async render(view: AppView, data?: any): Promise<void> {
+  private async render(view: AppView): Promise<void> {
     // Clear previous content
     const app = document.getElementById('app') as HTMLElement
     app.innerHTML = ''
@@ -66,17 +51,7 @@ export class App {
         const balance = await this.wallet.getBalance()
         viewElement = renderWalletView(userId, address, balance)
         app.appendChild(viewElement)
-        this.setupWalletHandlers()
-        break
-      case 'success':
-        viewElement = renderSuccessView(this.wallet, data)
-        app.appendChild(viewElement)
-        this.setupPostTxHandlers()
-        break
-      case 'failed':
-        viewElement = renderFailedView(data)
-        app.appendChild(viewElement)
-        this.setupPostTxHandlers()
+        this.setupWalletHandlers(userId, address)
         break
       default:
         viewElement = renderInitView()
@@ -95,7 +70,7 @@ export class App {
     }
   }
 
-  private setupWalletHandlers(): void {
+  private setupWalletHandlers(userId: string, address: string): void {
     const form = document.querySelector('form') as HTMLFormElement
     if (form) {
       form.addEventListener('submit', async (e) => {
@@ -123,6 +98,16 @@ export class App {
       })
     }
 
+    // Transaction notifications
+    this.wallet.addEventListener('transaction_pending', async (event: Event) => {
+      const txId = (event as CustomEvent).detail
+      this.showNotification("Success!", `Transaction ${txId} has been submitted.`)
+    })
+    this.wallet.addEventListener('transaction_failed', async (event: Event) => {
+      const error = (event as CustomEvent).detail
+      this.showNotification("Failed!", `Transaction failed: ${error}`)
+    })
+
     const logoutBtn = document.getElementById('logout_button')
     if (logoutBtn) {
       logoutBtn.addEventListener('click', () => {
@@ -146,6 +131,35 @@ export class App {
         }
       })
     }
+
+    // Add copy functionality
+    setTimeout(() => {
+      const copyEmailBtn = document.getElementById('copy_email')
+      if (copyEmailBtn) {
+        copyEmailBtn.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(userId)
+          this.showNotification("Copied!", 'Email copied to clipboard')
+        })
+      }
+
+      const copyTopupAddressBtn = document.getElementById('copy_topup_adress')
+      if (copyTopupAddressBtn) {
+        copyTopupAddressBtn.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(address)
+          this.showNotification("Copied!", 'Address copied to clipboard')
+        })
+      }
+
+      const copyCloseIcon = document.getElementById('notification_close_icon')
+      if (copyCloseIcon) {
+        copyCloseIcon.addEventListener('click', () => {
+          const notification = document.getElementById('notification')
+          if (notification) {
+            notification.classList.remove('active')
+          }
+        })
+      }
+    }, 0)
   }
 
   // UI helper methods (keeping existing functionality)
@@ -163,24 +177,40 @@ export class App {
     return AddressType.Bech32
   }
 
-  private setupPostTxHandlers(): void {
-    const retryBtn = document.getElementById('new_tx')
-    const logoutBtn = document.getElementById('logout_button') as HTMLButtonElement | null
+  private async showNotification(header: string, body: string): Promise<void> {
+    const notification = document.getElementById('notification')
+    const notificationHeader = document.getElementById('notification_header')
+    const notificationBody = document.getElementById('notification_body')
+    const notificationTimeoutId = document.getElementById('notification_timeout_id') as HTMLInputElement
 
-    if (retryBtn) {
-      retryBtn.removeAttribute('disabled')
-      retryBtn.onclick = async () => {
-        retryBtn.setAttribute('disabled', 'true')
-        await this.render('wallet')
-      }
-    }
+    if (notification && notificationHeader && notificationBody && notificationTimeoutId) {
+      // Clear any existing timeout
+      const existingTimeoutId = notificationTimeoutId.value
+      clearTimeout(existingTimeoutId)
 
-    if (logoutBtn) {
-      logoutBtn.removeAttribute('disabled')
-      logoutBtn.onclick = async () => {
-        logoutBtn.setAttribute('disabled', 'true')
-        this.wallet.logout()
+      // Update message header
+      notificationHeader.textContent = header
+
+      // Update message body
+      notificationBody.textContent = body
+
+      // Show notification
+      if (notification.classList.contains('active')) {
+        notification.classList.remove('active')
+        setTimeout(() => {
+          notification.classList.add('active')
+        }, 100)
+      } else {
+        notification.classList.add('active')
       }
+
+      // Hide after 7 seconds
+      const newTimeoutId = setTimeout(() => {
+        notification.classList.remove('active')
+      }, 7000)
+
+      // Store new timeout ID
+      notificationTimeoutId.value = newTimeoutId.toString()
     }
   }
 }

@@ -1,3 +1,5 @@
+import { Value } from "zkfold-smart-wallet-api"
+
 // This module handles how assets are displayed in the UI
 
 const DEFAULT_ASSET = 'lovelace'
@@ -7,10 +9,10 @@ export function getAssetLabel(assetKey: string): string {
     return 'ADA'
   }
 
-  return assetKey
+  return assetKey.length > 12 ? assetKey.slice(0, 8) + '...' + assetKey.slice(-4) : assetKey
 }
 
-export function formatBalance(balance: { [asset: string]: bigint }): string {
+export function formatBalance(balance: Value): string {
   let assets = ""
   for (const [key, value] of Object.entries(balance)) {   
     let v: string
@@ -36,7 +38,7 @@ export function formatBalance(balance: { [asset: string]: bigint }): string {
   return assets
 }
 
-export function formatAssetOptions(balance: { [asset: string]: bigint }): string {
+export function formatAssetOptions(balance: Value): string {
   let options = ""
   for (const key of Object.keys(balance)) {
     options += `<option value="${key}">${getAssetLabel(key)}</option>\n`

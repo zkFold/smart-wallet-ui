@@ -38,7 +38,7 @@
 }
 .wallet_sec .form_header .form_logo{
 	width: 100%;
-	max-width: 80px;
+	max-width: 200px;
 }
 .wallet_sec .form_header .form_col{
 	width: 33.333334%;
@@ -69,6 +69,9 @@
 .wallet_sec .wallet_btn:hover{
 	background-color: #005eff;
 	color: white;
+}
+#logout_button:not(.active) {
+	display: none;
 }
 .wallet_sec .wallet_box_cont{
 	display: flex;
