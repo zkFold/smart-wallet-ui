@@ -67,7 +67,7 @@
 	display: block;
 }
 .wallet_sec .wallet_btn:hover{
-	background-color: #005eff;
+	background-color: #4dbeff;
 	color: white;
 }
 #logout_button:not(.active) {
@@ -119,9 +119,6 @@
 }
 .wallet_sec .wallet_box.active .toggle_btn{
 	transform: rotate(180deg);
-}
-.wallet_sec .toggle_btn:hover{
-	background-color: #7c3bed;
 }
 .wallet_box .price{
 	color: black;
