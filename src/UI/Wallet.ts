@@ -156,7 +156,7 @@ export function renderWalletView(userId: string, address: string, balance: Value
           </div>
         </div>
       </div>
-      <input type="submit" name="submit" class="submit_btn" value="Send">
+      <button type="submit" name="submit" class="submit_btn">Send</button>
     </div>
   `
 

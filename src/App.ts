@@ -73,6 +73,22 @@ export class App {
 
   private setupWalletHandlers(userId: string, address: string): void {
     const form = document.querySelector('form') as HTMLFormElement
+    const setSendLoading = (loading: boolean) => {
+      const btn = document.querySelector('.wallet_sec .submit_btn') as HTMLButtonElement | null
+      if (!btn) return
+      btn.disabled = loading
+      btn.classList.toggle('loading', loading)
+      if (loading) {
+        // preserve original label once
+        if (!btn.dataset.label) {
+          btn.dataset.label = (btn.textContent || 'Send').trim()
+        }
+        btn.textContent = 'Sending...'
+      } else {
+        const original = btn.dataset.label || 'Send'
+        btn.textContent = original
+      }
+    }
     if (form) {
       form.addEventListener('submit', async (e) => {
         e.preventDefault()
@@ -90,6 +106,8 @@ export class App {
         const recipientType = this.detectRecipientType(recipient)
         const asset = (formData.get('zkfold_asset') as string)?.trim() || 'lovelace'
 
+        // Start loading immediately on submit (after basic validation)
+        setSendLoading(true)
         await this.wallet.sendTransaction({
           recipient,
           recipientType,
@@ -102,12 +120,14 @@ export class App {
 
     // Transaction notifications
     this.wallet.addEventListener('transaction_pending', async (event: Event) => {
+      setSendLoading(false)
       const request = (event as CustomEvent).detail
       const amt = getAssetAmount(request.asset, request.amount)
       const asset = getAssetLabel(request.asset)
       this.showNotification("Success!", `Sent ${amt} ${asset} to ${request.recipient}.`, 'success')
     })
     this.wallet.addEventListener('transaction_failed', async (event: Event) => {
+      setSendLoading(false)
       const error = (event as CustomEvent).detail
       this.showNotification("Failed!", `Transaction failed: ${error}`, 'error')
     })
