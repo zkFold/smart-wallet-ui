@@ -1,9 +1,10 @@
+import { getAddressLabel } from "../Utils/Address"
 import { formatBalance, formatAssetOptions } from "../Utils/Assets"
 import { renderAppFrame } from "./Frame"
 import { Value } from "zkfold-smart-wallet-api"
 
 export function renderWalletView(userId: string, address: string, balance: Value): HTMLElement {
-  const addressHtml = address.length > 32 ? address.slice(0, 24) + '...' + address.slice(-8) : address
+  const addressHtml = getAddressLabel(address)
   const balanceHtml = formatBalance(balance)
   const hasAssets = Object.keys(balance).length > 0
   const assetOptionsHtml = formatAssetOptions(balance)
@@ -41,11 +42,11 @@ export function renderWalletView(userId: string, address: string, balance: Value
         </button>
       </div>
       <h3 class="price text_center">$0.00</h3>
-      <div class="wallet_assets">
-        <ul id="wallet_assets_list" class="price_list" style="display: ${hasAssets ? 'block' : 'none'};">
+      <div class="wallet_assets${hasAssets ? '' : ' empty'}">
+        <ul id="wallet_assets_list" class="price_list">
           ${hasAssets ? balanceHtml : ''}
         </ul>
-        <div id="wallet_empty_assets" class="empty_assets" style="display: ${hasAssets ? 'none' : 'block'};">No assets yet. Top up your wallet to get started.</div>
+        <div id="wallet_empty_assets" class="empty_assets">No assets yet. Top up your wallet to get started.</div>
       </div>
     </div>
   `

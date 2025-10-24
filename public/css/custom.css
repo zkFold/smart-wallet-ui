@@ -231,6 +231,10 @@
 .wallet_sec .wallet_box:not(.active) .empty_assets{
 	display: none;
 }
+/* Control visibility of assets vs empty state without inline styles */
+.wallet_sec .wallet_assets #wallet_empty_assets{ display: none; }
+.wallet_sec .wallet_assets.empty #wallet_empty_assets{ display: block; }
+.wallet_sec .wallet_assets.empty #wallet_assets_list{ display: none; }
 .wallet_sec .form_fields .form_field_cont{
 	padding-top: 16px;
 }

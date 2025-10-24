@@ -3,6 +3,7 @@ import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { AddressType, Backend, GoogleApi, Prover, Wallet } from 'zkfold-smart-wallet-api'
 import { getAssetAmount, getAssetLabel, formatAssetOptions, formatBalance } from './Utils/Assets'
+import { getAddressLabel } from './Utils/Address'
 
 export class App {
   private wallet!: Wallet
@@ -124,12 +125,14 @@ export class App {
       const request = (event as CustomEvent).detail
       const amt = getAssetAmount(request.asset, request.amount)
       const asset = getAssetLabel(request.asset)
-      this.showNotification("Success!", `Sent ${amt} ${asset} to ${request.recipient}.`, 'success')
+      const recipient = getAddressLabel(request.recipient)
+      this.showNotification("Success!", `Sent ${amt} ${asset} to ${recipient}.`, 'success')
     })
     this.wallet.addEventListener('transaction_failed', async (event: Event) => {
       setSendLoading(false)
       const error = (event as CustomEvent).detail
-      this.showNotification("Failed!", `Transaction failed: ${error}`, 'error')
+      console.log('Transaction failed error detail:', error)
+      this.showNotification("Failed!", `Insufficient ADA to perform this transaction.`, 'error')
     })
 
     // Update balance when a transaction is confirmed
@@ -140,16 +143,14 @@ export class App {
 
         // Update assets list vs empty state
         const assetsList = document.getElementById('wallet_assets_list') as HTMLUListElement | null
-        const emptyDiv = document.getElementById('wallet_empty_assets') as HTMLElement | null
-        if (assetsList && emptyDiv) {
+        const assetsWrap = assetsList?.parentElement as HTMLElement | null
+        if (assetsList && assetsWrap) {
           if (hasAssets) {
             assetsList.innerHTML = formatBalance(newBalance)
-            assetsList.style.display = 'block'
-            emptyDiv.style.display = 'none'
+            assetsWrap.classList.remove('empty')
           } else {
             assetsList.innerHTML = ''
-            assetsList.style.display = 'none'
-            emptyDiv.style.display = 'block'
+            assetsWrap.classList.add('empty')
           }
         }
 
@@ -198,7 +199,7 @@ export class App {
       if (copyEmailBtn) {
         copyEmailBtn.addEventListener('click', async () => {
           await navigator.clipboard.writeText(userId)
-          this.showNotification("Copied!", 'Email copied to clipboard', 'info')
+          this.showNotification("Copied!", 'Email copied to clipboard.', 'info')
         })
       }
 
@@ -206,7 +207,7 @@ export class App {
       if (copyTopupAddressBtn) {
         copyTopupAddressBtn.addEventListener('click', async () => {
           await navigator.clipboard.writeText(address)
-          this.showNotification("Copied!", 'Address copied to clipboard', 'info')
+          this.showNotification("Copied!", 'Address copied to clipboard.', 'info')
         })
       }
 
