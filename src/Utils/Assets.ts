@@ -1,4 +1,4 @@
-import { Value } from "zkfold-smart-wallet-api"
+import { BigIntWrap, Value } from "zkfold-smart-wallet-api"
 
 // This module handles how assets are displayed in the UI
 
@@ -12,18 +12,22 @@ export function getAssetLabel(assetKey: string): string {
   return assetKey.length > 12 ? assetKey.slice(0, 8) + '...' + assetKey.slice(-4) : assetKey
 }
 
+export function getAssetAmount(asset: string, amount: BigIntWrap): string {
+  if (asset === DEFAULT_ASSET) {
+      // Convert lovelaces to ADA (1 ADA = 1,000,000 lovelaces)
+      return (Number(amount) / 1_000_000).toFixed(6)
+    }
+    else {
+      // For other assets, just show the raw amount
+      return amount.toString()
+    }
+}
+
 export function formatBalance(balance: Value): string {
   let assets = ""
   for (const [key, value] of Object.entries(balance)) {   
     let v: string
-    if (key === DEFAULT_ASSET) {
-      // Convert lovelaces to ADA (1 ADA = 1,000,000 lovelaces)
-      v = (Number(value) / 1_000_000).toFixed(6)
-    }
-    else {
-      // For other assets, just show the raw amount
-      v = value.toString()
-    }
+    v = getAssetAmount(key, value)
 
     assets +=
         `<li class="price_list_item">

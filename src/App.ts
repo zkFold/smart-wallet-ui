@@ -2,6 +2,7 @@ import { AppView } from './Types'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { AddressType, Backend, GoogleApi, Prover, Wallet } from 'zkfold-smart-wallet-api'
+import { getAssetAmount, getAssetLabel } from './Utils/Assets'
 
 export class App {
   private wallet!: Wallet
@@ -95,17 +96,20 @@ export class App {
           amount: lovelaceAmount,
           asset
         })
+        form.reset()
       })
     }
 
     // Transaction notifications
     this.wallet.addEventListener('transaction_pending', async (event: Event) => {
-      const txId = (event as CustomEvent).detail
-      this.showNotification("Success!", `Transaction ${txId} has been submitted.`)
+      const request = (event as CustomEvent).detail
+      const amt = getAssetAmount(request.asset, request.amount)
+      const asset = getAssetLabel(request.asset)
+      this.showNotification("Success!", `Sent ${amt} ${asset} to ${request.recipient}.`, 'success')
     })
     this.wallet.addEventListener('transaction_failed', async (event: Event) => {
       const error = (event as CustomEvent).detail
-      this.showNotification("Failed!", `Transaction failed: ${error}`)
+      this.showNotification("Failed!", `Transaction failed: ${error}`, 'error')
     })
 
     const logoutBtn = document.getElementById('logout_button')
@@ -139,7 +143,7 @@ export class App {
       if (copyEmailBtn) {
         copyEmailBtn.addEventListener('click', async () => {
           await navigator.clipboard.writeText(userId)
-          this.showNotification("Copied!", 'Email copied to clipboard')
+          this.showNotification("Copied!", 'Email copied to clipboard', 'info')
         })
       }
 
@@ -147,7 +151,7 @@ export class App {
       if (copyTopupAddressBtn) {
         copyTopupAddressBtn.addEventListener('click', async () => {
           await navigator.clipboard.writeText(address)
-          this.showNotification("Copied!", 'Address copied to clipboard')
+          this.showNotification("Copied!", 'Address copied to clipboard', 'info')
         })
       }
 
@@ -178,7 +182,7 @@ export class App {
     return AddressType.Bech32
   }
 
-  private async showNotification(header: string, body: string): Promise<void> {
+  private async showNotification(header: string, body: string, type: 'info' | 'success' | 'error' = 'info'): Promise<void> {
     const notification = document.getElementById('notification')
     const notificationHeader = document.getElementById('notification_header')
     const notificationBody = document.getElementById('notification_body')
@@ -188,6 +192,14 @@ export class App {
       // Clear any existing timeout
       const existingTimeoutId = notificationTimeoutId.value
       clearTimeout(existingTimeoutId)
+
+      // Update type class
+      notification.classList.remove('error', 'success')
+      if (type === 'error') {
+        notification.classList.add('error')
+      } else if (type === 'success') {
+        notification.classList.add('success')
+      }
 
       // Update message header
       notificationHeader.textContent = header

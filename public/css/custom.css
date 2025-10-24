@@ -15,6 +15,9 @@
 .wallet_sec .text_center{
 	text-align: center;
 }
+.wallet_sec .sub_title{
+	color: #797986;
+}
 .wallet_sec .text_red{
 	color: #ef4444;
 }
@@ -90,6 +93,10 @@
 	line-height: 16px;
 	color: #797986;
 	text-transform: uppercase;
+}
+.wallet_sec .wallet_box_header:hover .toggle_btn{
+	background-color: #4dbeff;
+	color: white;
 }
 .wallet_sec .copy_cont{
 	display: flex;
@@ -209,6 +216,20 @@
 }
 .wallet_sec .form_fields{
 	padding-top: 24px;
+}
+/* Empty assets message styling and visibility */
+.wallet_sec .empty_assets{
+	margin-top: 16px;
+	font-size: 14px;
+	line-height: 20px;
+	color: #797986;
+	text-align: center;
+	background-color: #f0f0fa4d;
+	padding: 12px;
+	border-radius: 8px;
+}
+.wallet_sec .wallet_box:not(.active) .empty_assets{
+	display: none;
 }
 .wallet_sec .form_fields .form_field_cont{
 	padding-top: 16px;
@@ -340,10 +361,20 @@
 	margin: 0;
 }
 .notice_box.error{
-	background-color: #ef4444;
+	background-color: #fee2e2;
+	border-color: #fecaca;
 }
 .notice_box.error .notice_head,
 .notice_box.error .notice_body,
 .notice_box.error .close_icon{
-	color: white;
+	color: #7f1d1d;
+}
+.notice_box.success{
+	background-color: #dcfce7;
+	border-color: #bbf7d0;
+}
+.notice_box.success .notice_head,
+.notice_box.success .notice_body,
+.notice_box.success .close_icon{
+	color: #166534;
 }

@@ -5,6 +5,7 @@ import { Value } from "zkfold-smart-wallet-api"
 export function renderWalletView(userId: string, address: string, balance: Value): HTMLElement {
   const addressHtml = address.length > 32 ? address.slice(0, 24) + '...' + address.slice(-8) : address
   const balanceHtml = formatBalance(balance)
+  const hasAssets = Object.keys(balance).length > 0
   const assetOptionsHtml = formatAssetOptions(balance)
 
   const userHtml = `
@@ -40,9 +41,13 @@ export function renderWalletView(userId: string, address: string, balance: Value
         </button>
       </div>
       <h3 class="price text_center">$0.00</h3>
-      <ul class="price_list">
-        ${balanceHtml}
-      </ul>
+      ${hasAssets ? `
+        <ul class="price_list">
+          ${balanceHtml}
+        </ul>
+      ` : `
+        <div class="empty_assets">No assets yet. Top up your wallet to get started.</div>
+      `}
     </div>
   `
 

@@ -3,6 +3,7 @@ import { renderAppFrame } from "./Frame"
 export function renderInitView(): HTMLElement {
   const content = `
     <h1 class="text_center">Smart Wallet</h1>
+    <p class="sub_title text_center">Your gateway to crypto and Web3</p>
     <button
       id="google_login_button"
       type="submit"
