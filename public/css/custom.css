@@ -70,7 +70,7 @@
 	display: block;
 }
 .wallet_sec .wallet_btn:hover{
-	background-color: #4dbeff;
+	background-color: #66c7ff;
 	color: white;
 }
 #logout_button:not(.active) {
@@ -95,7 +95,7 @@
 	text-transform: uppercase;
 }
 .wallet_sec .wallet_box_header:hover .toggle_btn{
-	background-color: #4dbeff;
+	background-color: #66c7ff;
 	color: white;
 }
 .wallet_sec .copy_cont{
@@ -262,7 +262,7 @@
 
 /* Focus ring for specific wallet inputs */
 .wallet_sec .form_fields .form_field_cont .input_field:focus{
-    border-color: #4dbeff;
+    border-color: #66c7ff;
     box-shadow: 0 0 0 3px rgba(77, 190, 255, 0.25);
     background-color: #ffffff;
 }
@@ -277,16 +277,54 @@
 	width: 128px;
 	min-width: 128px;
 }
-/* Improve native select spacing and custom arrow */
-.wallet_sec .form_fields .form_field_cont select.input_field{
+/* Improve native select spacing and custom arrow (fallback for non-supporting browsers) */
+.wallet_sec .form_fields .form_field_cont select{
 	-webkit-appearance: none;
 	-moz-appearance: none;
 	appearance: none;
 	padding-right: 40px; /* room for the arrow */
-	background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%2322222a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    /* Lucide chevron-down to match panel toggle */
+    background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m6 9 6 6 6-6' stroke='%2322222a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 	background-repeat: no-repeat;
 	background-position: right 8px center; /* move arrow a bit left */
 	background-size: 16px;
+}
+/* Experimental: enable base-select appearance if supported */
+@supports (appearance: base-select) {
+	/* Opt-in both select and its picker to base-select */
+	.wallet_sec .form_fields .form_field_cont select,
+	.wallet_sec .form_fields .form_field_cont ::picker(select) {
+		appearance: base-select;
+	}
+
+	/* Hide UA picker icon; we provide our own chevron inside the button */
+	.wallet_sec .form_fields .form_field_cont select::picker-icon{
+		display: none;
+	}
+
+	/* Custom picker border */
+	.wallet_sec .form_fields .form_field_cont ::picker(select){
+		border: 1px solid #e5e7eb;
+		border-radius: 12px;
+		background-color: white;
+		box-shadow: 0 8px 16px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.06);
+	}
+
+	/* Swap the background chevron to an up arrow when open (simple image swap) */
+	.wallet_sec .form_fields .form_field_cont select:open{
+		background-image: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m18 15-6-6-6 6' stroke='%2322222a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+	}
+
+	/* Option customization */
+	.wallet_sec .form_fields .form_field_cont select option{
+		color: #22222a;
+		background-color: white;
+		padding: 8px 10px;
+	}
+	.wallet_sec .form_fields .form_field_cont select option:hover{
+		color: white;
+		background-color: #66c7ff;
+	}
 }
 .wallet_sec .submit_btn{
 	margin-top: 16px;

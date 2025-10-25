@@ -151,6 +151,9 @@ export function renderWalletView(userId: string, address: string, balance: Value
           <div class="form_field_cont">
             <label for="sendTo">Asset</label>
             <select id="sendto_asset_select" name="zkfold_asset" class="input_field">
+              <button>
+                <selectedcontent></selectedcontent>
+              </button>
               ${assetOptionsHtml}
             </select>
           </div>
