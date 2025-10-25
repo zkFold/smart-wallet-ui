@@ -7,6 +7,7 @@ import { getAddressLabel } from './Utils/Address'
 
 export class App {
   private wallet!: Wallet
+  private balanceRefreshInterval: number | null = null
 
   constructor(backend: Backend, prover: Prover, googleApi: GoogleApi) {
     this.wallet = new Wallet(backend, prover, googleApi)
@@ -43,6 +44,9 @@ export class App {
     // Clear previous content
     const app = document.getElementById('app') as HTMLElement
     app.innerHTML = ''
+
+    // Clear any active balance polling when switching views
+    this.clearBalanceRefreshInterval()
 
     // Render current view
     let viewElement: HTMLElement
@@ -84,7 +88,12 @@ export class App {
         if (!btn.dataset.label) {
           btn.dataset.label = (btn.textContent || 'Send').trim()
         }
-        btn.textContent = 'Sending...'
+        if (this.wallet.hasProof()) {
+          btn.textContent = 'Sending...'
+        }
+        else {
+          btn.textContent = 'Computing ZK proof...'
+        }
       } else {
         const original = btn.dataset.label || 'Send'
         btn.textContent = original
@@ -134,39 +143,14 @@ export class App {
       console.log('Transaction failed error detail:', error)
       this.showNotification("Failed!", `Insufficient ADA to perform this transaction.`, 'error')
     })
-
-    // Update balance when a transaction is confirmed
     this.wallet.addEventListener('transaction_confirmed', async (_event: Event) => {
-      try {
-        const newBalance = await this.wallet.getBalance()
-        const hasAssets = Object.keys(newBalance).length > 0
-
-        // Update assets list vs empty state
-        const assetsList = document.getElementById('wallet_assets_list') as HTMLUListElement | null
-        const assetsWrap = assetsList?.parentElement as HTMLElement | null
-        if (assetsList && assetsWrap) {
-          if (hasAssets) {
-            assetsList.innerHTML = formatBalance(newBalance)
-            assetsWrap.classList.remove('empty')
-          } else {
-            assetsList.innerHTML = ''
-            assetsWrap.classList.add('empty')
-          }
-        }
-
-        // Update asset select options
-        const select = document.getElementById('sendto_asset_select') as HTMLSelectElement | null
-        if (select) {
-          const selectedBefore = select.value
-          select.innerHTML = formatAssetOptions(newBalance)
-          // Preserve selection if still present
-          const stillExists = Array.from(select.options).some(o => o.value === selectedBefore)
-          if (stillExists) select.value = selectedBefore
-        }
-      } catch (err) {
-        console.error('Failed to update balance after confirmation:', err)
-      }
+      this.refreshBalance()
     })
+
+    // Kick off periodic balance refreshes
+    this.balanceRefreshInterval = window.setInterval(() => {
+      this.refreshBalance()
+    }, 60_000)
 
     const logoutBtn = document.getElementById('logout_button')
     if (logoutBtn) {
@@ -221,6 +205,42 @@ export class App {
         })
       }
     }, 0)
+  }
+
+  private async refreshBalance(): Promise<void> {
+    try {
+      const newBalance = await this.wallet.getBalance()
+      const hasAssets = Object.keys(newBalance).length > 0
+
+      const assetsList = document.getElementById('wallet_assets_list') as HTMLUListElement | null
+      const assetsWrap = assetsList?.parentElement as HTMLElement | null
+      if (assetsList && assetsWrap) {
+        if (hasAssets) {
+          assetsList.innerHTML = formatBalance(newBalance)
+          assetsWrap.classList.remove('empty')
+        } else {
+          assetsList.innerHTML = ''
+          assetsWrap.classList.add('empty')
+        }
+      }
+
+      const select = document.getElementById('sendto_asset_select') as HTMLSelectElement | null
+      if (select) {
+        const selectedBefore = select.value
+        select.innerHTML = formatAssetOptions(newBalance)
+        const stillExists = Array.from(select.options).some(o => o.value === selectedBefore)
+        if (stillExists) select.value = selectedBefore
+      }
+    } catch (err) {
+      console.error('Failed to refresh balance:', err)
+    }
+  }
+
+  private clearBalanceRefreshInterval(): void {
+    if (this.balanceRefreshInterval !== null) {
+      clearInterval(this.balanceRefreshInterval)
+      this.balanceRefreshInterval = null
+    }
   }
 
   // UI helper methods (keeping existing functionality)
