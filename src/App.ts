@@ -1,40 +1,25 @@
 import { AppView } from './Types'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
-import { renderFailedView } from './UI/Failed'
-import { renderSuccessView } from './UI/Success'
 import { AddressType, Backend, GoogleApi, Prover, Wallet } from 'zkfold-smart-wallet-api'
+import { getAssetAmount, getAssetLabel, formatAssetOptions, formatBalance } from './Utils/Assets'
+import { getAddressLabel } from './Utils/Address'
 
 export class App {
-  private appElement!: HTMLElement
   private wallet!: Wallet
 
   constructor(backend: Backend, prover: Prover, googleApi: GoogleApi) {
-    this.appElement = document.getElementById('app') as HTMLElement
     this.wallet = new Wallet(backend, prover, googleApi)
   }
 
   public async init(): Promise<void> {
     try {
       // Set up event listeners
-      this.wallet.addEventListener('walletInitialized', async () => {
+      this.wallet.addEventListener('initialized', async () => {
         await this.render('wallet')
       })
 
-      this.wallet.addEventListener('transactionComplete', async (event: Event) => {
-        await this.render('success', (event as CustomEvent).detail)
-      })
-
-      this.wallet.addEventListener('proofComputationComplete', async (event: Event) => {
-        await this.render('success', (event as CustomEvent).detail)
-      })
-
-      this.wallet.addEventListener('transactionFailed', async (event: Event) => {
-        const detail = (event as CustomEvent).detail
-        await this.render('failed', { reason: detail?.message ?? detail })
-      })
-
-      this.wallet.addEventListener('walletLoggedOut', async () => {
+      this.wallet.addEventListener('logged_out', async () => {
         await this.render('init')
       })
 
@@ -54,9 +39,10 @@ export class App {
     }
   }
 
-  private async render(view: AppView, data?: any): Promise<void> {
+  private async render(view: AppView): Promise<void> {
     // Clear previous content
-    this.appElement.innerHTML = ''
+    const app = document.getElementById('app') as HTMLElement
+    app.innerHTML = ''
 
     // Render current view
     let viewElement: HTMLElement
@@ -66,22 +52,12 @@ export class App {
         const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
         const balance = await this.wallet.getBalance()
         viewElement = renderWalletView(userId, address, balance)
-        this.appElement.appendChild(viewElement)
-        this.setupWalletHandlers()
-        break
-      case 'success':
-        viewElement = renderSuccessView(this.wallet, data)
-        this.appElement.appendChild(viewElement)
-        this.setupPostTxHandlers()
-        break
-      case 'failed':
-        viewElement = renderFailedView(data)
-        this.appElement.appendChild(viewElement)
-        this.setupPostTxHandlers()
+        app.appendChild(viewElement)
+        this.setupWalletHandlers(userId, address)
         break
       default:
         viewElement = renderInitView()
-        this.appElement.appendChild(viewElement)
+        app.appendChild(viewElement)
         this.setupInitHandlers()
     }
   }
@@ -96,8 +72,24 @@ export class App {
     }
   }
 
-  private setupWalletHandlers(): void {
+  private setupWalletHandlers(userId: string, address: string): void {
     const form = document.querySelector('form') as HTMLFormElement
+    const setSendLoading = (loading: boolean) => {
+      const btn = document.querySelector('.wallet_sec .submit_btn') as HTMLButtonElement | null
+      if (!btn) return
+      btn.disabled = loading
+      btn.classList.toggle('loading', loading)
+      if (loading) {
+        // preserve original label once
+        if (!btn.dataset.label) {
+          btn.dataset.label = (btn.textContent || 'Send').trim()
+        }
+        btn.textContent = 'Sending...'
+      } else {
+        const original = btn.dataset.label || 'Send'
+        btn.textContent = original
+      }
+    }
     if (form) {
       form.addEventListener('submit', async (e) => {
         e.preventDefault()
@@ -115,14 +107,66 @@ export class App {
         const recipientType = this.detectRecipientType(recipient)
         const asset = (formData.get('zkfold_asset') as string)?.trim() || 'lovelace'
 
+        // Start loading immediately on submit (after basic validation)
+        setSendLoading(true)
         await this.wallet.sendTransaction({
           recipient,
           recipientType,
           amount: lovelaceAmount,
           asset
         })
+        form.reset()
       })
     }
+
+    // Transaction notifications
+    this.wallet.addEventListener('transaction_pending', async (event: Event) => {
+      setSendLoading(false)
+      const request = (event as CustomEvent).detail
+      const amt = getAssetAmount(request.asset, request.amount)
+      const asset = getAssetLabel(request.asset)
+      const recipient = getAddressLabel(request.recipient)
+      this.showNotification("Success!", `Sent ${amt} ${asset} to ${recipient}.`, 'success')
+    })
+    this.wallet.addEventListener('transaction_failed', async (event: Event) => {
+      setSendLoading(false)
+      const error = (event as CustomEvent).detail
+      console.log('Transaction failed error detail:', error)
+      this.showNotification("Failed!", `Insufficient ADA to perform this transaction.`, 'error')
+    })
+
+    // Update balance when a transaction is confirmed
+    this.wallet.addEventListener('transaction_confirmed', async (_event: Event) => {
+      try {
+        const newBalance = await this.wallet.getBalance()
+        const hasAssets = Object.keys(newBalance).length > 0
+
+        // Update assets list vs empty state
+        const assetsList = document.getElementById('wallet_assets_list') as HTMLUListElement | null
+        const assetsWrap = assetsList?.parentElement as HTMLElement | null
+        if (assetsList && assetsWrap) {
+          if (hasAssets) {
+            assetsList.innerHTML = formatBalance(newBalance)
+            assetsWrap.classList.remove('empty')
+          } else {
+            assetsList.innerHTML = ''
+            assetsWrap.classList.add('empty')
+          }
+        }
+
+        // Update asset select options
+        const select = document.getElementById('sendto_asset_select') as HTMLSelectElement | null
+        if (select) {
+          const selectedBefore = select.value
+          select.innerHTML = formatAssetOptions(newBalance)
+          // Preserve selection if still present
+          const stillExists = Array.from(select.options).some(o => o.value === selectedBefore)
+          if (stillExists) select.value = selectedBefore
+        }
+      } catch (err) {
+        console.error('Failed to update balance after confirmation:', err)
+      }
+    })
 
     const logoutBtn = document.getElementById('logout_button')
     if (logoutBtn) {
@@ -130,6 +174,53 @@ export class App {
         this.wallet.logout()
       })
     }
+
+    // Make the entire header clickable to toggle the panel
+    for (const header of Array.from(document.querySelectorAll('.wallet_sec .wallet_box .wallet_box_header'))) {
+      header.addEventListener('click', () => {
+        const walletBox = header.closest('.wallet_box')
+        walletBox?.classList.toggle('active')
+      })
+    }
+
+    for (const listItem of Array.from(document.querySelectorAll('.wallet_sec .price_list .price_list_item_btn'))) {
+      listItem.addEventListener('click', () => {
+        const item = listItem.closest('.price_list_item')
+        const content = item?.querySelector('.price_list_item_value') as HTMLElement | null
+        if (content) {
+          content.style.display = content.style.display === 'none' ? 'block' : 'none'
+        }
+      })
+    }
+
+    // Add copy functionality
+    setTimeout(() => {
+      const copyEmailBtn = document.getElementById('copy_email')
+      if (copyEmailBtn) {
+        copyEmailBtn.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(userId)
+          this.showNotification("Copied!", 'Email copied to clipboard.', 'info')
+        })
+      }
+
+      const copyTopupAddressBtn = document.getElementById('copy_topup_adress')
+      if (copyTopupAddressBtn) {
+        copyTopupAddressBtn.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(address)
+          this.showNotification("Copied!", 'Address copied to clipboard.', 'info')
+        })
+      }
+
+      const copyCloseIcon = document.getElementById('notification_close_icon')
+      if (copyCloseIcon) {
+        copyCloseIcon.addEventListener('click', () => {
+          const notification = document.getElementById('notification')
+          if (notification) {
+            notification.classList.remove('active')
+          }
+        })
+      }
+    }, 0)
   }
 
   // UI helper methods (keeping existing functionality)
@@ -147,24 +238,48 @@ export class App {
     return AddressType.Bech32
   }
 
-  private setupPostTxHandlers(): void {
-    const retryBtn = document.getElementById('new_tx')
-    const logoutBtn = document.getElementById('logout_button') as HTMLButtonElement | null
+  private async showNotification(header: string, body: string, type: 'info' | 'success' | 'error' = 'info'): Promise<void> {
+    const notification = document.getElementById('notification')
+    const notificationHeader = document.getElementById('notification_header')
+    const notificationBody = document.getElementById('notification_body')
+    const notificationTimeoutId = document.getElementById('notification_timeout_id') as HTMLInputElement
 
-    if (retryBtn) {
-      retryBtn.removeAttribute('disabled')
-      retryBtn.onclick = async () => {
-        retryBtn.setAttribute('disabled', 'true')
-        await this.render('wallet')
-      }
-    }
+    if (notification && notificationHeader && notificationBody && notificationTimeoutId) {
+      // Clear any existing timeout
+      const existingTimeoutId = notificationTimeoutId.value
+      clearTimeout(existingTimeoutId)
 
-    if (logoutBtn) {
-      logoutBtn.removeAttribute('disabled')
-      logoutBtn.onclick = async () => {
-        logoutBtn.setAttribute('disabled', 'true')
-        this.wallet.logout()
+      // Update type class
+      notification.classList.remove('error', 'success')
+      if (type === 'error') {
+        notification.classList.add('error')
+      } else if (type === 'success') {
+        notification.classList.add('success')
       }
+
+      // Update message header
+      notificationHeader.textContent = header
+
+      // Update message body
+      notificationBody.textContent = body
+
+      // Show notification
+      if (notification.classList.contains('active')) {
+        notification.classList.remove('active')
+        setTimeout(() => {
+          notification.classList.add('active')
+        }, 100)
+      } else {
+        notification.classList.add('active')
+      }
+
+      // Hide after 7 seconds
+      const newTimeoutId = setTimeout(() => {
+        notification.classList.remove('active')
+      }, 7000)
+
+      // Store new timeout ID
+      notificationTimeoutId.value = newTimeoutId.toString()
     }
   }
 }
