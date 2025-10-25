@@ -9,7 +9,7 @@ export function getAssetLabel(assetKey: string): string {
     return 'ADA'
   }
 
-  return assetKey.length > 12 ? assetKey.slice(0, 8) + '...' + assetKey.slice(-4) : assetKey
+  return assetKey.length > 8 ? assetKey.slice(0, 4) + '...' + assetKey.slice(-4) : assetKey
 }
 
 export function getAssetAmount(asset: string, amount: BigIntWrap): string {
