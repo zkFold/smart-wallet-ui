@@ -1,4 +1,4 @@
-import { BigIntWrap, Value } from "zkfold-smart-wallet-api"
+import { BigIntWrap, Value, BalanceResponse } from "zkfold-smart-wallet-api"
 
 // This module handles how assets are displayed in the UI
 
@@ -23,16 +23,21 @@ export function getAssetAmount(asset: string, amount: BigIntWrap): string {
     }
 }
 
-export function formatBalance(balance: Value): string {
+export function formatBalance(balance: BalanceResponse): string {
   let assets = ""
-  for (const [key, value] of Object.entries(balance)) {   
-    let v: string
-    v = getAssetAmount(key, value)
-
+  if (balance.lovelace > 0) {
     assets +=
         `<li class="price_list_item">
-          <label class="price_label">${getAssetLabel(key)}</label>
-          <label class="price_label price_label_quentity">${v}</label>
+          <label class="price_label">ADA</label>
+          <label class="price_label price_label_quentity">${balance.lovelace / 1_000_000}</label>
+        </li>
+        `
+  }
+  for (const token of balance.tokens) {   
+    assets +=
+        `<li class="price_list_item">
+          <label class="price_label">${token.token_name}</label>
+          <label class="price_label price_label_quentity">${token.amount}</label>
         </li>
         `
   }
@@ -42,10 +47,10 @@ export function formatBalance(balance: Value): string {
   return assets
 }
 
-export function formatAssetOptions(balance: Value): string {
+export function formatAssetOptions(balance: BalanceResponse): string {
   let options = ""
-  for (const key of Object.keys(balance)) {
-    options += `<option value="${key}">${getAssetLabel(key)}</option>\n`
+  for (const token of balance.tokens) {
+    options += `<option value="${token.ticker}">${token.token_name}</option>\n`
   }
   return options
 }
