@@ -4,11 +4,20 @@ import { Backend, GoogleApi, Prover } from 'zkfold-smart-wallet-api'
 
 // Initialize the application when DOM is loaded
 async function initApp() {
+  const envProverUrls = import.meta.env.VITE_PROVER_URL
+  const proverUrls = envProverUrls
+    .split(',')
+    .map((url) => url.trim())
+    .filter((url) => url.length > 0)
+
+  // Randomize the prover on each load to balance requests across available endpoints
+  const selectedProverUrl = proverUrls[Math.floor(Math.random() * proverUrls.length)]
+
   const config: AppConfig = {
     websiteUrl: import.meta.env.VITE_WEBSITE_URL,
     backendUrl: import.meta.env.VITE_BACKEND_URL,
     backendApiKey: import.meta.env.VITE_BACKEND_API_KEY,
-    proverUrl: import.meta.env.VITE_PROVER_URL,
+    proverUrl: selectedProverUrl,
   }
 
   const backend = new Backend(config.backendUrl, config.backendApiKey)

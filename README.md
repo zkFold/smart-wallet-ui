@@ -16,7 +16,7 @@ Edit `.env`:
 - `VITE_WEBSITE_URL`: Base URL for your website (default: http://localhost:8080)
 - `VITE_BACKEND_URL`: URL for the zkFold Smart Wallet backend server
 - `VITE_BACKEND_API_KEY`: an API key to access the Smart Wallet backend server
-- `VITE_PROVER_URL`: URL for the prover server
+- `VITE_PROVER_URL`: Comma-separated list of prover server URLs. One will be selected at random on each load.
 
 3. **Run the application:**
 ```bash
