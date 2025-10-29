@@ -36,7 +36,7 @@ export function formatBalance(balance: BalanceResponse): string {
   for (const token of balance.tokens) {   
     assets +=
         `<li class="price_list_item">
-          <label class="price_label">${token.token_name}</label>
+          <label class="price_label">${getAssetLabel(!token.ticker ? token.token_name : token.ticker)}</label>
           <label class="price_label price_label_quentity">${token.amount}</label>
         </li>
         `
@@ -53,7 +53,7 @@ export function formatAssetOptions(balance: BalanceResponse): string {
     options += `<option value="lovelace">ADA</option>\n`
   }
   for (const token of balance.tokens) {
-    options += `<option value="${token.asset}">${token.token_name}</option>\n`
+    options += `<option value="${token.asset}">${getAssetLabel(!token.ticker ? token.token_name : token.ticker)}</option>\n`
   }
   return options
 }
