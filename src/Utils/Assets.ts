@@ -48,10 +48,7 @@ export function formatBalance(balance: BalanceResponse): string {
 }
 
 export function formatAssetOptions(balance: BalanceResponse): string {
-  let options = ""
-  if (balance.lovelace > 0) {
-    options += `<option value="lovelace">ADA</option>\n`
-  }
+  let options = `<option value="lovelace">ADA</option>\n`
   for (const token of balance.tokens) {
     options += `<option value="${token.asset}">${getAssetLabel(!token.ticker ? token.token_name : token.ticker)}</option>\n`
   }
