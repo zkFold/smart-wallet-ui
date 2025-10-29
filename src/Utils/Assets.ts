@@ -1,4 +1,4 @@
-import { BigIntWrap, Value, BalanceResponse } from "zkfold-smart-wallet-api"
+import { BigIntWrap, BalanceResponse } from "zkfold-smart-wallet-api"
 
 // This module handles how assets are displayed in the UI
 
