@@ -1,12 +1,12 @@
 import { getAddressLabel } from "../Utils/Address"
 import { formatBalance, formatAssetOptions } from "../Utils/Assets"
 import { renderAppFrame } from "./Frame"
-import { Value } from "zkfold-smart-wallet-api"
+import { BalanceResponse } from "zkfold-smart-wallet-api"
 
-export function renderWalletView(userId: string, address: string, balance: Value): HTMLElement {
+export function renderWalletView(userId: string, address: string, balance: BalanceResponse): HTMLElement {
   const addressHtml = getAddressLabel(address)
   const balanceHtml = formatBalance(balance)
-  const hasAssets = Object.keys(balance).length > 0
+  const hasAssets = balance.lovelace > 0 || balance.tokens.length > 0
   const assetOptionsHtml = formatAssetOptions(balance)
 
   const userHtml = `
@@ -41,7 +41,7 @@ export function renderWalletView(userId: string, address: string, balance: Value
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down h-4 w-4 transition-transform" data-lov-id="src/pages/Dashboard.tsx:126:22" data-lov-name="ChevronDown" data-component-path="src/pages/Dashboard.tsx" data-component-line="126" data-component-file="Dashboard.tsx" data-component-name="ChevronDown" data-component-content="%7B%7D"><path d="m6 9 6 6 6-6"></path></svg>
         </button>
       </div>
-      <h3 class="price text_center">$0.00</h3>
+      <h3 class="price text_center">$${balance.usd.toFixed(2)}</h3>
       <div class="wallet_assets${hasAssets ? '' : ' empty'}">
         <ul id="wallet_assets_list" class="price_list">
           ${hasAssets ? balanceHtml : ''}
