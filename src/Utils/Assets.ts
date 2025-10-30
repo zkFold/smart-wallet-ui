@@ -41,9 +41,6 @@ export function formatBalance(balance: BalanceResponse): string {
         </li>
         `
   }
-  if (assets === "") {
-    assets = "<li>No assets available</li>"
-  }
   return assets
 }
 
