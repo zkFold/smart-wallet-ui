@@ -1,13 +1,15 @@
 import { getAddressLabel } from "../Utils/Address"
 import { formatBalance, formatAssetOptions } from "../Utils/Assets"
+import { formatTransactions } from "../Utils/Transactions"
 import { renderAppFrame } from "./Frame"
-import { BalanceResponse } from "zkfold-smart-wallet-api"
+import { BalanceResponse, Transaction } from "zkfold-smart-wallet-api"
 
-export function renderWalletView(userId: string, address: string, balance: BalanceResponse): HTMLElement {
+export function renderWalletView(userId: string, address: string, balance: BalanceResponse, transactions: Transaction[]): HTMLElement {
   const addressHtml = getAddressLabel(address)
   const balanceHtml = formatBalance(balance)
   const hasAssets = balance.lovelace > 0 || balance.tokens.length > 0
   const assetOptionsHtml = formatAssetOptions(balance)
+  const transactionsListHtml = formatTransactions(transactions)
 
   const userHtml = `
     <div class="wallet_box">
@@ -60,76 +62,7 @@ export function renderWalletView(userId: string, address: string, balance: Balan
         </button>
       </div>
       <ul class="price_list price_list_2">
-        <li class="price_list_item">
-          <button class="price_list_item_btn">
-            <label class="price_label text_red">-10 ADA</label>
-            <label class="status completed">Completed</label>
-          </button>
-          <div class="price_list_item_value" style="display: none;">
-            <p>2025-10-14 14:32</p>
-            <p>To: addr1qxy...abc123</p>
-          </div>
-        </li>
-        <li class="price_list_item">
-          <button class="price_list_item_btn">
-            <label class="price_label text_green">+250 SNEK</label>
-            <label class="status">In process</label>
-          </button>
-          <div class="price_list_item_value" style="display: none;">
-            <p>2025-10-15 09:15</p>
-            <p>From: addr1wxz...def456</p>
-          </div>
-        </li>
-        <li class="price_list_item">
-          <button class="price_list_item_btn">
-            <label class="price_label text_green">+15.5 DJED</label>
-            <label class="status completed">Completed</label>
-          </button>
-          <div class="price_list_item_value" style="display: none;">
-            <p>2025-10-13 18:45</p>
-            <p>From: addr1pqr...ghi789</p>
-          </div>
-        </li>
-        <li class="price_list_item">
-          <button class="price_list_item_btn">
-            <label class="price_label text_red">-100 MIN</label>
-            <label class="status completed">Completed</label>
-          </button>
-          <div class="price_list_item_value" style="display: none;">
-            <p>2025-10-12 11:20</p>
-            <p>To: addr1rst...jkl012</p>
-          </div>
-        </li>
-        <li class="price_list_item">
-          <button class="price_list_item_btn">
-            <label class="price_label text_green">+50 ADA</label>
-            <label class="status">In process</label>
-          </button>
-          <div class="price_list_item_value" style="display: none;">
-            <p>2025-10-16 08:00</p>
-            <p>From: addr1uvw...mno345</p>
-          </div>
-        </li>
-        <li class="price_list_item">
-          <button class="price_list_item_btn">
-            <label class="price_label text_red">-25.75 DJED</label>
-            <label class="status completed">Completed</label>
-          </button>
-          <div class="price_list_item_value" style="display: none;">
-            <p>2025-10-11 16:30</p>
-            <p>To: addr1xyz...pqr678</p>
-          </div>
-        </li>
-        <li class="price_list_item">
-          <button class="price_list_item_btn">
-            <label class="price_label text_green">+300 SNEK</label>
-            <label class="status completed">Completed</label>
-          </button>
-          <div class="price_list_item_value" style="display: none;">
-            <p>2025-10-10 12:10</p>
-            <p>From: addr1abc...stu901</p>
-          </div>
-        </li>
+        ${transactionsListHtml}
       </ul>
     </div>
   `
