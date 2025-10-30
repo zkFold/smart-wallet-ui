@@ -55,7 +55,8 @@ export class App {
         const userId = this.wallet.getUserId()
         const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
         const balance = await this.wallet.getBalance()
-        viewElement = renderWalletView(userId, address, balance)
+        const txHistory = await this.wallet.getTxHistory()
+        viewElement = renderWalletView(userId, address, balance, txHistory)
         app.appendChild(viewElement)
         this.setupWalletHandlers(userId, address)
         break
