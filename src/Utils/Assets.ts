@@ -1,4 +1,4 @@
-import { BigIntWrap, BalanceResponse } from "zkfold-smart-wallet-api"
+import { BigIntWrap, BalanceResponse, PrettyToken } from "zkfold-smart-wallet-api"
 
 // This module handles how assets are displayed in the UI
 
@@ -23,21 +23,35 @@ export function getAssetAmount(asset: string, amount: BigIntWrap): string {
     }
 }
 
+function formatTokenAmount(token: PrettyToken): string {
+  const decimals = token.decimal_adjustment ?? 0
+  if (!decimals) {
+    return token.amount.toString()
+  }
+
+  const divisor = 10 ** decimals
+  const adjusted = token.amount / divisor
+  return adjusted.toFixed(decimals)
+}
+
 export function formatBalance(balance: BalanceResponse): string {
   let assets = ""
   if (balance.lovelace > 0) {
     assets +=
         `<li class="price_list_item">
           <label class="price_label">ADA</label>
-          <label class="price_label price_label_quentity">${balance.lovelace / 1_000_000}</label>
+          <label class="price_label price_label_quentity">${(balance.lovelace / 1_000_000).toFixed(6)}</label>
         </li>
         `
   }
-  for (const token of balance.tokens) {   
+  for (const token of balance.tokens) {
+    if (!token.ticker) {
+      continue
+    }
     assets +=
         `<li class="price_list_item">
-          <label class="price_label">${getAssetLabel(!token.ticker ? token.token_name : token.ticker)}</label>
-          <label class="price_label price_label_quentity">${token.amount}</label>
+          <label class="price_label">${getAssetLabel(token.ticker)}</label>
+          <label class="price_label price_label_quentity">${formatTokenAmount(token)}</label>
         </li>
         `
   }
@@ -47,7 +61,10 @@ export function formatBalance(balance: BalanceResponse): string {
 export function formatAssetOptions(balance: BalanceResponse): string {
   let options = `<option value="lovelace">ADA</option>\n`
   for (const token of balance.tokens) {
-    options += `<option value="${token.asset}">${getAssetLabel(!token.ticker ? token.token_name : token.ticker)}</option>\n`
+    if (!token.ticker) {
+      continue
+    }
+    options += `<option value="${token.asset}">${getAssetLabel(token.ticker)}</option>\n`
   }
   return options
 }
