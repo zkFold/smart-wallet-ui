@@ -1,13 +1,19 @@
-import { Transaction, BigIntWrap } from "zkfold-smart-wallet-api"
+import { Transaction } from "zkfold-smart-wallet-api"
 import { getAddressLabel } from "./Address"
-import { getAssetLabel, getAssetAmount } from "./Assets"
+import { AssetMetadataMap, formatWithDecimals } from "./Assets"
 import * as CSL from '@emurgo/cardano-serialization-lib-browser';
 
-export function formatTransactions(txList: Transaction[]): string {
+export function formatTransactions(txList: Transaction[], assetMetadata: AssetMetadataMap = {}): string {
   let transactions = ""
   for (const tx of txList) {   
     for (let [asset, value] of Object.entries(tx.value_diff)) {
-        const txValue = `${getAssetLabel(asset)} ${getAssetAmount(asset, new BigIntWrap(value))}\n`
+        const metadata = assetMetadata[asset]
+        if (!metadata) {
+            continue
+        }
+
+        const formattedAmount = formatWithDecimals(value, metadata.decimals)
+        const txValue = `${metadata.label} ${formattedAmount}\n`
         const colour = value < 0 ? "text_red" : "text_green" 
         transactions +=
             `<li class="price_list_item">

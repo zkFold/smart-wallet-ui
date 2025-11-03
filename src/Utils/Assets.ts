@@ -1,37 +1,45 @@
-import { BigIntWrap, BalanceResponse, PrettyToken } from "zkfold-smart-wallet-api"
+import { BalanceResponse } from "zkfold-smart-wallet-api"
 
 // This module handles how assets are displayed in the UI
 
 const DEFAULT_ASSET = 'lovelace'
 
-export function getAssetLabel(assetKey: string): string {
-  if (assetKey === DEFAULT_ASSET) {
-    return 'ADA'
+export interface AssetDisplayMetadata {
+  label: string
+  decimals: number
+}
+
+export type AssetMetadataMap = Record<string, AssetDisplayMetadata>
+
+export function buildAssetMetadata(balance: BalanceResponse): AssetMetadataMap {
+  const metadata: AssetMetadataMap = {
+    [DEFAULT_ASSET]: {
+      label: 'ADA',
+      decimals: 6
+    }
   }
 
-  return assetKey.length > 8 ? assetKey.slice(0, 4) + '...' + assetKey.slice(-4) : assetKey
+  for (const token of balance.tokens) {
+    if (!token.ticker) {
+      continue
+    }
+
+    metadata[token.asset] = {
+      label: token.ticker,
+      decimals: token.decimal_adjustment ?? 0
+    }
+  }
+
+  return metadata
 }
 
-export function getAssetAmount(asset: string, amount: BigIntWrap): string {
-  if (asset === DEFAULT_ASSET) {
-      // Convert lovelaces to ADA (1 ADA = 1,000,000 lovelaces)
-      return (Number(amount) / 1_000_000).toFixed(6)
-    }
-    else {
-      // For other assets, just show the raw amount
-      return amount.toString()
-    }
-}
-
-function formatTokenAmount(token: PrettyToken): string {
-  const decimals = token.decimal_adjustment ?? 0
+export function formatWithDecimals(amount: number, decimals: number): string {
   if (!decimals) {
-    return token.amount.toString()
+    return amount.toString()
   }
 
   const divisor = 10 ** decimals
-  const adjusted = token.amount / divisor
-  return adjusted.toFixed(decimals)
+  return (amount / divisor).toFixed(decimals)
 }
 
 export function formatBalance(balance: BalanceResponse): string {
@@ -50,8 +58,8 @@ export function formatBalance(balance: BalanceResponse): string {
     }
     assets +=
         `<li class="price_list_item">
-          <label class="price_label">${getAssetLabel(token.ticker)}</label>
-          <label class="price_label price_label_quentity">${formatTokenAmount(token)}</label>
+          <label class="price_label">${token.ticker}</label>
+          <label class="price_label price_label_quentity">${formatWithDecimals(token.amount, token.decimal_adjustment ?? 0)}</label>
         </li>
         `
   }
@@ -64,7 +72,7 @@ export function formatAssetOptions(balance: BalanceResponse): string {
     if (!token.ticker) {
       continue
     }
-    options += `<option value="${token.asset}">${getAssetLabel(token.ticker)}</option>\n`
+    options += `<option value="${token.asset}">${token.ticker}</option>\n`
   }
   return options
 }

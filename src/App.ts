@@ -2,12 +2,18 @@ import { AppView } from './Types'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { AddressType, Backend, GoogleApi, Prover, Wallet } from 'zkfold-smart-wallet-api'
-import { getAssetAmount, getAssetLabel, formatAssetOptions, formatBalance } from './Utils/Assets'
+import { AssetMetadataMap, buildAssetMetadata, formatAssetOptions, formatBalance, formatWithDecimals } from './Utils/Assets'
 import { getAddressLabel } from './Utils/Address'
 
 export class App {
   private wallet!: Wallet
   private balanceRefreshInterval: number | null = null
+  private assetMetadata: AssetMetadataMap = {
+    lovelace: {
+      label: 'ADA',
+      decimals: 6
+    }
+  }
 
   constructor(backend: Backend, prover: Prover, googleApi: GoogleApi) {
     this.wallet = new Wallet(backend, prover, googleApi)
@@ -55,8 +61,9 @@ export class App {
         const userId = this.wallet.getUserId()
         const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
         const balance = await this.wallet.getBalance()
+        this.assetMetadata = buildAssetMetadata(balance)
         const txHistory = await this.wallet.getTxHistory()
-        viewElement = renderWalletView(userId, address, balance, txHistory)
+        viewElement = renderWalletView(userId, address, balance, txHistory, this.assetMetadata)
         app.appendChild(viewElement)
         this.setupWalletHandlers(userId, address)
         break
@@ -133,8 +140,17 @@ export class App {
     this.wallet.addEventListener('transaction_pending', async (event: Event) => {
       setSendLoading(false)
       const request = (event as CustomEvent).detail
-      const amt = getAssetAmount(request.asset, request.amount)
-      const asset = getAssetLabel(request.asset)
+      const assetDetails = this.assetMetadata[request.asset]
+      if (!assetDetails) {
+        return
+      }
+      const rawAmount = Number(request.amount)
+      if (Number.isNaN(rawAmount)) {
+        console.warn('Unable to parse transaction amount', request.amount)
+        return
+      }
+      const amt = formatWithDecimals(rawAmount, assetDetails.decimals)
+      const asset = assetDetails.label
       const recipient = getAddressLabel(request.recipient)
       this.showNotification("Success!", `Sent ${amt} ${asset} to ${recipient}.`, 'success')
     })
@@ -211,6 +227,7 @@ export class App {
   private async refreshBalance(): Promise<void> {
     try {
       const newBalance = await this.wallet.getBalance()
+      this.assetMetadata = buildAssetMetadata(newBalance)
       const hasAssets = Object.keys(newBalance).length > 0
 
       const assetsList = document.getElementById('wallet_assets_list') as HTMLUListElement | null

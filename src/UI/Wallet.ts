@@ -1,15 +1,16 @@
 import { getAddressLabel } from "../Utils/Address"
-import { formatBalance, formatAssetOptions } from "../Utils/Assets"
+import { formatBalance, formatAssetOptions, buildAssetMetadata, AssetMetadataMap } from "../Utils/Assets"
 import { formatTransactions } from "../Utils/Transactions"
 import { renderAppFrame } from "./Frame"
 import { BalanceResponse, Transaction } from "zkfold-smart-wallet-api"
 
-export function renderWalletView(userId: string, address: string, balance: BalanceResponse, transactions: Transaction[]): HTMLElement {
+export function renderWalletView(userId: string, address: string, balance: BalanceResponse, transactions: Transaction[], assetMetadata?: AssetMetadataMap): HTMLElement {
   const addressHtml = getAddressLabel(address)
+  const metadata = assetMetadata ?? buildAssetMetadata(balance)
   const balanceHtml = formatBalance(balance)
   const hasAssets = balance.lovelace > 0 || balance.tokens.length > 0
   const assetOptionsHtml = formatAssetOptions(balance)
-  const transactionsListHtml = formatTransactions(transactions)
+  const transactionsListHtml = formatTransactions(transactions, metadata)
 
   const userHtml = `
     <div class="wallet_box">
