@@ -5,7 +5,7 @@ import * as CSL from '@emurgo/cardano-serialization-lib-browser';
 
 export function formatTransactions(txList: Transaction[], assetMetadata: AssetMetadataMap = {}): string {
   let transactions = ""
-  for (const tx of txList) {   
+  for (const tx of txList) {
     for (let [asset, value] of Object.entries(tx.value_diff)) {
         const metadata = assetMetadata[asset]
         if (!metadata) {
@@ -14,7 +14,7 @@ export function formatTransactions(txList: Transaction[], assetMetadata: AssetMe
 
         const formattedAmount = formatWithDecimals(value, metadata.decimals)
         const txValue = `${metadata.label} ${formattedAmount}\n`
-        const colour = value < 0 ? "text_red" : "text_green" 
+        const colour = value < 0 ? "text_red" : "text_green"
         transactions +=
             `<li class="price_list_item">
               <button class="price_list_item_btn" type="button">
@@ -28,9 +28,6 @@ export function formatTransactions(txList: Transaction[], assetMetadata: AssetMe
             </li>
             `
     }
-  }
-  if (transactions === "") {
-    transactions = "<li>No transaction history</li>"
   }
   return transactions
 }
