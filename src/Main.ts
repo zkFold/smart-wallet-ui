@@ -2,6 +2,26 @@ import { App } from './App'
 import { AppConfig } from './Types'
 import { Backend, GoogleApi, Prover } from 'zkfold-smart-wallet-api'
 
+async function getRandomHealthyUrl(urlArray: string[]): Promise<string> {
+  const healthyUrls: string[] = [];
+
+  const checkPromises = urlArray.map(async (url: string) => {
+    let keysEndpoint = `${url}/v0/keys`;
+    const response = await fetch(keysEndpoint);
+    if (response.status === 200) {
+      healthyUrls.push(url);
+    }
+  });
+
+  await Promise.all(checkPromises);
+
+  if (healthyUrls.length === 0) {
+    throw new Error("No healthy URL found");
+  }
+
+  return healthyUrls[Math.floor(Math.random() * healthyUrls.length)];
+}
+
 // Initialize the application when DOM is loaded
 async function initApp() {
   const envProverUrls = import.meta.env.VITE_PROVER_URL
@@ -11,7 +31,7 @@ async function initApp() {
     .filter((url) => url.length > 0)
 
   // Randomize the prover on each load to balance requests across available endpoints
-  const selectedProverUrl = proverUrls[Math.floor(Math.random() * proverUrls.length)]
+  const selectedProverUrl = await getRandomHealthyUrl(proverUrls);
 
   const config: AppConfig = {
     websiteUrl: import.meta.env.VITE_WEBSITE_URL,
