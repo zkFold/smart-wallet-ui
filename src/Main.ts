@@ -6,8 +6,12 @@ async function getRandomHealthyUrl(urlArray: string[]): Promise<string> {
   const healthyUrls: string[] = [];
 
   const checkPromises = urlArray.map(async (url: string) => {
-    let keysEndpoint = `${url}/v0/keys`;
-    const response = await fetch(keysEndpoint);
+    const response = await fetch(url + '/v0/keys', {
+      method: 'GET',
+      mode: 'cors',
+    }).catch(() => {
+      return {status: 500 } as Response
+    });
     if (response.status === 200) {
       healthyUrls.push(url);
     }
