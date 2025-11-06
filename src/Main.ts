@@ -10,7 +10,7 @@ async function getRandomHealthyUrl(urlArray: string[]): Promise<string> {
       method: 'GET',
       mode: 'cors',
     }).catch(() => {
-      return {status: 500 } as Response
+      return { status: 500 } as Response
     });
     if (response.status === 200) {
       healthyUrls.push(url);
