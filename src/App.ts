@@ -156,9 +156,8 @@ export class App {
     })
     this.wallet.addEventListener('transaction_failed', async (event: Event) => {
       setSendLoading(false)
-      const error = (event as CustomEvent).detail
-      console.log('Transaction failed error detail:', error)
-      this.showNotification("Failed!", `Insufficient ADA to perform this transaction.`, 'error')
+      const errorMsg = (event as CustomEvent).detail
+      this.showNotification("Failed!", errorMsg)
     })
     this.wallet.addEventListener('transaction_confirmed', async (_event: Event) => {
       this.refreshBalance()
