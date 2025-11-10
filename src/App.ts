@@ -40,9 +40,9 @@ export class App {
         await this.render('init')
       }
     } catch (error) {
-      // TODO: We should have an error view to render here
       console.error('Failed to initialize app:', error)
       await this.render('init')
+      this.showNotification('Error!', 'Something went wrong.', 'error')
     }
   }
 
@@ -157,7 +157,7 @@ export class App {
     this.wallet.addEventListener('transaction_failed', async (event: Event) => {
       setSendLoading(false)
       const errorMsg = (event as CustomEvent).detail
-      this.showNotification("Failed!", errorMsg)
+      this.showNotification("Failed!", errorMsg, 'error')
     })
     this.wallet.addEventListener('transaction_confirmed', async (_event: Event) => {
       this.refreshBalance()

@@ -5,22 +5,20 @@ import { Backend, GoogleApi, Prover } from 'zkfold-smart-wallet-api'
 async function getRandomHealthyUrl(urlArray: string[]): Promise<string> {
   const healthyUrls: string[] = [];
 
-  const checkPromises = urlArray.map(async (url: string) => {
-    const response = await fetch(url + '/v0/keys', {
-      method: 'GET',
-      mode: 'cors',
-    }).catch(() => {
-      return { status: 500 } as Response
-    });
-    if (response.status === 200) {
-      healthyUrls.push(url);
+  const checkURLs = urlArray.map(async (url: string) => {
+    const prover = new Prover(url)
+    try {
+      await prover.serverKeys()
+      healthyUrls.push(url)
     }
-  });
-
-  await Promise.all(checkPromises);
+    catch {
+      console.log("Prover not available")
+    }
+  })
+  await Promise.all(checkURLs)
 
   if (healthyUrls.length === 0) {
-    throw new Error("No healthy URL found");
+    throw new Error("No healthy URLs found");
   }
 
   return healthyUrls[Math.floor(Math.random() * healthyUrls.length)];
@@ -54,6 +52,7 @@ async function initApp() {
   app.init()
 }
 
+// TODO: we need a `try` here in case the backend is down
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp)
 } else {
