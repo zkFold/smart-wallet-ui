@@ -19,12 +19,12 @@ export function formatTransactions(txList: Transaction[], assetMetadata: AssetMe
   const addressLabel = isPositive ? "From" : "To"
   const counterpartAddresses = (isPositive ? tx.from_addrs : tx.to_addrs) ?? []
         transactions +=
-            `<li class="price_list_item">
-              <button class="price_list_item_btn" type="button">
-                <label class="price_label ${colour}">${txValue}</label>
+            `<li class="wallet_detail_list__item">
+              <button class="wallet_detail_list__item-btn" type="button">
+                <label class="wallet_detail_list__label ${colour}">${txValue}</label>
                 <label class="status completed">Completed</label>
               </button>
-              <div class="price_list_item_value" style="display: none;">
+              <div class="wallet_detail_list__details" style="display: none;">
                 <p>${tx.timestamp}</p>
                 <p>${addressLabel}: ${displayAddresses(counterpartAddresses)}</p>
               </div>

@@ -183,10 +183,10 @@ export class App {
       })
     }
 
-    for (const listItem of Array.from(document.querySelectorAll('.wallet_sec .price_list .price_list_item_btn'))) {
+    for (const listItem of Array.from(document.querySelectorAll('.wallet_sec .wallet_detail_list .wallet_detail_list__item-btn'))) {
       listItem.addEventListener('click', () => {
-        const item = listItem.closest('.price_list_item')
-        const content = item?.querySelector('.price_list_item_value') as HTMLElement | null
+        const item = listItem.closest('.wallet_detail_list__item')
+        const content = item?.querySelector('.wallet_detail_list__details') as HTMLElement | null
         if (content) {
           content.style.display = content.style.display === 'none' ? 'block' : 'none'
         }

@@ -46,9 +46,9 @@ export function formatBalance(balance: BalanceResponse): string {
   let assets = ""
   if (balance.lovelace > 0) {
     assets +=
-        `<li class="price_list_item">
-          <label class="price_label">ADA</label>
-          <label class="price_label price_label_quentity">${(balance.lovelace / 1_000_000).toFixed(6)}</label>
+        `<li class="wallet_detail_list__item">
+          <label class="wallet_detail_list__label">ADA</label>
+          <label class="wallet_detail_list__label wallet_detail_list__value">${(balance.lovelace / 1_000_000).toFixed(6)}</label>
         </li>
         `
   }
@@ -57,9 +57,9 @@ export function formatBalance(balance: BalanceResponse): string {
       continue
     }
     assets +=
-        `<li class="price_list_item">
-          <label class="price_label">${token.ticker}</label>
-          <label class="price_label price_label_quentity">${formatWithDecimals(token.amount, token.decimal_adjustment ?? 0)}</label>
+        `<li class="wallet_detail_list__item">
+          <label class="wallet_detail_list__label">${token.ticker}</label>
+          <label class="wallet_detail_list__label wallet_detail_list__value">${formatWithDecimals(token.amount, token.decimal_adjustment ?? 0)}</label>
         </li>
         `
   }

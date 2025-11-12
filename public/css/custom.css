@@ -129,23 +129,23 @@
 .wallet_sec .wallet_box.active .toggle_btn{
 	transform: rotate(180deg);
 }
-.wallet_box .price{
+.wallet_box .wallet_summary_amount{
 	color: black;
 	font-weight: 700;
 	font-size: 36px;
 	line-height: 40px;
 }
-.wallet_sec .price_list{
+.wallet_sec .wallet_detail_list{
 	margin-top: 16px;
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
 	list-style: none;
 }
-.wallet_sec .wallet_box:not(.active) .price_list{
+.wallet_sec .wallet_box:not(.active) .wallet_detail_list{
 	display: none;
 }
-.wallet_sec .price_list .price_list_item{
+.wallet_sec .wallet_detail_list .wallet_detail_list__item{
 	padding: 8px 0;
 	border-top: 1px solid #e0e0eb80;
 	font-size: 14px;
@@ -156,10 +156,10 @@
 	align-items: center;
 	flex-wrap: wrap;
 }
-.wallet_sec .price_list_2 .price_list_item{
+.wallet_sec .wallet_detail_list--transactions .wallet_detail_list__item{
 	padding: 0;
 }
-.wallet_sec .price_list .price_list_item_btn{
+.wallet_sec .wallet_detail_list .wallet_detail_list__item-btn{
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
@@ -171,10 +171,10 @@
 	outline: none;
 	cursor: pointer;
 }
-.wallet_sec .price_list .price_list_item_btn:hover{
+.wallet_sec .wallet_detail_list .wallet_detail_list__item-btn:hover{
 	background-color: #f0f0fa33;
 }
-.wallet_sec .price_list .price_list_item_btn .status{
+.wallet_sec .wallet_detail_list .wallet_detail_list__item-btn .status{
 	font-size: 12px;
 	line-height: 16px;
 	padding: 4px 8px;
@@ -182,35 +182,35 @@
 	color: #ea580c;
 	background-color: #f9731633;
 }
-.wallet_sec .price_list .price_list_item_value p{
+.wallet_sec .wallet_detail_list .wallet_detail_list__details p{
 	font-size: 12px;
 	line-height: 16px;
 	color: #797986;
 	font-weight: 400;
 	margin-top: 4px;
 }
-.wallet_sec .price_list .price_list_item_value{
+.wallet_sec .wallet_detail_list .wallet_detail_list__details{
 	margin-top: 4px;
 	padding: 0 8px 8px;
 }
-.wallet_sec .price_list .price_list_item_btn .completed{
+.wallet_sec .wallet_detail_list .wallet_detail_list__item-btn .completed{
 	color: #16a34a;
 	background-color: #22c55e33;
 }
-.wallet_sec .price_list:not(.price_list_2) .price_list_item .price_label{
+.wallet_sec .wallet_detail_list:not(.wallet_detail_list--transactions) .wallet_detail_list__item .wallet_detail_list__label{
 	width: 50%;
 }
-.wallet_sec .price_list .price_list_item .price_label.price_label_quentity{
+.wallet_sec .wallet_detail_list .wallet_detail_list__item .wallet_detail_list__label.wallet_detail_list__value{
 	text-align: right;
 }
-.wallet_sec .price_list_2 .price_list_item .price_label{
+.wallet_sec .wallet_detail_list--transactions .wallet_detail_list__item .wallet_detail_list__label{
 	font-size: 14px;
 	line-height: 16px;
 	font-weight: 500;
 	text-align: left;
 	cursor: pointer;
 }
-.wallet_sec .price_list .price_list_item .price_label_quentity{
+.wallet_sec .wallet_detail_list .wallet_detail_list__item .wallet_detail_list__value{
 	font-weight: 400;
 	font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;
 }
