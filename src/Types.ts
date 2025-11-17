@@ -6,4 +6,4 @@ export interface AppConfig {
   proverUrl: string
 }
 
-export type AppView = 'init' | 'wallet' | 'success' | 'failed'
+export type AppView = 'init' | 'wallet' | 'success' | 'failed' | 'error'

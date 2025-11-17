@@ -4,7 +4,7 @@ import { formatTransactions } from "../Utils/Transactions"
 import { renderAppFrame } from "./Frame"
 import { BalanceResponse, Transaction } from "zkfold-smart-wallet-api"
 
-export function renderWalletView(userId: string, address: string, balance: BalanceResponse, transactions: Transaction[], assetMetadata?: AssetMetadataMap): HTMLElement {
+export function renderWalletView(userId: string, address: string, balance: BalanceResponse, transactions: Transaction[], isWalletActivated: boolean, assetMetadata?: AssetMetadataMap): HTMLElement {
   const addressHtml = getAddressLabel(address)
   const metadata = assetMetadata ?? buildAssetMetadata(balance)
   const balanceHtml = formatBalance(balance)
@@ -72,6 +72,44 @@ export function renderWalletView(userId: string, address: string, balance: Balan
     </div>
   `
 
+  const activatedFees = `
+        <li class="wallet_detail_list__item">
+          <label class="wallet_detail_list__label">Cardano network fee</label>
+          <label class="wallet_detail_list__label wallet_detail_list__value">0.31</label>
+        </li>
+  `
+
+  const activationFees = `
+        <li class="wallet_detail_list__item">
+          <label class="wallet_detail_list__label">Cardano network fee</label>
+          <label class="wallet_detail_list__label wallet_detail_list__value">1.67</label>
+        </li>
+        <li class="wallet_detail_list__item">
+          <label class="wallet_detail_list__label">Wallet activation fee</label>
+          <label class="wallet_detail_list__label wallet_detail_list__value">2.0</label>
+        </li>
+        <li class="wallet_detail_list__item">
+          <label class="wallet_detail_list__label">Refundable deposit</label>
+          <label class="wallet_detail_list__label wallet_detail_list__value">2.0</label>
+        </li>
+  `
+
+  const feesHtml = `
+    <div class="wallet_box">
+      <div class="wallet_box_header">
+        <label class="form_label">Total fees:   ${isWalletActivated ? '0.31 ADA' : '5.67 ADA'}</label>
+        <button type="button" class="wallet_btn toggle_btn">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down h-4 w-4 transition-transform" data-lov-id="src/pages/Dashboard.tsx:126:22" data-lov-name="ChevronDown" data-component-path="src/pages/Dashboard.tsx" data-component-line="126" data-component-file="Dashboard.tsx" data-component-name="ChevronDown" data-component-content="%7B%7D"><path d="m6 9 6 6 6-6"></path></svg>
+        </button>
+      </div>
+      <div class="transaction_fees">
+        <ul id="transaction_fees_list" class="transaction_fees_list">
+          ${isWalletActivated ? activatedFees : activationFees}
+        </ul>
+      </div>
+    </div>
+  `
+
   const sendToHtml = `
     <div class="form_fields">
       <div class="form_field_cont">
@@ -104,6 +142,7 @@ export function renderWalletView(userId: string, address: string, balance: Balan
     ${walletBalanceHtml}
     ${transactionsHtml}
     ${sendToHtml}
+    ${feesHtml}
   `
 
   return renderAppFrame(content, true)

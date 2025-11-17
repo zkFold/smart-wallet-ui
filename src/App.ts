@@ -1,6 +1,7 @@
 import { AppView } from './Types'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
+import { renderErrorView } from './UI/Error'
 import { AddressType, Backend, GoogleApi, Prover, Wallet } from 'zkfold-smart-wallet-api'
 import { AssetMetadataMap, buildAssetMetadata, formatAssetOptions, formatBalance, formatWithDecimals } from './Utils/Assets'
 import { getAddressLabel } from './Utils/Address'
@@ -41,7 +42,7 @@ export class App {
       }
     } catch (error) {
       console.error('Failed to initialize app:', error)
-      await this.render('init')
+      await this.render('error')
       this.showNotification('Error!', 'Something went wrong.', 'error')
     }
   }
@@ -63,9 +64,13 @@ export class App {
         const balance = await this.wallet.getBalance()
         this.assetMetadata = buildAssetMetadata(balance)
         const txHistory = await this.wallet.getTxHistory()
-        viewElement = renderWalletView(userId, address, balance, txHistory, this.assetMetadata)
+        viewElement = renderWalletView(userId, address, balance, txHistory, this.wallet.isActivated(), this.assetMetadata)
         app.appendChild(viewElement)
         this.setupWalletHandlers(userId, address)
+        break
+      case 'error':
+        viewElement = renderErrorView()
+        app.appendChild(viewElement)
         break
       default:
         viewElement = renderInitView()

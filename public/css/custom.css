@@ -217,6 +217,31 @@
 .wallet_sec .form_fields{
 	padding-top: 24px;
 }
+
+.wallet_sec .transaction_fees_list{
+	margin-top: 16px;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	list-style: none;
+}
+
+.wallet_sec .transaction_fees_list .wallet_detail_list__item{
+	padding: 8px 0;
+	border-top: 1px solid #e0e0eb80;
+	font-size: 14px;
+	line-height: 16px;
+	font-weight: 500;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+}
+
+.wallet_sec .wallet_box:not(.active) .transaction_fees_list{
+	display: none;
+}
+
 /* Empty assets message styling and visibility */
 .wallet_sec .wallet_box .empty_assets,
 .wallet_sec .wallet_box .empty_transactions{
