@@ -14,10 +14,10 @@ export function formatTransactions(txList: Transaction[], assetMetadata: AssetMe
 
         const formattedAmount = formatWithDecimals(value, metadata.decimals)
         const txValue = `${metadata.label} ${formattedAmount}\n`
-  const isPositive = value > 0
-  const colour = value < 0 ? "text_red" : "text_green"
-  const addressLabel = isPositive ? "From" : "To"
-  const counterpartAddresses = (isPositive ? tx.from_addrs : tx.to_addrs) ?? []
+        const isPositive = value > 0
+        const colour = value < 0 ? "text_red" : "text_green"
+        const addressLabel = isPositive ? "From" : "To"
+        const counterpartAddresses = (isPositive ? tx.from_addrs : tx.to_addrs) ?? []
         transactions +=
             `<li class="wallet_detail_list__item">
               <button class="wallet_detail_list__item-btn" type="button">
@@ -26,6 +26,7 @@ export function formatTransactions(txList: Transaction[], assetMetadata: AssetMe
               </button>
               <div class="wallet_detail_list__details" style="display: none;">
                 <p>${tx.timestamp}</p>
+                <p>Transaction ID: ${tx.transaction_id}</p>
                 <p>${addressLabel}: ${displayAddresses(counterpartAddresses)}</p>
               </div>
             </li>
