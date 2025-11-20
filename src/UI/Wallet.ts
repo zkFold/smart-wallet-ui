@@ -75,18 +75,18 @@ export function renderWalletView(userId: string, address: string, balance: Balan
   const activatedFees = `
         <li class="wallet_detail_list__item">
           <label class="wallet_detail_list__label">Cardano network fee</label>
-          <label class="wallet_detail_list__label wallet_detail_list__value">0.31</label>
+          <label class="wallet_detail_list__label wallet_detail_list__value">0.3</label>
         </li>
   `
 
   const activationFees = `
         <li class="wallet_detail_list__item">
           <label class="wallet_detail_list__label">Cardano network fee</label>
-          <label class="wallet_detail_list__label wallet_detail_list__value">1.67</label>
+          <label class="wallet_detail_list__label wallet_detail_list__value">1.7</label>
         </li>
         <li class="wallet_detail_list__item">
           <label class="wallet_detail_list__label">Wallet activation fee</label>
-          <label class="wallet_detail_list__label wallet_detail_list__value">2.0</label>
+          <label class="wallet_detail_list__label wallet_detail_list__value">3.0</label>
         </li>
         <li class="wallet_detail_list__item">
           <label class="wallet_detail_list__label">Refundable deposit</label>
