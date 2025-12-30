@@ -38,10 +38,12 @@
     "vite-plugin-wasm": "^3.5.0"
   },
   "dependencies": {
+    "@crxjs/vite-plugin": "^2.3.0",
     "@emurgo/cardano-serialization-lib-browser": "^14.1.1",
+    "@types/chrome": "^0.1.32",
     "@types/json-bigint": "^1.0.4",
     "dotenv": "^16.4.5",
     "json-bigint": "^1.0.0",
-    "zkfold-smart-wallet-api": "^1.8.3"
+    "zkfold-smart-wallet-api2": "file:../smart-wallet-api"
   }
 }
