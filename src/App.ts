@@ -85,12 +85,28 @@ export class App {
     }
   }
 
+  private isBrowserExtension(): boolean {
+    const isChromeExtension = typeof chrome !== 'undefined' && 
+                              typeof chrome.runtime !== 'undefined';
+
+    return isChromeExtension;
+  }
+
   private setupInitHandlers(): void {
     const form = document.querySelector('form') as HTMLFormElement
     if (form) {
       form.addEventListener('submit', async (e) => {
         e.preventDefault()
-        this.wallet.login()
+        if (this.isBrowserExtension()) {
+          const loginUrl = this.wallet.createUrl()[1];
+          chrome.tabs.create({
+            url:loginUrl,
+            active: true
+          })
+          // TODO: Pass state to new tab
+        } else {
+          this.wallet.login()
+        }
       })
     }
   }
