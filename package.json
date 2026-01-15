@@ -39,11 +39,13 @@
   },
   "dependencies": {
     "@crxjs/vite-plugin": "^2.3.0",
-    "@emurgo/cardano-serialization-lib-browser": "^14.1.1",
+    "@emurgo/cardano-serialization-lib-asmjs": "^15.0.3",
+    "@scure/bip39": "^2.0.1",
     "@types/chrome": "^0.1.32",
     "@types/json-bigint": "^1.0.4",
+    "axios": "^1.8.4",
     "dotenv": "^16.4.5",
     "json-bigint": "^1.0.0",
-    "zkfold-smart-wallet-api2": "file:../smart-wallet-api"
+    "zkfold-smart-wallet-api": "file:../smart-wallet-api"
   }
 }
