@@ -1,13 +1,15 @@
 import { AppView } from './Types'
+import * as CSL from '@emurgo/cardano-serialization-lib-asmjs'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { renderErrorView } from './UI/Error'
-import { AddressType, Backend, GoogleApi, Prover, Wallet, Transaction } from 'zkfold-smart-wallet-api'
+import { Backend, GoogleApi, PopupWallet, Prover, Wallet, AddressType, AbstractWallet } from 'zkfold-smart-wallet-api'
 import { AssetMetadataMap, buildAssetMetadata, formatAssetOptions, formatBalance, formatWithDecimals } from './Utils/Assets'
 import { getAddressLabel } from './Utils/Address'
+import { AppConfig } from './Types'
 
 export class App {
-  private wallet!: Wallet
+  public wallet!: AbstractWallet
   private balanceRefreshInterval: number | null = null
   private assetMetadata: AssetMetadataMap = {
     lovelace: {
@@ -16,8 +18,8 @@ export class App {
     }
   }
 
-  constructor(backend: Backend, prover: Prover, googleApi: GoogleApi) {
-    this.wallet = new Wallet(backend, prover, googleApi)
+  constructor(wallet: AbstractWallet) {
+    this.wallet = wallet
   }
 
   public async init(): Promise<void> {
@@ -33,18 +35,84 @@ export class App {
 
       // Check for OAuth callback
       const params = new URLSearchParams(window.location.search)
-      if (params.has('code')) {
+      if (params.has('code') && !App.isBrowserExtension()) {
         await this.wallet.oauthCallback(window.location.search)
         return
       } else {
         // Initial render
         await this.render('init')
+        if (App.isBrowserExtension()) {
+          chrome.storage.local.get(['jwt', 'tokenSKey', 'userId'], async (result) => {
+            if (result.jwt && result.tokenSKey && result.userId) {
+              this.wallet.jwt = result.jwt as string;
+              this.wallet.tokenSKey = CSL.Bip32PrivateKey.from_hex(result.tokenSKey as string);
+              this.wallet.userId = result.userId as string;
+              this.wallet.dispatchEvent(new CustomEvent('initialized'))
+            }
+          });
+        }
       }
     } catch (error) {
       console.error('Failed to initialize app:', error)
       await this.render('error')
       this.showNotification('Error!', 'Something went wrong.', 'error')
     }
+  }
+
+  public static async createFromEnv(): Promise<App> {
+    const envProverUrls = import.meta.env.VITE_PROVER_URL
+    const proverUrls = envProverUrls
+      .split(',')
+      .map((url) => url.trim())
+      .filter((url) => url.length > 0)
+
+    // Randomize the prover on each load to balance requests across available endpoints
+
+    async function getRandomHealthyUrl(urlArray: string[]): Promise<string> {
+      const healthyUrls: string[] = [];
+
+      const checkURLs = urlArray.map(async (url: string) => {
+        const prover = new Prover(url)
+        try {
+          await prover.serverKeys()
+          healthyUrls.push(url)
+        }
+        catch {
+          console.log("Prover not available")
+        }
+      })
+      await Promise.all(checkURLs)
+
+      if (healthyUrls.length === 0) {
+        throw new Error("No healthy URLs found");
+      }
+
+      return healthyUrls[Math.floor(Math.random() * healthyUrls.length)];
+    }
+
+    const selectedProverUrl = await getRandomHealthyUrl(proverUrls);
+
+    const config: AppConfig = {
+      websiteUrl: import.meta.env.VITE_WEBSITE_URL,
+      backendUrl: import.meta.env.VITE_BACKEND_URL,
+      backendApiKey: import.meta.env.VITE_BACKEND_API_KEY,
+      proverUrl: selectedProverUrl,
+    }
+
+    const backend = new Backend(config.backendUrl, config.backendApiKey)
+    const prover = new Prover(config.proverUrl)
+
+    const creds = await backend.credentials()
+
+    let wallet;
+    if (App.isBrowserExtension()) {
+      const redirectUrl = chrome.identity.getRedirectURL() + "oauth2callback/";
+      wallet = new PopupWallet(backend, prover, new GoogleApi(creds.client_id, creds.client_secret, redirectUrl))
+    } else {
+      wallet = new Wallet(backend, prover, new GoogleApi(creds.client_id, creds.client_secret, `${config.websiteUrl}/oauth2callback/`))
+    }
+    const app = new App(wallet)
+    return app
   }
 
   private async render(view: AppView): Promise<void> {
@@ -85,9 +153,9 @@ export class App {
     }
   }
 
-  private isBrowserExtension(): boolean {
-    const isChromeExtension = typeof chrome !== 'undefined' && 
-                              typeof chrome.runtime !== 'undefined';
+  public static isBrowserExtension(): boolean {
+    const isChromeExtension = typeof chrome !== 'undefined' &&
+      typeof chrome.runtime !== 'undefined';
 
     return isChromeExtension;
   }
@@ -97,16 +165,7 @@ export class App {
     if (form) {
       form.addEventListener('submit', async (e) => {
         e.preventDefault()
-        if (this.isBrowserExtension()) {
-          const loginUrl = this.wallet.createUrl()[1];
-          chrome.tabs.create({
-            url:loginUrl,
-            active: true
-          })
-          // TODO: Pass state to new tab
-        } else {
-          this.wallet.login()
-        }
+        this.wallet.login()
       })
     }
   }

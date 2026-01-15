@@ -6,14 +6,12 @@ import { crx } from '@crxjs/vite-plugin'
 
 export default defineConfig({
   plugins: [
-    wasm(),
-    topLevelAwait(),
     crx({ manifest })
   ],
   build: {
     outDir: './dist',
     emptyOutDir: true,
-    chunkSizeWarningLimit: 1500 // Increase from default 500kb to 1.5MB to suppress warning
+    chunkSizeWarningLimit: 1500
   },
   server: {
     port: 8080,
@@ -26,7 +24,7 @@ export default defineConfig({
       }
     },
     cors: {
-      origin: "*",     // РАЗРЕШАЕМ ВСЕ (или можно 'chrome-extension://...')
+      origin: "*",
       methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
       preflightContinue: true,
       optionsSuccessStatus: 204
@@ -36,7 +34,7 @@ export default defineConfig({
     global: 'globalThis',
   },
   optimizeDeps: {
-    include: ['@emurgo/cardano-serialization-lib-browser']
+    include: ['@emurgo/cardano-serialization-lib-asmjs']
   },
   preview: {
     allowedHosts: ['wallet.zkfold.io', 'wallet.zkfold.ch'],

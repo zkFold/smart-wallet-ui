@@ -8,12 +8,9 @@
     "activeTab",
     "identity"
   ],
-  "oauth2": {
-    "client_id": "371998750978-6e9j9pogb76e53p1n63pvk8ac9pp11mc.apps.googleusercontent.com",
-    "scopes": [
-      "https://www.googleapis.com/auth/userinfo.email",
-      "openid"
-    ]
+  "background": {
+    "service_worker": "src/background.ts",
+    "type": "module"
   },
   "action": {
     "default_popup": "index.html",
@@ -22,6 +19,8 @@
   "host_permissions": [
     "https://wallet-prover.zkfold.io/v0/*",
     "https://wallet-api.zkfold.io/v0/*"
-  ]
-  
+  ],
+  "content_security_policy": {
+    "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  }
 }
