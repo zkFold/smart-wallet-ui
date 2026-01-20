@@ -1,7 +1,7 @@
 import { Transaction } from "zkfold-smart-wallet-api"
 import { getAddressLabel } from "./Address"
 import { AssetMetadataMap, formatWithDecimals } from "./Assets"
-import * as CSL from '@emurgo/cardano-serialization-lib-browser';
+import * as CSL from '@emurgo/cardano-serialization-lib-asmjs';
 
 export function formatTransactions(txList: Transaction[], assetMetadata: AssetMetadataMap = {}): string {
   let transactions = ""
