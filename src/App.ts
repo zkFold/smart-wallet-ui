@@ -60,8 +60,9 @@ export class App {
     switch (view) {
       case 'wallet':
         const userId = this.wallet.getUserId()
-        const address = await this.wallet.getUnusedAddress().then((x: any) => x.to_bech32())
+        const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
         const balance = await this.wallet.getBalance()
+        console.log(this.wallet.getUserId())
         this.assetMetadata = buildAssetMetadata(balance)
         let txHistory: Transaction[] = []
         try {
