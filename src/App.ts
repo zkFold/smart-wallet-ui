@@ -2,7 +2,7 @@ import { AppView } from './Types'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { renderErrorView } from './UI/Error'
-import { AddressType, Backend, GoogleApi, Prover, Wallet } from 'zkfold-smart-wallet-api'
+import { AddressType, Backend, GoogleApi, Prover, Wallet, Transaction } from 'zkfold-smart-wallet-api'
 import { AssetMetadataMap, buildAssetMetadata, formatAssetOptions, formatBalance, formatWithDecimals } from './Utils/Assets'
 import { getAddressLabel } from './Utils/Address'
 
@@ -62,8 +62,14 @@ export class App {
         const userId = this.wallet.getUserId()
         const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
         const balance = await this.wallet.getBalance()
+        console.log(this.wallet.getUserId())
         this.assetMetadata = buildAssetMetadata(balance)
-        const txHistory = await this.wallet.getTxHistory()
+        let txHistory: Transaction[] = []
+        try {
+            txHistory = await this.wallet.getTxHistory()
+        } catch (err) {
+            console.log(`Transaction history could not be fetched: ${err}`)
+        }
         viewElement = renderWalletView(userId, address, balance, txHistory, this.wallet.isActivated(), this.assetMetadata)
         app.appendChild(viewElement)
         this.setupWalletHandlers(userId, address)
