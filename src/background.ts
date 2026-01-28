@@ -13,6 +13,8 @@ chrome.runtime.onMessage.addListener(async (request, _sender, _sendResponse) => 
                 await app.wallet.oauthCallback(responseUrl || "")
             }
         );
+    } else if (request.action === 'SEED') {
+        chrome.tabs.create({url: chrome.runtime.getURL('/seed')})
     }
 });
 

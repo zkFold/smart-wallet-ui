@@ -1,9 +1,39 @@
 import { renderAppFrame } from "./Frame"
 
-export function renderInitView(): HTMLElement {
+export function renderInitView(accounts: string[]): HTMLElement {
+
+  const accountHtml = `
+
+        <ul id="accounts_list" class="accounts_list">
+        ${accounts.map(account => `
+          <li class="accounts_item">
+            <button class="accounts_item-btn account_select_button" type="button" data-account="${account}">
+              <label class="accounts_label">${account}</label>
+            </button>
+          </li>
+        `).join('')
+    }
+        </ul>
+
+  `
+
+  const seedButtonHtml = `
+    <button
+      id="seed_login_button"
+      type="button"
+      class="submit_btn altered"
+    >
+      Continue with seed phrase
+    </button>
+    `
+
   const content = `
     <h1 class="text_center">Smart Wallet</h1>
     <p class="sub_title text_center">Your gateway to crypto and Web3</p>
+    
+    ${accountHtml}
+    ${seedButtonHtml}
+
     <button
       id="google_login_button"
       type="submit"

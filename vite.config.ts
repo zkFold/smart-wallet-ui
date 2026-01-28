@@ -14,6 +14,9 @@ export default defineConfig({
     chunkSizeWarningLimit: 1500
   },
   server: {
+    hmr: {
+      clientPort: 8080,
+    },
     port: 8080,
     host: true,
     proxy: {

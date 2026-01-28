@@ -3,10 +3,13 @@ import * as CSL from '@emurgo/cardano-serialization-lib-asmjs'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { renderErrorView } from './UI/Error'
-import { Backend, GoogleApi, PopupWallet, Prover, Wallet, AddressType, AbstractWallet } from 'zkfold-smart-wallet-api'
+import { AddressType, Backend, GoogleApi, Prover, Wallet, AbstractWallet, WalletData, PopupWallet } from 'zkfold-smart-wallet-api'
 import { AssetMetadataMap, buildAssetMetadata, formatAssetOptions, formatBalance, formatWithDecimals } from './Utils/Assets'
 import { getAddressLabel } from './Utils/Address'
-import { AppConfig } from './Types'
+import { renderSeedView } from './UI/Seed'
+import * as bip39 from '@scure/bip39';
+import { wordlist } from '@scure/bip39/wordlists/english'
+
 
 export class App {
   public wallet!: AbstractWallet
@@ -33,22 +36,40 @@ export class App {
         await this.render('init')
       })
 
+      this.wallet.addEventListener('seed', async () => {
+        await this.render('seed')
+      })
+
       // Check for OAuth callback
+      if (window.location.pathname === '/seed') {
+        this.wallet.dispatchEvent(new CustomEvent('seed'))
+        return
+      }
       const params = new URLSearchParams(window.location.search)
       if (params.has('code') && !App.isBrowserExtension()) {
         await this.wallet.oauthCallback(window.location.search)
         return
       } else {
         // Initial render
-        await this.render('init')
         if (App.isBrowserExtension()) {
-          chrome.storage.local.get(['jwt', 'tokenSKey', 'userId'], async (result) => {
+          chrome.storage.local.set({
+            googleAddresses: {},
+            seedAddresses: []
+          })
+
+          chrome.storage.local.get(['jwt', 'tokenSKey', 'userId', 'baseAddress'], async (result) => {
             if (result.jwt && result.tokenSKey && result.userId) {
               this.wallet.jwt = result.jwt as string;
               this.wallet.tokenSKey = CSL.Bip32PrivateKey.from_hex(result.tokenSKey as string);
               this.wallet.userId = result.userId as string;
               this.wallet.dispatchEvent(new CustomEvent('initialized'))
+            } else if (result.baseAddress) {
+              this.wallet.baseAddress = CSL.Address.from_bech32(result.baseAddress as string);
+              this.wallet.dispatchEvent(new CustomEvent('initialized'))
+            } else {
+              await this.render('init')
             }
+
           });
         }
       }
@@ -90,7 +111,8 @@ export class App {
       return healthyUrls[Math.floor(Math.random() * healthyUrls.length)];
     }
 
-    const selectedProverUrl = await getRandomHealthyUrl(proverUrls);
+    // const selectedProverUrl = await getRandomHealthyUrl(proverUrls);
+    const selectedProverUrl = proverUrls[0];
 
     const config: AppConfig = {
       websiteUrl: import.meta.env.VITE_WEBSITE_URL,
@@ -136,12 +158,22 @@ export class App {
         app.appendChild(viewElement)
         this.setupWalletHandlers(userId, address)
         break
+      case 'seed':
+        viewElement = renderSeedView()
+        app.appendChild(viewElement)
+        this.setupSeedHandlers()
+        break
       case 'error':
         viewElement = renderErrorView()
         app.appendChild(viewElement)
         break
       default:
-        viewElement = renderInitView()
+        const addressList = await chrome.storage.local.get(null).then((res) => {
+          const googleWallets = res.googleAddresses as { [userId: string]: WalletData }
+          const seedWallets: string[] = res.seedAddresses as string[];
+          return [...(Object.keys(googleWallets) as string[]), ...seedWallets]
+        });
+        viewElement = renderInitView(addressList)
         app.appendChild(viewElement)
         this.setupInitHandlers()
     }
@@ -154,6 +186,68 @@ export class App {
     return isChromeExtension;
   }
 
+  private setupSeedHandlers(): void {
+    const form = document.querySelector('form') as HTMLFormElement
+    if (form) {
+      // const str = "mass cart leave cotton adapt music filter chase toddler venture kiwi differ comic soon make rough shop pass child suggest three worth exotic pottery"
+      // const arr = str.split(' ')
+      // for (let i = 1; i <= 24; i++) {
+      //   const word = document.getElementById('word' + i) as HTMLInputElement
+      //   word.value = arr[i - 1]
+      // }
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault()
+
+        let mnemonic = ""
+        for (let i = 1; i <= 24; i++) {
+          const word = document.getElementById('word' + i) as HTMLInputElement
+          mnemonic += " " + (word?.value.trim())
+        }
+
+        const entropy = bip39.mnemonicToEntropy(mnemonic.trim(), wordlist);
+        const rootKey = CSL.Bip32PrivateKey.from_bip39_entropy(
+          entropy,
+          new Uint8Array(),
+        );
+        function harden(num: number): number {
+          return 0x80000000 + num
+        }
+        const accountKey = rootKey
+          .derive(harden(1852)) // purpose
+          .derive(harden(1815)) // coin type
+          .derive(harden(0)); // account #0
+
+        const utxoPrivateKey = accountKey.derive(0).derive(0); //
+        const utxoPublicKey = utxoPrivateKey.to_public();
+
+        const stakePublicKey = accountKey.derive(2).derive(0).to_public(); //
+
+        const utxoCred = CSL.Credential.from_keyhash(utxoPublicKey.to_raw_key().hash());
+        const stakeCred = CSL.Credential.from_keyhash(stakePublicKey.to_raw_key().hash());
+
+        const baseAddress = CSL.BaseAddress.new(
+          CSL.NetworkInfo.testnet_preprod().network_id(),
+          utxoCred,
+          stakeCred
+        );
+
+        const address = baseAddress.to_address();
+
+        chrome.storage.local.get(['seedAddresses'], async (res) => {
+          const seedAddresses = res.seedAddresses as string[];
+          seedAddresses.push(address.to_bech32());
+          chrome.storage.local.set({
+            seedAddresses: seedAddresses,
+            baseAddress: address.to_bech32()
+          })
+        });
+
+        chrome.tabs.update({ url: chrome.runtime.getURL('') });
+      })
+    }
+  }
+
   private setupInitHandlers(): void {
     const form = document.querySelector('form') as HTMLFormElement
     if (form) {
@@ -161,6 +255,19 @@ export class App {
         e.preventDefault()
         this.wallet.login()
       })
+    }
+
+    const btn = document.querySelector('#seed_login_button') as HTMLButtonElement | null
+    if (btn) {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault()
+        chrome.runtime.sendMessage({
+          action: 'SEED'
+        }).catch((error) => {
+          console.error("Error sending message to background script:", error);
+        });
+      })
+
     }
   }
 
