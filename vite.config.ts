@@ -6,7 +6,14 @@ import { crx } from '@crxjs/vite-plugin'
 
 export default defineConfig({
   plugins: [
-    crx({ manifest })
+    crx({ manifest }),
+    wasm()
+//    topLevelAwait({
+//      // The export name of top-level await promise for each chunk module
+//      promiseExportName: "__tla",
+//      // The function to generate import names of top-level await promise in each chunk module
+//      promiseImportName: i => `__tla_${i}`
+//    })
   ],
   build: {
     outDir: './dist',

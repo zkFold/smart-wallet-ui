@@ -13,14 +13,21 @@
     "type": "module"
   },
   "action": {
-    "default_popup": "index.html",
     "default_title": "Open UI"
   },
   "host_permissions": [
     "https://wallet-prover.zkfold.io/v0/*",
-    "https://wallet-api.zkfold.io/v0/*"
+    "https://wallet-api.zkfold.io/v0/*",
+    "https://www.googleapis.com/*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'"
+  },
+  "oauth2": {
+    "client_id": "232676559228-qd3cckrs7okq0mpii17da4950haap9ds.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/userinfo.email",
+      "https://www.googleapis.com/auth/userinfo.profile"
+    ]
   }
 }
