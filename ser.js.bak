@@ -1,0 +1,7 @@
+import './assets/background.ts-18R_Nm2v.js';
+
+chrome.action.onClicked.addListener(() => {
+  chrome.tabs.create({
+    url: chrome.runtime.getURL("index.html")
+  });
+});
