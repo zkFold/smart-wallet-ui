@@ -1,15 +1,14 @@
 import { AppView } from './Types'
-import * as CSL from '@emurgo/cardano-serialization-lib-asmjs'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { renderErrorView } from './UI/Error'
-import { Backend, GoogleApi, PopupWallet, Prover, Wallet, AddressType, AbstractWallet } from 'zkfold-smart-wallet-api'
+import { Backend, GoogleApi, PopupGoogleWallet, Prover, GoogleWallet, SeedphraseWallet, AddressType, AbstractGoogleWallet, bip32PrivateKeyFromHex } from 'zkfold-smart-wallet-api'
 import { AssetMetadataMap, buildAssetMetadata, formatAssetOptions, formatBalance, formatWithDecimals } from './Utils/Assets'
 import { getAddressLabel } from './Utils/Address'
 import { AppConfig } from './Types'
 
 export class App {
-  public wallet!: AbstractWallet
+  public wallet!: AbstractGoogleWallet | SeedphraseWallet
   private balanceRefreshInterval: number | null = null
   private assetMetadata: AssetMetadataMap = {
     lovelace: {
@@ -17,8 +16,14 @@ export class App {
       decimals: 6
     }
   }
+  private backend!: Backend
+  private prover!: Prover
+  private config!: AppConfig
 
-  constructor(wallet: AbstractWallet) {
+  constructor() {
+  }
+
+  public setWallet(wallet: AbstractGoogleWallet | SeedphraseWallet) {
     this.wallet = wallet
   }
 
@@ -45,7 +50,7 @@ export class App {
           chrome.storage.local.get(['jwt', 'tokenSKey', 'userId'], async (result) => {
             if (result.jwt && result.tokenSKey && result.userId) {
               this.wallet.jwt = result.jwt as string;
-              this.wallet.tokenSKey = CSL.Bip32PrivateKey.from_hex(result.tokenSKey as string);
+              this.wallet.tokenSKey = bip32PrivateKeyFromHex(result.tokenSKey as string);
               this.wallet.userId = result.userId as string;
               this.wallet.dispatchEvent(new CustomEvent('initialized'))
             }
@@ -102,16 +107,11 @@ export class App {
     const backend = new Backend(config.backendUrl, config.backendApiKey)
     const prover = new Prover(config.proverUrl)
 
-    const creds = await backend.credentials()
+    this.backend = backend
+    this.prover = prover
+    this.config = config
 
-    let wallet;
-    if (App.isBrowserExtension()) {
-      const redirectUrl = chrome.identity.getRedirectURL() + "oauth2callback/";
-      wallet = new PopupWallet(backend, prover, new GoogleApi(creds.client_id, creds.client_secret, redirectUrl))
-    } else {
-      wallet = new Wallet(backend, prover, new GoogleApi(creds.client_id, creds.client_secret, `${config.websiteUrl}/oauth2callback/`))
-    }
-    const app = new App(wallet)
+    const app = new App()
     return app
   }
 
@@ -164,8 +164,30 @@ export class App {
     const form = document.querySelector('form') as HTMLFormElement
     if (form) {
       form.addEventListener('submit', async (e) => {
-        e.preventDefault()
-        this.wallet.login()
+        e.preventDefault();
+
+        const submitEvent = e as SubmitEvent;
+        const button = submitEvent.submitter as HTMLButtonElement;
+
+        if (!button) return;
+
+        if (button.id === "google_login_button") {
+
+          const creds = await this.backend.credentials()
+
+          let wallet;
+          if (App.isBrowserExtension()) {
+            const redirectUrl = chrome.identity.getRedirectURL() + "oauth2callback/";
+            wallet = new PopupGoogleWallet(backend, prover, new GoogleApi(creds.client_id, creds.client_secret, redirectUrl))
+          } else {
+            wallet = new GoogleWallet(backend, prover, new GoogleApi(creds.client_id, creds.client_secret, `${config.websiteUrl}/oauth2callback/`))
+          }
+          this.setWallet(wallet)
+          this.wallet.login()
+        } else if (button.id === "seedphrase_login_button") {
+          // New behavior
+          console.log("New button clicked");
+        }
       })
     }
   }
@@ -204,19 +226,22 @@ export class App {
           console.error('Invalid amount provided')
           return
         }
-        const lovelaceAmount = Math.round(adaAmount * 1_000_000).toString()
+        const lovelaceAmount = Math.round(adaAmount * 1_000_000)
 
         const recipient = (formData.get('zkfold_address') as string).trim()
         const recipientType = this.detectRecipientType(recipient)
-        const asset = (formData.get('zkfold_asset') as string)?.trim() || 'lovelace'
+        const asset: string = (formData.get('zkfold_asset') as string)?.trim() || 'lovelace'
+
+        const assets: {[asset: string] : number} = {}
+
+        assets[asset] = lovelaceAmount
 
         // Start loading immediately on submit (after basic validation)
         setSendLoading(true)
         await this.wallet.sendTransaction({
           recipient,
           recipientType,
-          amount: lovelaceAmount,
-          asset
+          assets: assets 
         })
         form.reset()
       })

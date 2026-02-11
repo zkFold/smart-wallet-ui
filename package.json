@@ -39,7 +39,6 @@
   },
   "dependencies": {
     "@crxjs/vite-plugin": "^2.3.0",
-    "@emurgo/cardano-serialization-lib-asmjs": "^15.0.3",
     "@scure/bip39": "^2.0.1",
     "@types/chrome": "^0.1.32",
     "@types/json-bigint": "^1.0.4",
