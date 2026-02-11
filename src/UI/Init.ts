@@ -19,6 +19,13 @@ export function renderInitView(): HTMLElement {
       </svg>
       Continue with Google
     </button>
+    <button
+      id="seedphrase_login_button"
+      type="submit"
+      class="submit_btn altered"
+    >
+      Enter seedphrase 
+    </button>
   `
 
   return renderAppFrame(content, false)
