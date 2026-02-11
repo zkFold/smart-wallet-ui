@@ -1,6 +1,12 @@
 import { Transaction, Address } from "zkfold-smart-wallet-api"
 import { getAddressLabel } from "./Address"
-import { AssetMetadataMap, formatWithDecimals } from "./Assets"
+import { AssetMetadataMap, AssetDisplayMetadata, formatWithDecimals } from "./Assets"
+
+interface FormattedTx {
+    tx: Transaction
+    metadata: AssetDisplayMetadata
+    value: number
+}
 
 export function formatTransactions(txList: Transaction[], assetMetadata: AssetMetadataMap = {}): string {
   let formattedTxs = []
