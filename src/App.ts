@@ -2,8 +2,25 @@ import { AppView } from './Types'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { renderErrorView } from './UI/Error'
-import { Backend, GoogleApi, PopupGoogleWallet, Prover, GoogleWallet, SeedphraseWallet, AddressType, AbstractGoogleWallet, bip32PrivateKeyFromHex } from 'zkfold-smart-wallet-api'
-import { AssetMetadataMap, buildAssetMetadata, formatAssetOptions, formatBalance, formatWithDecimals } from './Utils/Assets'
+import { 
+  AbstractGoogleWallet, 
+  AddressType, 
+  Backend, 
+  GoogleApi, 
+  GoogleWallet, 
+  PopupGoogleWallet, 
+  Prover, 
+  SeedphraseWallet, 
+  Transaction,
+  bip32PrivateKeyFromHex 
+} from 'zkfold-smart-wallet-api'
+import { 
+  AssetMetadataMap, 
+  buildAssetMetadata, 
+  formatAssetOptions, 
+  formatBalance, 
+  formatWithDecimals 
+} from './Utils/Assets'
 import { getAddressLabel } from './Utils/Address'
 import { AppConfig } from './Types'
 
@@ -107,11 +124,12 @@ export class App {
     const backend = new Backend(config.backendUrl, config.backendApiKey)
     const prover = new Prover(config.proverUrl)
 
-    this.backend = backend
-    this.prover = prover
-    this.config = config
-
     const app = new App()
+
+    app.backend = backend
+    app.prover = prover
+    app.config = config
+
     return app
   }
 
@@ -178,9 +196,9 @@ export class App {
           let wallet;
           if (App.isBrowserExtension()) {
             const redirectUrl = chrome.identity.getRedirectURL() + "oauth2callback/";
-            wallet = new PopupGoogleWallet(backend, prover, new GoogleApi(creds.client_id, creds.client_secret, redirectUrl))
+            wallet = new PopupGoogleWallet(this.backend, this.prover, new GoogleApi(creds.client_id, creds.client_secret, redirectUrl))
           } else {
-            wallet = new GoogleWallet(backend, prover, new GoogleApi(creds.client_id, creds.client_secret, `${config.websiteUrl}/oauth2callback/`))
+            wallet = new GoogleWallet(this.backend, this.prover, new GoogleApi(creds.client_id, creds.client_secret, `${this.config.websiteUrl}/oauth2callback/`))
           }
           this.setWallet(wallet)
           this.wallet.login()
