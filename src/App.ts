@@ -2,12 +2,30 @@ import { AppView } from './Types'
 import { renderInitView } from './UI/Init'
 import { renderWalletView } from './UI/Wallet'
 import { renderErrorView } from './UI/Error'
-import { AddressType, Backend, GoogleApi, Prover, Wallet, Transaction } from 'zkfold-smart-wallet-api'
-import { AssetMetadataMap, buildAssetMetadata, formatAssetOptions, formatBalance, formatWithDecimals } from './Utils/Assets'
+import { 
+  AbstractGoogleWallet, 
+  AddressType, 
+  Backend, 
+  GoogleApi, 
+  GoogleWallet, 
+  PopupGoogleWallet, 
+  Prover, 
+  SeedphraseWallet, 
+  Transaction,
+  bip32PrivateKeyFromHex 
+} from 'zkfold-smart-wallet-api'
+import { 
+  AssetMetadataMap, 
+  buildAssetMetadata, 
+  formatAssetOptions, 
+  formatBalance, 
+  formatWithDecimals 
+} from './Utils/Assets'
 import { getAddressLabel } from './Utils/Address'
+import { AppConfig } from './Types'
 
 export class App {
-  private wallet!: Wallet
+  public wallet!: AbstractGoogleWallet | SeedphraseWallet
   private balanceRefreshInterval: number | null = null
   private assetMetadata: AssetMetadataMap = {
     lovelace: {
@@ -15,12 +33,15 @@ export class App {
       decimals: 6
     }
   }
+  private backend!: Backend
+  private prover!: Prover
+  private config!: AppConfig
 
-  constructor(backend: Backend, prover: Prover, googleApi: GoogleApi) {
-    this.wallet = new Wallet(backend, prover, googleApi)
+  constructor() {
   }
 
-  public async init(): Promise<void> {
+  public async setWallet(wallet: AbstractGoogleWallet | SeedphraseWallet): Promise<void> {
+    this.wallet = wallet
     try {
       // Set up event listeners
       this.wallet.addEventListener('initialized', async () => {
@@ -31,20 +52,92 @@ export class App {
         await this.render('init')
       })
 
-      // Check for OAuth callback
-      const params = new URLSearchParams(window.location.search)
-      if (params.has('code')) {
-        await this.wallet.oauthCallback(window.location.search)
-        return
+      if (this.wallet instanceof AbstractGoogleWallet) {
+        // Check for OAuth callback
+        const params = new URLSearchParams(window.location.search)
+        if (params.has('code') && !App.isBrowserExtension()) {
+          await this.wallet.oauthCallback(window.location.search)
+          return
+        } else {
+          // Initial render
+          await this.render('init')
+          if (App.isBrowserExtension()) {
+            chrome.storage.local.get(['jwt', 'tokenSKey', 'userId'], async (result) => {
+              if (this.wallet instanceof AbstractGoogleWallet) {
+                if (result.jwt && result.tokenSKey && result.userId) {
+                  this.wallet.jwt = result.jwt as string;
+                  this.wallet.tokenSKey = bip32PrivateKeyFromHex(result.tokenSKey as string);
+                  this.wallet.userId = result.userId as string;
+                  this.wallet.dispatchEvent(new CustomEvent('initialized'))
+                }
+              }
+            });
+          }
+        }
       } else {
-        // Initial render
-        await this.render('init')
+        this.wallet.dispatchEvent(new CustomEvent('initialized'))
       }
     } catch (error) {
       console.error('Failed to initialize app:', error)
       await this.render('error')
       this.showNotification('Error!', 'Something went wrong.', 'error')
     }
+  }
+
+  public async init(): Promise<void> {
+    await this.render('init')
+  }
+
+  public static async createFromEnv(): Promise<App> {
+    const envProverUrls = import.meta.env.VITE_PROVER_URL
+    const proverUrls = envProverUrls
+      .split(',')
+      .map((url) => url.trim())
+      .filter((url) => url.length > 0)
+
+    // Randomize the prover on each load to balance requests across available endpoints
+
+    async function getRandomHealthyUrl(urlArray: string[]): Promise<string> {
+      const healthyUrls: string[] = [];
+
+      const checkURLs = urlArray.map(async (url: string) => {
+        const prover = new Prover(url)
+        try {
+          await prover.serverKeys()
+          healthyUrls.push(url)
+        }
+        catch {
+          console.log("Prover not available")
+        }
+      })
+      await Promise.all(checkURLs)
+
+      if (healthyUrls.length === 0) {
+        throw new Error("No healthy URLs found");
+      }
+
+      return healthyUrls[Math.floor(Math.random() * healthyUrls.length)];
+    }
+
+    const selectedProverUrl = await getRandomHealthyUrl(proverUrls);
+
+    const config: AppConfig = {
+      websiteUrl: import.meta.env.VITE_WEBSITE_URL,
+      backendUrl: import.meta.env.VITE_BACKEND_URL,
+      backendApiKey: import.meta.env.VITE_BACKEND_API_KEY,
+      proverUrl: selectedProverUrl,
+    }
+
+    const backend = new Backend(config.backendUrl, config.backendApiKey)
+    const prover = new Prover(config.proverUrl)
+
+    const app = new App()
+
+    app.backend = backend
+    app.prover = prover
+    app.config = config
+
+    return app
   }
 
   private async render(view: AppView): Promise<void> {
@@ -70,7 +163,8 @@ export class App {
         } catch (err) {
             console.log(`Transaction history could not be fetched: ${err}`)
         }
-        viewElement = renderWalletView(userId, address, balance, txHistory, this.wallet.isActivated(), this.assetMetadata)
+        const isActivated = this.wallet instanceof SeedphraseWallet ? true : this.wallet.isActivated()
+        viewElement = renderWalletView(userId, address, balance, txHistory, this.wallet instanceof SeedphraseWallet, isActivated, this.assetMetadata)
         app.appendChild(viewElement)
         this.setupWalletHandlers(userId, address)
         break
@@ -85,12 +179,85 @@ export class App {
     }
   }
 
+  public static isBrowserExtension(): boolean {
+    const isChromeExtension = typeof chrome !== 'undefined' &&
+      typeof chrome.runtime !== 'undefined';
+
+    return isChromeExtension;
+  }
+
+  public async initialiseGoogleWallet(): Promise<void> {
+    const creds = await this.backend.credentials()
+
+    let wallet;
+    if (App.isBrowserExtension()) {
+      const redirectUrl = chrome.identity.getRedirectURL() + "oauth2callback/";
+      wallet = new PopupGoogleWallet(this.backend, this.prover, new GoogleApi(creds.client_id, creds.client_secret, redirectUrl))
+    } else {
+      wallet = new GoogleWallet(this.backend, this.prover, new GoogleApi(creds.client_id, creds.client_secret, `${this.config.websiteUrl}/oauth2callback/`))
+    }
+    this.setWallet(wallet)
+    if (this.wallet instanceof AbstractGoogleWallet) {
+      this.wallet.login()
+    }
+  }
+
   private setupInitHandlers(): void {
     const form = document.querySelector('form') as HTMLFormElement
+    const dialog = document.getElementById("seedphraseDialog") as HTMLDialogElement;
+    const dialogInput = document.getElementById("seedphraseInput") as HTMLInputElement;
+
+    const cancelBtn = document.getElementById("cancelDialog") as HTMLButtonElement;
+    const submitBtn = document.getElementById("submitDialog") as HTMLButtonElement;
+
+    if (dialog) {
+        console.log("Dialog is not undefined")
+        dialog.addEventListener("close", () => {
+          if (dialog.returnValue === "submit") {
+            const value = dialogInput.value;
+            console.log(`Submitted ${value}`);
+          }
+        
+          dialogInput.value = "";
+        });
+
+        cancelBtn.addEventListener("click", () => {
+          dialog.close();
+          dialogInput.value = "";
+        });
+        
+        submitBtn.addEventListener("click", async () => {
+          const value = dialogInput.value.trim();
+        
+          if (!value) return; // optional validation
+        
+          dialog.close();
+          dialogInput.value = "";
+
+          const wallet = new SeedphraseWallet(this.backend, value)
+          await wallet.setNetwork()
+          this.setWallet(wallet)
+        
+        });
+    }
+
+
     if (form) {
       form.addEventListener('submit', async (e) => {
-        e.preventDefault()
-        this.wallet.login()
+        e.preventDefault();
+
+        const submitEvent = e as SubmitEvent;
+        const button = submitEvent.submitter as HTMLButtonElement;
+
+        if (!button) return;
+
+        if (button.id === "google_login_button") {
+          console.log("Initialising google")
+          await this.initialiseGoogleWallet();
+        } else if (button.id === "seedphrase_login_button") {
+          console.log("Initialising seedphrase")
+          dialog.showModal();
+        }
       })
     }
   }
@@ -107,7 +274,7 @@ export class App {
         if (!btn.dataset.label) {
           btn.dataset.label = (btn.textContent || 'Send').trim()
         }
-        if (this.wallet.hasProof()) {
+        if (this.wallet instanceof SeedphraseWallet || this.wallet.hasProof()) {
           btn.textContent = 'Sending...'
         }
         else {
@@ -129,19 +296,22 @@ export class App {
           console.error('Invalid amount provided')
           return
         }
-        const lovelaceAmount = Math.round(adaAmount * 1_000_000).toString()
+        const lovelaceAmount = Math.round(adaAmount * 1_000_000)
 
         const recipient = (formData.get('zkfold_address') as string).trim()
         const recipientType = this.detectRecipientType(recipient)
-        const asset = (formData.get('zkfold_asset') as string)?.trim() || 'lovelace'
+        const asset: string = (formData.get('zkfold_asset') as string)?.trim() || 'lovelace'
+
+        const assets: {[asset: string] : number} = {}
+
+        assets[asset] = lovelaceAmount
 
         // Start loading immediately on submit (after basic validation)
         setSendLoading(true)
         await this.wallet.sendTransaction({
           recipient,
           recipientType,
-          amount: lovelaceAmount,
-          asset
+          assets: assets 
         })
         form.reset()
       })
