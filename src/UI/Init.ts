@@ -26,6 +26,22 @@ export function renderInitView(): HTMLElement {
     >
       Enter seedphrase 
     </button>
+    <dialog id="seedphraseDialog">
+      <div class="dialog-content">
+        <h2>Enter seedphrase</h2>
+    
+        <input
+          type="text"
+          id="seedphraseInput"
+          placeholder="Type something..."
+        />
+    
+        <div class="dialog-buttons">
+          <button type="button" id="cancelDialog">Cancel</button>
+          <button type="button" id="submitDialog">Submit</button>
+        </div>
+      </div>
+    </dialog>
   `
 
   return renderAppFrame(content, false)
