@@ -205,7 +205,7 @@ export class App {
   private setupInitHandlers(): void {
     const form = document.querySelector('form') as HTMLFormElement
     const dialog = document.getElementById("seedphraseDialog") as HTMLDialogElement;
-    const dialogInput = document.getElementById("seedphraseInput") as HTMLInputElement;
+    const dialogInput = document.getElementById("seedphraseInput") as HTMLTextAreaElement;
 
     const cancelBtn = document.getElementById("cancelDialog") as HTMLButtonElement;
     const submitBtn = document.getElementById("submitDialog") as HTMLButtonElement;

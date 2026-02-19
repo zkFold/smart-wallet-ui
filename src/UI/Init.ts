@@ -26,19 +26,15 @@ export function renderInitView(): HTMLElement {
     >
       Enter seedphrase 
     </button>
-    <dialog id="seedphraseDialog">
+    <dialog id="seedphraseDialog" class="dialog">
       <div class="dialog-content">
         <h2>Enter seedphrase</h2>
     
-        <input
-          type="text"
-          id="seedphraseInput"
-          placeholder="Type something..."
-        />
+        <textarea name="seedphraseInput" id="seedphraseInput" cols="50" rows="5" placeholder="Seedphrase"></textarea>
     
-        <div class="dialog-buttons">
-          <button type="button" id="cancelDialog">Cancel</button>
-          <button type="button" id="submitDialog">Submit</button>
+        <div id="dialog-buttons-div">
+          <button type="button" id="cancelDialog" class="dialog-buttons altered">Cancel</button>
+          <button type="button" id="submitDialog" class="dialog-buttons">Submit</button>
         </div>
       </div>
     </dialog>
