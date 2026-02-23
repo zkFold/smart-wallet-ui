@@ -19,6 +19,25 @@ export function renderInitView(): HTMLElement {
       </svg>
       Continue with Google
     </button>
+    <button
+      id="seedphrase_login_button"
+      type="submit"
+      class="submit_btn altered"
+    >
+      Enter seedphrase 
+    </button>
+    <dialog id="seedphraseDialog" class="dialog">
+      <div class="dialog-content">
+        <h2>Enter seedphrase</h2>
+    
+        <textarea name="seedphraseInput" id="seedphraseInput" cols="50" rows="5" placeholder="Seedphrase"></textarea>
+    
+        <div id="dialog-buttons-div">
+          <button type="button" id="cancelDialog" class="dialog-buttons altered">Cancel</button>
+          <button type="button" id="submitDialog" class="dialog-buttons">Submit</button>
+        </div>
+      </div>
+    </dialog>
   `
 
   return renderAppFrame(content, false)
