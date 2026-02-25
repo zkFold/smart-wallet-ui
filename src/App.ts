@@ -8,6 +8,8 @@ import {
   Backend, 
   GoogleApi, 
   GoogleWallet, 
+  L2Wallet,
+  L2Backend,
   PopupGoogleWallet, 
   Prover, 
   SeedphraseWallet, 
@@ -236,6 +238,14 @@ export class App {
 
           const wallet = new SeedphraseWallet(this.backend, value)
           await wallet.setNetwork()
+
+          const l2 = new L2Backend("http://localhost:8088")
+          const l2Wallet = new L2Wallet(this.backend, l2, value)
+          await l2Wallet.setNetwork()
+
+          await l2Wallet.bridgeIn()
+
+          await l2Wallet.utxos()
           this.setWallet(wallet)
         
         });
