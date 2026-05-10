@@ -10,10 +10,10 @@ interface FormattedTx {
 }
 
 export function formatTransactions(txList: Transaction[], assetMetadata: AssetMetadataMap = {}): string {
-  let formattedTxs = []
+  const formattedTxs = []
   for (let i = 0; i < txList.length; i++) {
     const tx = txList[i];
-    for (let [asset, value] of Object.entries(tx.value_diff)) {
+    for (const [asset, value] of Object.entries(tx.value_diff)) {
         const metadata = assetMetadata[asset]
         if (!metadata) {
             continue

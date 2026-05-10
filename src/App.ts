@@ -5,6 +5,7 @@ import { renderErrorView } from './UI/Error'
 import { AddressType, Backend, GoogleApi, Prover, Wallet, Transaction } from 'zkfold-smart-wallet-api'
 import { AssetMetadataMap, buildAssetMetadata, formatAssetOptions, formatBalance, formatWithDecimals } from './Utils/Assets'
 import { getAddressLabel } from './Utils/Address'
+import { formatTransactions } from './Utils/Transactions'
 
 export class App {
   private wallet!: Wallet
@@ -58,9 +59,9 @@ export class App {
     // Render current view
     let viewElement: HTMLElement
     switch (view) {
-      case 'wallet':
+      case 'wallet': {
         const userId = this.wallet.getUserId()
-        const address = await this.wallet.getAddress().then((x: any) => x.to_bech32())
+        const address = await this.wallet.getAddress().then((x) => x.to_bech32())
         const balance = await this.wallet.getBalance()
         console.log(this.wallet.getUserId())
         this.assetMetadata = buildAssetMetadata(balance)
@@ -74,6 +75,7 @@ export class App {
         app.appendChild(viewElement)
         this.setupWalletHandlers(userId, address)
         break
+      }
       case 'error':
         viewElement = renderErrorView()
         app.appendChild(viewElement)
@@ -170,8 +172,9 @@ export class App {
       const errorMsg = (event as CustomEvent).detail
       this.showNotification("Failed!", errorMsg, 'error')
     })
-    this.wallet.addEventListener('transaction_confirmed', async (_event: Event) => {
-      this.refreshBalance()
+    this.wallet.addEventListener('transaction_confirmed', async () => {
+      await this.refreshBalance()
+      await this.refreshTransactions()
     })
 
     // Kick off periodic balance refreshes
@@ -194,9 +197,16 @@ export class App {
       })
     }
 
-    for (const listItem of Array.from(document.querySelectorAll('.wallet_sec .wallet_detail_list .wallet_detail_list__item-btn'))) {
-      listItem.addEventListener('click', () => {
-        const item = listItem.closest('.wallet_detail_list__item')
+    const transactionsList = document.getElementById('wallet_transactions_list')
+    if (transactionsList) {
+      transactionsList.addEventListener('click', (event) => {
+        const target = event.target
+        if (!(target instanceof Element)) return
+
+        const button = target.closest('.wallet_detail_list__item-btn')
+        if (!button || !transactionsList.contains(button)) return
+
+        const item = button.closest('.wallet_detail_list__item')
         const content = item?.querySelector('.wallet_detail_list__details') as HTMLElement | null
         if (content) {
           content.style.display = content.style.display === 'none' ? 'block' : 'none'
@@ -238,7 +248,12 @@ export class App {
     try {
       const newBalance = await this.wallet.getBalance()
       this.assetMetadata = buildAssetMetadata(newBalance)
-      const hasAssets = Object.keys(newBalance).length > 0
+      const hasAssets = newBalance.lovelace > 0 || newBalance.tokens.length > 0
+
+      const summaryAmount = document.querySelector('.wallet_summary_amount') as HTMLElement | null
+      if (summaryAmount) {
+        summaryAmount.textContent = `$${newBalance.usd.toFixed(2)}`
+      }
 
       const assetsList = document.getElementById('wallet_assets_list') as HTMLUListElement | null
       const assetsWrap = assetsList?.parentElement as HTMLElement | null
@@ -261,6 +276,25 @@ export class App {
       }
     } catch (err) {
       console.error('Failed to refresh balance:', err)
+    }
+  }
+
+  private async refreshTransactions(): Promise<void> {
+    try {
+      const transactionsList = document.getElementById('wallet_transactions_list') as HTMLUListElement | null
+      const transactionsWrap = transactionsList?.parentElement as HTMLElement | null
+      if (!transactionsList || !transactionsWrap) {
+        return
+      }
+
+      const txHistory = await this.wallet.getTxHistory()
+      const transactionsHtml = formatTransactions(txHistory, this.assetMetadata)
+      const hasTransactions = transactionsHtml.trim().length > 0
+
+      transactionsList.innerHTML = transactionsHtml
+      transactionsWrap.classList.toggle('empty', !hasTransactions)
+    } catch (err) {
+      console.error('Failed to refresh transactions:', err)
     }
   }
 
