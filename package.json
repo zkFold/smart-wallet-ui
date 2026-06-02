@@ -43,5 +43,10 @@
     "dotenv": "^16.4.5",
     "json-bigint": "^1.0.0",
     "zkfold-smart-wallet-api": "^1.8.3"
+  },
+  "overrides": {
+    "vite-plugin-top-level-await": {
+      "uuid": "^11.1.1"
+    }
   }
 }
