@@ -304,13 +304,15 @@
 .wallet_sec .wallet_box:not(.active) .empty_transactions{
 	display: none;
 }
-/* Control visibility of assets vs empty state without inline styles */
-.wallet_sec .wallet_assets #wallet_empty_assets{ display: none; }
-.wallet_sec .wallet_assets.empty #wallet_empty_assets{ display: block; }
-.wallet_sec .wallet_assets.empty #wallet_assets_list{ display: none; }
-.wallet_sec .wallet_transactions #wallet_empty_transactions{ display: none; }
-.wallet_sec .wallet_transactions.empty #wallet_empty_transactions{ display: block; }
-.wallet_sec .wallet_transactions.empty #wallet_transactions_list{ display: none; }
+/* Control visibility of assets/transaction rows vs empty states. */
+.wallet_sec .wallet_assets:not(.empty) .empty_assets,
+.wallet_sec .wallet_transactions:not(.empty) .empty_transactions{
+	display: none;
+}
+.wallet_sec .wallet_assets.empty .wallet_detail_list,
+.wallet_sec .wallet_transactions.empty .wallet_detail_list{
+	display: none;
+}
 .wallet_sec .form_fields .form_field_cont,
 .wallet_sec .wallet_action_form .form_field_cont{
 	padding-top: 16px;
