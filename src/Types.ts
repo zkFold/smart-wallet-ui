@@ -2,9 +2,9 @@ import type { BalanceResponse, Transaction } from 'zkfold-smart-wallet-api'
 
 export interface AppConfig {
   backendUrl: string
-  backendApiKey?: string
+  backendApiKey: string | null
   rollupUrl: string
-  rollupApiKey?: string
+  rollupApiKey: string | null
 }
 
 export type AppView = 'init' | 'wallet' | 'error'

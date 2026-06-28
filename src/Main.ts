@@ -11,17 +11,22 @@ function requiredEnv(name: string): string {
   return value.trim()
 }
 
+function optionalEnv(name: string): string | null {
+  const value = import.meta.env[name]
+  return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
+}
+
 async function initApp(): Promise<void> {
   try {
     const config: AppConfig = {
       backendUrl: requiredEnv('VITE_BACKEND_URL'),
-      backendApiKey: import.meta.env.VITE_BACKEND_API_KEY,
+      backendApiKey: optionalEnv('VITE_BACKEND_API_KEY'),
       rollupUrl: requiredEnv('VITE_ROLLUP_URL'),
-      rollupApiKey: import.meta.env.VITE_ROLLUP_API_KEY
+      rollupApiKey: optionalEnv('VITE_ROLLUP_API_KEY')
     }
 
     const backend = new Backend(config.backendUrl, config.backendApiKey)
-    const l2Backend = new L2Backend(config.rollupUrl, config.rollupApiKey ?? null)
+    const l2Backend = new L2Backend(config.rollupUrl, config.rollupApiKey)
 
     const app = new App(backend, l2Backend)
     await app.init()
