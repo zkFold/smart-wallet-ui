@@ -3,10 +3,11 @@ export function renderAppFrame(content: string, showLogout: boolean): HTMLElemen
   container.className = 'container app-container'
 
   const logoutButtonClass = showLogout ? 'active' : ''
+  const walletContainerClass = showLogout ? 'wallet_container wallet_container--wide' : 'wallet_container'
 
   container.innerHTML = `
     <section class="wallet_sec">
-      <div class="wallet_container">
+      <div class="${walletContainerClass}">
         <div class="wallet_form">
           <div class="form_header">
             <div class="form_col">

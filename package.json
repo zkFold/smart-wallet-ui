@@ -42,7 +42,7 @@
     "@types/json-bigint": "^1.0.4",
     "dotenv": "^16.4.5",
     "json-bigint": "^1.0.0",
-    "zkfold-smart-wallet-api": "git+https://github.com/zkFold/smart-wallet-api.git#815d81ff3db498001d90df83127f2f877c9455ea"
+    "zkfold-smart-wallet-api": "github:zkFold/smart-wallet-api#e2f4caec8cffb3db668c8fb5d91a75919554408b"
   },
   "overrides": {
     "vite-plugin-top-level-await": {
