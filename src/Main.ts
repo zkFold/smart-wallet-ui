@@ -1,68 +1,40 @@
 import { App } from './App'
 import { renderErrorView } from './UI/Error'
 import { AppConfig } from './Types'
-import { Backend, GoogleApi, Prover } from 'zkfold-smart-wallet-api'
+import { Backend, L2Backend } from 'zkfold-smart-wallet-api'
 
-async function getRandomHealthyUrl(urlArray: string[]): Promise<string> {
-  const healthyUrls: string[] = [];
-
-  const checkURLs = urlArray.map(async (url: string) => {
-    const prover = new Prover(url)
-    try {
-      await prover.serverKeys()
-      healthyUrls.push(url)
-    }
-    catch {
-      console.log("Prover not available")
-    }
-  })
-  await Promise.all(checkURLs)
-
-  if (healthyUrls.length === 0) {
-    throw new Error("No healthy URLs found");
+function requiredEnv(name: string): string {
+  const value = import.meta.env[name]
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error(`Missing required environment variable ${name}`)
   }
-
-  return healthyUrls[Math.floor(Math.random() * healthyUrls.length)];
+  return value.trim()
 }
 
-// Initialize the application when DOM is loaded
-async function initApp() {
+async function initApp(): Promise<void> {
   try {
-    const envProverUrls = import.meta.env.VITE_PROVER_URL
-    const proverUrls = envProverUrls
-      .split(',')
-      .map((url) => url.trim())
-      .filter((url) => url.length > 0)
-
-    // Randomize the prover on each load to balance requests across available endpoints
-    const selectedProverUrl = await getRandomHealthyUrl(proverUrls);
-
     const config: AppConfig = {
-      websiteUrl: import.meta.env.VITE_WEBSITE_URL,
-      backendUrl: import.meta.env.VITE_BACKEND_URL,
+      backendUrl: requiredEnv('VITE_BACKEND_URL'),
       backendApiKey: import.meta.env.VITE_BACKEND_API_KEY,
-      proverUrl: selectedProverUrl,
+      rollupUrl: requiredEnv('VITE_ROLLUP_URL'),
+      rollupApiKey: import.meta.env.VITE_ROLLUP_API_KEY
     }
 
     const backend = new Backend(config.backendUrl, config.backendApiKey)
-    const prover = new Prover(config.proverUrl)
+    const l2Backend = new L2Backend(config.rollupUrl, config.rollupApiKey ?? null)
 
-    const creds = await backend.credentials()
-    const googleApi = new GoogleApi(creds.client_id, creds.client_secret, `${config.websiteUrl}/oauth2callback`)
-
-    const app = new App(backend, prover, googleApi)
-    app.init()
-  } catch {
+    const app = new App(backend, l2Backend)
+    await app.init()
+  } catch (error) {
+    console.error('Failed to initialize app:', error)
     const app = document.getElementById('app') as HTMLElement
     const viewElement = renderErrorView()
     app.appendChild(viewElement)
   }
 }
 
-// TODO: we need a `try` here in case the backend is down
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp)
 } else {
-  // DOM is already loaded
   initApp()
 }

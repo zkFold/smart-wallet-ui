@@ -29,7 +29,7 @@
 	color: #22222a;
 	background-color: white;
 	width: 100%;
-	max-width: 448px;
+	max-width: 560px;
 	border-radius: 24px;
 	border: 1px solid #e0e0eb80;
 	padding: 32px 24px 24px;
@@ -111,6 +111,11 @@
 }
 .wallet_sec .copy_cont #user_topup_adress{
 	font-size: 14px;
+}
+.wallet_sec .copy_cont .wallet_address_text{
+	font-size: 14px;
+	font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,Liberation Mono,Courier New,monospace;
+	overflow-wrap: anywhere;
 }
 .wallet_sec .wallet_box_header{
 	display: flex;
@@ -197,6 +202,10 @@
 	color: #16a34a;
 	background-color: #22c55e33;
 }
+.wallet_sec .wallet_detail_list .wallet_detail_list__item-btn .failed{
+	color: #991b1b;
+	background-color: #ef444433;
+}
 .wallet_sec .wallet_detail_list:not(.wallet_detail_list--transactions) .wallet_detail_list__item .wallet_detail_list__label{
 	width: 50%;
 }
@@ -265,17 +274,20 @@
 .wallet_sec .wallet_transactions #wallet_empty_transactions{ display: none; }
 .wallet_sec .wallet_transactions.empty #wallet_empty_transactions{ display: block; }
 .wallet_sec .wallet_transactions.empty #wallet_transactions_list{ display: none; }
-.wallet_sec .form_fields .form_field_cont{
+.wallet_sec .form_fields .form_field_cont,
+.wallet_sec .wallet_action_form .form_field_cont{
 	padding-top: 16px;
 }
-.wallet_sec .form_fields .form_field_cont label{
+.wallet_sec .form_fields .form_field_cont label,
+.wallet_sec .wallet_action_form .form_field_cont label{
 	font-weight: 500;
 	font-size: 14px;
 	line-height: 20px;
 	display: block;
 	margin-bottom: 8px;
 }
-.wallet_sec .form_fields .form_field_cont .input_field{
+.wallet_sec .form_fields .form_field_cont .input_field,
+.wallet_sec .wallet_action_form .form_field_cont .input_field{
 	font-size: 14px;
 	line-height: 20px;
 	background-color: #f0f0fa4d;
@@ -289,9 +301,15 @@
 	outline: none;
     transition: border-color 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
 }
+.wallet_sec .form_fields .form_field_cont textarea.input_field{
+	min-height: 132px;
+	height: auto;
+	resize: vertical;
+}
 
 /* Focus ring for specific wallet inputs */
-.wallet_sec .form_fields .form_field_cont .input_field:focus{
+.wallet_sec .form_fields .form_field_cont .input_field:focus,
+.wallet_sec .wallet_action_form .form_field_cont .input_field:focus{
     border-color: #66c7ff;
     box-shadow: 0 0 0 3px rgba(77, 190, 255, 0.25);
     background-color: #ffffff;
@@ -308,7 +326,8 @@
 	min-width: 128px;
 }
 /* Improve native select spacing and custom arrow (fallback for non-supporting browsers) */
-.wallet_sec .form_fields .form_field_cont select{
+.wallet_sec .form_fields .form_field_cont select,
+.wallet_sec .wallet_action_form .form_field_cont select{
 	-webkit-appearance: none;
 	-moz-appearance: none;
 	appearance: none;

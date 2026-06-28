@@ -7,7 +7,7 @@ export function renderAppFrame(content: string, showLogout: boolean): HTMLElemen
   container.innerHTML = `
     <section class="wallet_sec">
       <div class="wallet_container">
-        <form class="wallet_form">
+        <div class="wallet_form">
           <div class="form_header">
             <div class="form_col">
               <img class="form_logo" src="logo.svg" alt="zkFold logo">
@@ -21,7 +21,7 @@ export function renderAppFrame(content: string, showLogout: boolean): HTMLElemen
           <div class="wallet_box_cont">
 		  	${content}
           </div>
-        </form>
+        </div>
       </div>
     </section>
 	<div id="notification" class="notice_box">
